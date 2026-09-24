@@ -16,9 +16,12 @@ const schema = z.object({
   S3_ENDPOINT: z.string().default('http://localhost:59000'),
   S3_REGION: z.string().default('auto'),
   S3_BUCKET: z.string().default('repairdesk-private'),
-  S3_ACCESS_KEY: z.string().default('minio_dev'),
-  S3_SECRET_KEY: z.string().default('minio_dev_password'),
-  S3_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
+  S3_ACCESS_KEY: z.string().default('s3_dev'),
+  S3_SECRET_KEY: z.string().default('s3_dev_password'),
+  S3_FORCE_PATH_STYLE: z
+    .string()
+    .default('true')
+    .transform((v) => v !== 'false'),
 
   MPESA_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
   MPESA_CONSUMER_KEY: z.string().optional(),

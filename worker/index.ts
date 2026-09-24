@@ -2,6 +2,7 @@
  * Long-running worker process: `npm run worker` (dev) or the `worker` service in docker-compose.prod.yml.
  * The same tick() is reachable via POST /api/internal/tick for environments without a resident process.
  */
+import '../scripts/shim-server-only';
 import { retentionSweep, tick } from './tasks';
 
 let stopping = false;

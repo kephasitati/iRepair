@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "dev",
+      "credentials": [{ "accessKey": "s3_dev", "secretKey": "s3_dev_password" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import 'server-only';
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from './env';
 
@@ -21,6 +21,16 @@ export function s3(): S3Client {
     forcePathStyle: e.S3_FORCE_PATH_STYLE,
     credentials: { accessKeyId: e.S3_ACCESS_KEY, secretAccessKey: e.S3_SECRET_KEY },
   }));
+}
+
+/** Dev convenience: create the bucket if it does not exist (production buckets are created in the R2/S3 console). */
+export async function ensureBucket() {
+  const Bucket = env().S3_BUCKET;
+  try {
+    await s3().send(new HeadBucketCommand({ Bucket }));
+  } catch {
+    await s3().send(new CreateBucketCommand({ Bucket }));
+  }
 }
 
 export function photoKey(tenantId: string, jobId: string, stage: string, id: string, ext = 'jpg') {
