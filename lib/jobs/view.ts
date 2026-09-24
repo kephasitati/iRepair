@@ -144,6 +144,6 @@ export async function loadJobView(tx: Tx, jobId: string) {
     mainQuote: quotes.find((q) => q.kind === 'main') ?? null,
     supplementary: quotes.filter((q) => q.kind === 'supplementary'),
     secret: secret[0] ?? null,
-    refunds: refunds.map((r) => ({ ...r, amount_cents: Number(r.amount_cents) })),
+    refunds: refunds.map((r: Rec) => ({ ...r, amount_cents: Number(r.amount_cents) }) as { id: string; method: string; reason: string; amount_cents: number; created_at: string }),
   };
 }

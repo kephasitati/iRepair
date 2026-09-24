@@ -55,16 +55,23 @@ export async function rateLimit(bucket: string, max: number, windowSeconds: numb
 // ---------------------------------------------------------------------------
 // Session
 // ---------------------------------------------------------------------------
-export async function createSession(userId: string, tenantId: string | null, opts: { mfaVerified?: boolean } = {}) {
+export async function createSession(
+  userId: string,
+  tenantId: string | null,
+  opts: { mfaVerified?: boolean; impersonatingTenantId?: string; impersonationReason?: string } = {},
+) {
   const token = randomToken(32);
   const h = await headers();
   const ua = h.get('user-agent')?.slice(0, 300) ?? null;
   const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || null;
-  await servicePool()`insert into sessions (user_id, token_hash, tenant_id, mfa_verified, ip, user_agent, expires_at)
-    values (${userId}, ${sha256Hex(token)}, ${tenantId}, ${opts.mfaVerified ?? false}, ${ip}::inet, ${ua}, now() + make_interval(days => ${SESSION_DAYS}))`;
+  const support = !!opts.impersonatingTenantId;
+  await servicePool()`insert into sessions (user_id, token_hash, tenant_id, mfa_verified, ip, user_agent, expires_at, impersonating_tenant_id, impersonation_reason, impersonation_expires_at)
+    values (${userId}, ${sha256Hex(token)}, ${tenantId}, ${opts.mfaVerified ?? false}, ${ip}::inet, ${ua},
+            ${support ? new Date(Date.now() + 60 * 60 * 1000) : new Date(Date.now() + SESSION_DAYS * 86400 * 1000)},
+            ${opts.impersonatingTenantId ?? null}, ${opts.impersonationReason ?? null}, ${support ? new Date(Date.now() + 60 * 60 * 1000) : null})`;
   await servicePool()`update users set last_login_at = now() where id = ${userId}`;
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: isProd(), path: '/', maxAge: SESSION_DAYS * 86400 });
+  jar.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: isProd(), path: '/', maxAge: support ? 3600 : SESSION_DAYS * 86400 });
 }
 
 export async function destroySession() {
@@ -90,8 +97,9 @@ export const getSession = cache(async (): Promise<Session | null> => {
     limit 1`;
   const r = rows[0];
   if (!r || r.disabled) return null;
-  // sliding expiry, throttled to once a minute
-  void servicePool()`update sessions set last_seen_at = now(), expires_at = now() + make_interval(days => ${SESSION_DAYS}) where id = ${r.session_id} and last_seen_at < now() - interval '1 minute'`.catch(() => {});
+  // sliding expiry, throttled to once a minute (support-mode sessions keep their hard 60-minute limit)
+  void servicePool()`update sessions set last_seen_at = now(), expires_at = now() + make_interval(days => ${SESSION_DAYS})
+    where id = ${r.session_id} and impersonating_tenant_id is null and last_seen_at < now() - interval '1 minute'`.catch(() => {});
   const impersonating = r.impersonating_tenant_id && r.impersonation_expires_at && new Date(r.impersonation_expires_at) > new Date() ? r.impersonating_tenant_id : null;
   return {
     id: r.session_id,
