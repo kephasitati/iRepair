@@ -26,6 +26,7 @@ import {
   type DropoffInput,
 } from '@/lib/jobs/service';
 import type { PaymentPurpose } from '@/lib/jobs/types';
+import { TERMS_VERSION } from '@/lib/legal';
 import { UserError } from '@/lib/jobs/types';
 import type { Address } from '@/lib/providers/delivery/types';
 
@@ -65,7 +66,7 @@ export async function setPickupAction(
 export async function submitDraftAction(jobId: string): Promise<ActionResult<null>> {
   const res = await run(async () => {
     const { ctx, userId } = await customer();
-    await withUser(ctx, (tx) => submitDraft(tx, jobId, userId));
+    await withUser(ctx, (tx) => submitDraft(tx, jobId, userId, TERMS_VERSION));
     return null;
   });
   if (res.ok) redirect(`/jobs/${jobId}?pay=1`);

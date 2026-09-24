@@ -7,6 +7,7 @@ import { requireStaff } from '@/lib/auth';
 import { servicePool } from '@/lib/db';
 import { env } from '@/lib/env';
 import { saveCredentialsAction, saveSettingsAction } from '@/app/admin/actions';
+import { DEFAULT_DEVICE_TYPES, DEVICE_TYPES } from '@/lib/core/device-id';
 
 export const metadata = { title: 'Settings' };
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,7 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export default async function SettingsPage() {
   const { tenant, session } = await requireStaff('shop_admin');
   const t = await getTranslations('admin');
+  const tDev = await getTranslations('devices');
   const s = tenant.settings;
   const b = tenant.branding;
   const [secrets] = await servicePool()`select daraja_enc is not null as daraja, courier_enc is not null as courier, sms_enc is not null as sms from tenant_secrets where tenant_id = ${tenant.id}`;
@@ -183,6 +185,14 @@ export default async function SettingsPage() {
             <Field label="(until)" htmlFor="quiet_hours_end">
               <Input id="quiet_hours_end" name="quiet_hours_end" type="time" defaultValue={s.quiet_hours_end} />
             </Field>
+          </div>
+          <div>
+            <p className="mb-2 text-[14px] font-medium text-ink-2">{t('deviceTypes')}</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {DEVICE_TYPES.map((d) => (
+                <CheckRow key={d} name={`device_${d}`} label={tDev(d)} defaultChecked={(s.device_types ?? DEFAULT_DEVICE_TYPES).includes(d)} />
+              ))}
+            </div>
           </div>
           <Field label={t('provider')} htmlFor="delivery_provider">
             <NativeSelect id="delivery_provider" name="delivery_provider" defaultValue={s.delivery_provider}>

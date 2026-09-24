@@ -9,9 +9,10 @@ import path from 'node:path';
 import postgres from 'postgres';
 
 export const OWNER_URL = process.env.DATABASE_OWNER_URL ?? 'postgres://repairdesk_owner:owner_dev_password@localhost:55432/repairdesk';
+export const TEST_OWNER_URL = process.env.TEST_DATABASE_OWNER_URL ?? 'postgres://repairdesk_owner:owner_dev_password@localhost:55432/repairdesk_test';
 
-export async function migrate(opts: { reset?: boolean; quiet?: boolean } = {}) {
-  const sql = postgres(OWNER_URL, { max: 1, onnotice: () => {} });
+export async function migrate(opts: { reset?: boolean; quiet?: boolean; url?: string } = {}) {
+  const sql = postgres(opts.url ?? OWNER_URL, { max: 1, onnotice: () => {} });
   const log = (m: string) => !opts.quiet && console.log(m);
   try {
     if (opts.reset) {

@@ -60,6 +60,7 @@ export type Tenant = {
     unclaimed_after_days: number;
     require_admin_mfa: boolean;
     collect_supplementary_upfront: boolean;
+    device_types: import('./core/device-id').DeviceType[];
   };
 };
 

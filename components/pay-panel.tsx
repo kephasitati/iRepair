@@ -66,16 +66,17 @@ export function PayPanel({
 
   if (payment?.status === 'success') {
     return (
-      <div className="space-y-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950" data-testid="payment-success">
-        <div className="flex items-center gap-2 font-semibold">
-          <CheckCircle2 className="size-5" /> {t('success')}
-        </div>
-        <div className="text-sm">
+      <div className="fade-up flex flex-col items-center gap-2 py-4 text-center" data-testid="payment-success">
+        <span className="grid size-16 place-items-center rounded-full bg-mpesa text-white">
+          <CheckCircle2 className="size-8" />
+        </span>
+        <p className="mt-2 text-[24px] font-semibold tracking-tight">{t('success')}</p>
+        <p className="text-[15px] text-ink-3">
           {t(`purpose.${purpose}`)} · {formatKes(amountCents)}
-        </div>
-        <div className="text-sm">
-          {t('receipt')}: <span className="font-mono font-semibold">{payment.mpesa_receipt}</span>
-        </div>
+        </p>
+        <p className="text-[15px]">
+          {t('receipt')} <span className="font-mono font-semibold">{payment.mpesa_receipt}</span>
+        </p>
       </div>
     );
   }
@@ -87,21 +88,26 @@ export function PayPanel({
     <div className="space-y-4" data-testid="pay-panel">
       <div className="flex items-baseline justify-between">
         <span className="text-sm text-muted-foreground">{t(`purpose.${purpose}`)}</span>
-        <span className="text-2xl font-semibold tabular-nums">{formatKes(amountCents)}</span>
+        <span className="text-[32px] font-semibold tracking-tight tabular-nums">{formatKes(amountCents)}</span>
       </div>
 
       {waiting ? (
-        <div className="space-y-3 rounded-xl border bg-muted/40 p-4">
-          <div className="flex items-center gap-2 font-medium">
-            <Smartphone className="size-5" /> {t('sent')}
-          </div>
-          <p className="text-sm text-muted-foreground">{t('sentHelp')}</p>
-          <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-col items-center gap-3 rounded-[18px] bg-canvas p-6 text-center">
+          <span className="pulse-green grid size-16 place-items-center rounded-full bg-mpesa text-white">
+            <Smartphone className="size-7" />
+          </span>
+          <p className="text-[24px] font-semibold tracking-tight">{t('sent')}</p>
+          <ol className="w-full list-decimal space-y-1 rounded-[14px] bg-white py-3 pr-4 pl-9 text-left text-[15px] text-ink-2">
+            <li>{t('stepUnlock')}</li>
+            <li>{t('stepPin')}</li>
+            <li>{t('stepWait')}</li>
+          </ol>
+          <div className="flex items-center gap-2 text-[15px] font-medium text-mpesa">
             <Loader2 className="size-4 animate-spin" /> {t('waiting')}
           </div>
           {simulator ? (
-            <div className="space-y-2 rounded-lg border border-dashed border-amber-400 bg-amber-50 p-3">
-              <p className="text-xs text-amber-900">{t('simulatorNote')} {message}</p>
+            <div className="w-full space-y-2 rounded-[14px] bg-[#fff8e6] p-3 text-left">
+              <p className="text-[12px] text-[#7a5a00]">{t('simulatorNote')} {message}</p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" onClick={() => simulate('success')} data-testid="simulate-success">
                   {t('simulate')}
@@ -130,7 +136,7 @@ export function PayPanel({
             <Input id="mpesa-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </Field>
           <ErrorText>{error}</ErrorText>
-          <Button type="button" size="lg" className="w-full" onClick={send} disabled={pending} data-testid="pay-button">
+          <Button type="button" variant="mpesa" size="lg" className="w-full" onClick={send} disabled={pending} data-testid="pay-button">
             {pending ? <Loader2 className="size-4 animate-spin" /> : null}
             {failed ? t('tryAgain') : t('send')}
           </Button>

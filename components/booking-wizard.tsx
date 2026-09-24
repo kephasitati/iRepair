@@ -2,14 +2,16 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronLeft, Laptop, Smartphone, Tablet, HelpCircle } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import { DeviceIcon } from '@/components/device-icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckRow, ErrorText, Field, KV, NativeSelect, RadioRow, Section } from '@/components/fields';
 import { PhotoCapture, type ExistingPhoto } from '@/components/photo-capture';
 import { AddressPicker } from '@/components/address-picker';
-import { checkDeviceIdentifier, DEVICE_TYPES, type DeviceType } from '@/lib/core/device-id';
+import { APPLE_TYPES, checkDeviceIdentifier, type DeviceType } from '@/lib/core/device-id';
+import { IDENTIFIER_HELP, MODEL_SUGGESTIONS } from '@/lib/core/device-models';
 import { formatKes } from '@/lib/core/money';
 import { addDays, deliverySlots, formatDate, nairobiToday, type OpeningHours } from '@/lib/core/time';
 import type { Address } from '@/lib/providers/delivery/types';
@@ -34,16 +36,7 @@ export type WizardInitial = {
   address: Address;
 };
 
-const ICONS: Record<DeviceType, React.ComponentType<{ className?: string }>> = {
-  iphone: Smartphone,
-  android: Smartphone,
-  ipad: Tablet,
-  macbook: Laptop,
-  windows_laptop: Laptop,
-  other: HelpCircle,
-};
-
-const APPLE: DeviceType[] = ['iphone', 'ipad', 'macbook'];
+const APPLE: DeviceType[] = APPLE_TYPES;
 
 export function BookingWizard({
   initial,
@@ -52,7 +45,9 @@ export function BookingWizard({
   openingHours,
   consultationCents,
   consultationCredited,
+  deviceTypes,
 }: {
+  deviceTypes: DeviceType[];
   initial: WizardInitial;
   savedAddresses: (Address & { id: string; label: string })[];
   zones: string[];
@@ -74,7 +69,7 @@ export function BookingWizard({
   const [saveAddress, setSaveAddress] = useState(true);
   const [addressLabel, setAddressLabel] = useState('');
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(nairobiToday(), i)), []);
-  const [day, setDay] = useState(days[0]);
+  const [day, setDay] = useState(() => days.find((d) => deliverySlots(d, openingHours).length > 0) ?? days[0]);
   const slots = useMemo(() => deliverySlots(day, openingHours), [day, openingHours]);
   const [slotIdx, setSlotIdx] = useState(0);
   const [fees, setFees] = useState<{ deliveryFeeCents: number; consultationCents: number; totalCents: number } | null>(null);
@@ -147,9 +142,11 @@ export function BookingWizard({
           </Button>
         ) : null}
         <div className="flex-1">
-          <p className="text-xs text-muted-foreground">{tw('stepOf', { n: step, total: TOTAL })}</p>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(step / TOTAL) * 100}%` }} />
+          <p className="text-[13px] text-ink-3">{tw('stepOf', { n: step, total: TOTAL })}</p>
+          <div className="mt-1.5 flex gap-1.5">
+            {Array.from({ length: TOTAL }, (_, i) => (
+              <span key={i} className={cn('h-1 flex-1 rounded-full transition-colors duration-500', i < step ? 'bg-primary' : 'bg-fill')} />
+            ))}
           </div>
         </div>
       </div>
@@ -158,23 +155,21 @@ export function BookingWizard({
         <Section title={tw('device')}>
           <div className="space-y-4">
             <div>
-              <p className="mb-2 text-sm font-medium">{tw('deviceType')}</p>
-              <div className="grid grid-cols-3 gap-2">
-                {DEVICE_TYPES.map((d) => {
-                  const Icon = ICONS[d];
-                  return (
-                    <button
-                      type="button"
-                      key={d}
-                      onClick={() => set({ device_type: d, device_brand: APPLE.includes(d) ? 'Apple' : s.device_brand === 'Apple' ? '' : s.device_brand })}
-                      className={cn('flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center text-xs font-medium', s.device_type === d ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : 'border-input')}
-                      data-testid={`device-${d}`}
-                    >
-                      <Icon className="size-6" />
-                      {t(`devices.${d}`)}
-                    </button>
-                  );
-                })}
+              <p className="mb-3 text-[15px] font-medium">{tw('deviceType')}</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {deviceTypes.map((d) => (
+                  <button
+                    type="button"
+                    key={d}
+                    onClick={() => set({ device_type: d, device_brand: APPLE.includes(d) ? 'Apple' : s.device_brand === 'Apple' ? '' : s.device_brand })}
+                    data-on={s.device_type === d}
+                    className="opt flex min-h-28 flex-col items-center justify-center gap-2 p-3 text-center text-[15px] font-medium"
+                    data-testid={`device-${d}`}
+                  >
+                    <DeviceIcon type={d} className="h-12 w-14" />
+                    {t(`devices.${d}`)}
+                  </button>
+                ))}
               </div>
             </div>
             {!APPLE.includes(s.device_type) ? (
@@ -183,7 +178,12 @@ export function BookingWizard({
               </Field>
             ) : null}
             <Field label={tw('model')} htmlFor="model">
-              <Input id="model" value={s.device_model} onChange={(e) => set({ device_model: e.target.value })} placeholder={tw('modelPlaceholder')} required />
+              <Input id="model" list="model-suggestions" value={s.device_model} onChange={(e) => set({ device_model: e.target.value })} placeholder={tw('modelPlaceholder')} required autoComplete="off" />
+              <datalist id="model-suggestions">
+                {(MODEL_SUGGESTIONS[s.device_type] ?? []).map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={tw('colour')} htmlFor="colour">
@@ -218,7 +218,7 @@ export function BookingWizard({
       {step === 2 ? (
         <Section title={tw('identifier')}>
           <div className="space-y-4">
-            <Field label={tw('identifier')} hint={tw('identifierHelp')} htmlFor="identifier" error={idError}>
+            <Field label={tw('identifier')} hint={IDENTIFIER_HELP[s.device_type] ?? tw('identifierHelp')} htmlFor="identifier" error={idError}>
               <Input
                 id="identifier"
                 value={s.identifier}
@@ -357,9 +357,14 @@ export function BookingWizard({
             <input type="checkbox" className="mt-0.5 size-5 accent-(--primary)" checked={agree} onChange={(e) => setAgree(e.target.checked)} data-testid="agree" />
             <span>
               {tw.rich('agree', {
-                privacy: () => (
-                  <a href="/privacy" target="_blank" className="underline">
-                    {t('landing.privacy')}
+                terms: (chunks) => (
+                  <a href="/terms" target="_blank" className="text-link hover:underline">
+                    {chunks}
+                  </a>
+                ),
+                privacy: (chunks) => (
+                  <a href="/privacy" target="_blank" className="text-link hover:underline">
+                    {chunks}
                   </a>
                 ),
               })}

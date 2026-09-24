@@ -62,7 +62,7 @@ function PartFields({ part }: { part?: { name: string; sku: string | null; devic
         <Field label="Device family" htmlFor={`f-${part?.sku ?? 'new'}`}>
           <NativeSelect id={`f-${part?.sku ?? 'new'}`} name="device_family" defaultValue={part?.device_family ?? ''}>
             <option value="">Any</option>
-            {['iphone', 'ipad', 'macbook', 'android', 'windows_laptop', 'other'].map((f) => (
+            {['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop', 'other'].map((f) => (
               <option key={f} value={f}>
                 {f}
               </option>

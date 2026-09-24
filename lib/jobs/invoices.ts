@@ -1,6 +1,6 @@
 import 'server-only';
 import { composeInvoice, type InvoiceComputation, type LineInput } from '@/lib/core/money';
-import type { Tx } from '@/lib/db';
+import { withService, type Tx } from '@/lib/db';
 import type { Tenant } from '@/lib/tenant';
 import type { JobRow } from './types';
 
@@ -54,11 +54,15 @@ export async function upsertProforma(tx: Tx, tenant: Tenant, job: JobRow, outcom
     primary_hex: tenant.branding.primary_hex,
     logo_path: tenant.branding.logo_path,
   };
-  await tx`update invoices set status = 'void' where job_id = ${job.id} and status = 'proforma'`;
-  const [row] = await tx`insert into invoices (tenant_id, job_id, status, lines, subtotal_cents, vat_cents, vat_rate_bp, rounding_cents, total_cents, paid_cents, balance_cents, customer_snapshot, tenant_snapshot)
-    values (${tenant.id}, ${job.id}, 'proforma', ${tx.json(inv.lines as never)}, ${inv.subtotalCents}, ${inv.vatCents}, ${tenant.settings.vat_registered ? tenant.settings.vat_rate_bp : 0},
-            ${inv.roundingCents}, ${inv.totalCents}, ${inv.paidCents}, ${inv.balanceCents},
-            ${tx.json({ name: customer.full_name, phone: customer.phone_e164, email: customer.email, address: job.dropoff_address ?? job.pickup_address } as never)}, ${tx.json(tenantSnapshot as never)})
-    returning id`;
-  return row.id as string;
+  // Invoices are system-owned (customers can read theirs but never write them). The caller has already proven access
+  // to the job in its RLS-scoped transaction; the numbers above were computed from rows that caller can see.
+  return withService(async (s) => {
+    await s`update invoices set status = 'void' where job_id = ${job.id} and status = 'proforma'`;
+    const [row] = await s`insert into invoices (tenant_id, job_id, status, lines, subtotal_cents, vat_cents, vat_rate_bp, rounding_cents, total_cents, paid_cents, balance_cents, customer_snapshot, tenant_snapshot)
+      values (${tenant.id}, ${job.id}, 'proforma', ${s.json(inv.lines as never)}, ${inv.subtotalCents}, ${inv.vatCents}, ${tenant.settings.vat_registered ? tenant.settings.vat_rate_bp : 0},
+              ${inv.roundingCents}, ${inv.totalCents}, ${inv.paidCents}, ${inv.balanceCents},
+              ${s.json({ name: customer.full_name, phone: customer.phone_e164, email: customer.email, address: job.dropoff_address ?? job.pickup_address } as never)}, ${s.json(tenantSnapshot as never)})
+      returning id`;
+    return row.id as string;
+  });
 }

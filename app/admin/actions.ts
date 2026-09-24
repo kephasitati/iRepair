@@ -9,6 +9,7 @@ import { randomToken, sha256Hex } from '@/lib/core/crypto';
 import { hashPassword } from '@/lib/core/password';
 import { normalizeKenyanPhone } from '@/lib/core/phone';
 import { validateTemplate } from '@/lib/core/templates';
+import { DEVICE_TYPES } from '@/lib/core/device-id';
 import { withUser } from '@/lib/db';
 import { UserError } from '@/lib/jobs/types';
 import { brandingKey, putObject } from '@/lib/storage';
@@ -125,7 +126,9 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
           delivery_provider: str(fd, 'delivery_provider') === 'tumaboda' ? 'tumaboda' : 'mock',
           publish_price_list: bool(fd, 'publish_price_list'),
           require_admin_mfa: bool(fd, 'require_admin_mfa'),
+          device_types: DEVICE_TYPES.filter((d) => bool(fd, `device_${d}`)),
         };
+        if (!patch.device_types.length) throw new UserError('Choose at least one device type you accept.');
         await tx`update tenant_settings set ${tx(patch)} where tenant_id = ${tenant.id}`;
         await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'settings.operations', entity: 'tenant', entityId: tenant.id, diff: patch });
       } else {

@@ -54,7 +54,8 @@ const P: EdgeActor = 'provider';
 export const TRANSITIONS: Record<JobStatus, Partial<Record<JobStatus, EdgeActor[]>>> = {
   draft: { pickup_fee_pending: [C], cancelled: [C, A] },
   pickup_fee_pending: { pickup_requested: [S], draft: [C], cancelled: [C, A] },
-  pickup_requested: { rider_en_route_to_customer: [P, S], pickup_failed: [P, S, A], cancelled: [C, A] },
+  // The customer may confirm the rider's arrival by scanning before the courier reports "en route".
+  pickup_requested: { rider_en_route_to_customer: [P, S, C], pickup_failed: [P, S, A], cancelled: [C, A] },
   rider_en_route_to_customer: { picked_up: [C, P, S, A], pickup_failed: [P, S, A], cancelled: [C, A] },
   pickup_failed: { pickup_requested: [C, A], cancelled: [C, A] },
   picked_up: { in_transit_to_shop: [P, S], received_at_shop: [T] },
@@ -72,7 +73,8 @@ export const TRANSITIONS: Record<JobStatus, Partial<Record<JobStatus, EdgeActor[
   repair_complete: { final_payment_pending: [C, A] },
   final_payment_pending: { dispatch_pending: [S], repair_complete: [C, A] },
   dispatch_pending: { return_requested: [S], ready_for_collection: [S] },
-  return_requested: { rider_en_route_to_shop: [P, S], return_failed: [P, S, A] },
+  // The technician may confirm the rider's arrival at the counter by scanning before the courier reports it.
+  return_requested: { rider_en_route_to_shop: [P, S, T], return_failed: [P, S, A] },
   rider_en_route_to_shop: { collected_from_shop: [T], return_failed: [P, S, A] },
   collected_from_shop: { in_transit_to_customer: [P, S], delivered: [C, P, S, A], return_failed: [P, S, A] },
   in_transit_to_customer: { delivered: [C, P, S, A], return_failed: [P, S, A] },

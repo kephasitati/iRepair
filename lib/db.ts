@@ -12,6 +12,21 @@ export type Tx = TransactionSql;
 
 const g = globalThis as unknown as { __rdApp?: Sql; __rdService?: Sql };
 
+/**
+ * bigint (int8) columns hold KES cents and counts. Every value we store is far below 2^53, so parse them as plain
+ * numbers instead of strings; anything larger would be a bug and fails loudly.
+ */
+export const int8AsNumber = {
+  to: 20,
+  from: [20],
+  serialize: (x: number | bigint | string) => String(x),
+  parse: (x: string) => {
+    const n = Number(x);
+    if (!Number.isSafeInteger(n)) throw new Error(`int8 value ${x} exceeds the safe integer range`);
+    return n;
+  },
+};
+
 function make(url: string): Sql {
   return postgres(url, {
     max: 10,
@@ -19,7 +34,8 @@ function make(url: string): Sql {
     connect_timeout: 10,
     onnotice: () => {},
     transform: { undefined: null },
-  });
+    types: { int8: int8AsNumber },
+  }) as unknown as Sql;
 }
 
 export function appPool(): Sql {

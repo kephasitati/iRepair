@@ -1,14 +1,15 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres';
-import { migrate } from '@/scripts/migrate';
+import { migrate, TEST_OWNER_URL } from '@/scripts/migrate';
 
-export const APP_URL = process.env.DATABASE_URL ?? 'postgres://repairdesk_app:app_dev_password@localhost:55432/repairdesk';
-export const SERVICE_URL = process.env.DATABASE_SERVICE_URL ?? 'postgres://repairdesk_service:service_dev_password@localhost:55432/repairdesk';
+// DB tests run against their own database (repairdesk_test) because they drop and recreate the schema.
+export const APP_URL = process.env.TEST_DATABASE_URL ?? 'postgres://repairdesk_app:app_dev_password@localhost:55432/repairdesk_test';
+export const SERVICE_URL = process.env.TEST_DATABASE_SERVICE_URL ?? 'postgres://repairdesk_service:service_dev_password@localhost:55432/repairdesk_test';
 
 export const app: Sql = postgres(APP_URL, { max: 2, onnotice: () => {} });
 export const service: Sql = postgres(SERVICE_URL, { max: 2, onnotice: () => {} });
 
 export async function resetDb() {
-  await migrate({ reset: true, quiet: true });
+  await migrate({ reset: true, quiet: true, url: TEST_OWNER_URL });
 }
 
 export async function closeAll() {
@@ -80,9 +81,9 @@ export async function seedDraftJob(tenant: string, customer: string, opts: { sta
   return asService(async (tx) => {
     const [{ ref }] = await tx`select next_job_ref(${tenant}) as ref`;
     const [j] = await tx`insert into jobs (tenant_id, ref, customer_user_id, device_type, device_brand, device_model, fault_description,
-        pickup_address, pickup_window_start, pickup_window_end, consultation_fee_cents, pickup_fee_cents, declared_value_cents)
+        pickup_address, pickup_window_start, pickup_window_end, consultation_fee_cents, pickup_fee_cents, declared_value_cents, terms_version, terms_accepted_at)
       values (${tenant}, ${ref}, ${customer}, 'iphone', 'Apple', 'iPhone 13', 'Cracked screen',
-        ${tx.json({ formatted: 'Kimathi St, Nairobi', lat: -1.2833, lng: 36.8233 })}, now() + interval '2 hours', now() + interval '4 hours', 50000, 80000, 6000000)
+        ${tx.json({ formatted: 'Kimathi St, Nairobi', lat: -1.2833, lng: 36.8233 })}, now() + interval '2 hours', now() + interval '4 hours', 50000, 80000, 6000000, 'test', now())
       returning id`;
     await tx`insert into job_secrets (job_id, tenant_id, identifier, identifier_kind) values (${j.id}, ${tenant}, '490154203237518', 'imei')`;
     await tx`insert into job_photos (job_id, tenant_id, stage, kind, storage_key) values

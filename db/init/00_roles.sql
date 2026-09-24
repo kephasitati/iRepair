@@ -8,3 +8,6 @@
 
 create role repairdesk_app login password 'app_dev_password' nobypassrls;
 create role repairdesk_service login password 'service_dev_password' bypassrls;
+
+-- Separate database for the automated DB tests (they drop and recreate its schema).
+create database repairdesk_test owner repairdesk_owner;

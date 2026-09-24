@@ -18,7 +18,7 @@ export type JobRow = {
   status: JobStatus;
   outcome: 'repaired' | 'declined' | 'cancelled' | null;
   device_id: string | null;
-  device_type: 'iphone' | 'ipad' | 'macbook' | 'android' | 'windows_laptop' | 'other';
+  device_type: import('@/lib/core/device-id').DeviceType;
   device_brand: string;
   device_model: string;
   device_colour: string | null;
@@ -77,7 +77,7 @@ export type DeliveryRow = {
   created_at: string;
 };
 
-export type QuoteLineInput = { kind: 'part' | 'labour' | 'other'; part_id?: string | null; description: string; qty: number; unit_price_cents: number };
+export type QuoteLineInput = { kind: 'part' | 'labour' | 'other' | 'discount'; part_id?: string | null; description: string; qty: number; unit_price_cents: number };
 
 export type PaymentPurpose = 'pickup_fee' | 'deposit' | 'final_balance' | 'return_fee' | 'supplementary';
 

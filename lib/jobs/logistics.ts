@@ -23,8 +23,11 @@ export function customerAddressFor(job: JobRow, leg: 'pickup' | 'return'): Addre
 /**
  * Get a courier quote for a leg and store it as a `quoted` deliveries row (superseding earlier quotes for that leg).
  * Returns the fee the customer is charged (cost + markup, whole shillings).
+ *
+ * Delivery rows are system-owned (customers may read but not write them), so the write runs in its own service
+ * transaction. Callers must already have proven access to `job` in their own RLS-scoped transaction.
  */
-export async function quoteLeg(tx: Tx, tenant: Tenant, job: JobRow, leg: 'pickup' | 'return'): Promise<{ chargedCents: number; costCents: number; deliveryId: string }> {
+export async function quoteLeg(tenant: Tenant, job: JobRow, leg: 'pickup' | 'return'): Promise<{ chargedCents: number; costCents: number; deliveryId: string }> {
   const provider = await deliveryProviderFor(tenant);
   const from = leg === 'pickup' ? customerAddressFor(job, 'pickup') : shopAddress(tenant);
   const to = leg === 'pickup' ? shopAddress(tenant) : customerAddressFor(job, 'return');
@@ -32,12 +35,14 @@ export async function quoteLeg(tx: Tx, tenant: Tenant, job: JobRow, leg: 'pickup
   const q = await provider.quote({ pickup: from, dropoff: to, itemValueKes: job.declared_value_cents / 100, scheduledFor: scheduledFor ? new Date(scheduledFor) : undefined });
   const costCents = kesToCents(q.feeKes);
   const { charged } = deliveryCharge(costCents, tenant.settings.delivery_markup_bp);
-  await tx`update deliveries set status = 'cancelled' where job_id = ${job.id} and leg = ${leg} and status = 'quoted'`;
-  const [{ attempt }] = await tx`select coalesce(max(attempt), 0) + 1 as attempt from deliveries where job_id = ${job.id} and leg = ${leg} and status <> 'quoted'`;
-  const [d] = await tx`insert into deliveries (job_id, tenant_id, leg, attempt, provider, quote_ref, fee_cost_cents, fee_charged_cents, status, pickup_address, dropoff_address, scheduled_for)
-    values (${job.id}, ${tenant.id}, ${leg}, ${attempt}, ${provider.kind}, ${q.quoteRef}, ${costCents}, ${charged}, 'quoted', ${tx.json(from as never)}, ${tx.json(to as never)}, ${scheduledFor})
-    returning id`;
-  return { chargedCents: charged, costCents, deliveryId: d.id };
+  return withService(async (tx) => {
+    await tx`update deliveries set status = 'cancelled' where job_id = ${job.id} and leg = ${leg} and status = 'quoted'`;
+    const [{ attempt }] = await tx`select coalesce(max(attempt), 0) + 1 as attempt from deliveries where job_id = ${job.id} and leg = ${leg} and status <> 'quoted'`;
+    const [d] = await tx`insert into deliveries (job_id, tenant_id, leg, attempt, provider, quote_ref, fee_cost_cents, fee_charged_cents, status, pickup_address, dropoff_address, scheduled_for)
+      values (${job.id}, ${tenant.id}, ${leg}, ${attempt}, ${provider.kind}, ${q.quoteRef}, ${costCents}, ${charged}, 'quoted', ${tx.json(from as never)}, ${tx.json(to as never)}, ${scheduledFor})
+      returning id`;
+    return { chargedCents: charged, costCents, deliveryId: d.id as string };
+  });
 }
 
 /** Worker: outbox `delivery.create`. Books the courier for the latest quoted row of the leg (re-quoting if none). */
@@ -51,7 +56,7 @@ export async function bookLeg(jobId: string, leg: 'pickup' | 'return') {
     if (!tenant) throw new Error(`tenant ${job.tenant_id} not found`);
     let [d] = (await tx`select * from deliveries where job_id = ${jobId} and leg = ${leg} and status = 'quoted' order by created_at desc limit 1`) as DeliveryRow[];
     if (!d) {
-      const q = await quoteLeg(tx, tenant, job, leg);
+      const q = await quoteLeg(tenant, job, leg);
       [d] = (await tx`select * from deliveries where id = ${q.deliveryId}`) as DeliveryRow[];
     }
     const [customer] = await tx`select phone_e164 from users where id = ${job.customer_user_id}`;
@@ -191,16 +196,22 @@ export async function recordHandover(
   } else {
     valid = await provider.verifyOtp(delivery.provider_delivery_id, input.payload);
   }
+  if (!valid) {
+    // Failed attempts are evidence too: record them in their own transaction so the caller's rollback keeps them.
+    await withService(
+      (s) => s`insert into handover_events (job_id, tenant_id, delivery_id, point, method, actor_user_id, geo_lat, geo_lng, geo_accuracy_m, verified, note)
+        values (${job.id}, ${tenant.id}, ${delivery.id}, ${input.point}, ${input.method}, ${input.actorUserId}, ${input.geo?.lat ?? null}, ${input.geo?.lng ?? null}, ${input.geo?.accuracy ?? null}, false, 'code did not match the assigned rider')`,
+    );
+    return { ok: false, error: 'invalid' };
+  }
   await tx`insert into handover_events (job_id, tenant_id, delivery_id, point, method, actor_user_id, rider_snapshot, geo_lat, geo_lng, geo_accuracy_m, photo_ids, verified)
     values (${job.id}, ${tenant.id}, ${delivery.id}, ${input.point}, ${input.method}, ${input.actorUserId}, ${rider ? tx.json(rider as never) : null},
-            ${input.geo?.lat ?? null}, ${input.geo?.lng ?? null}, ${input.geo?.accuracy ?? null}, ${input.photoIds ?? []}, ${valid})`;
-  if (!valid) return { ok: false, error: 'invalid' };
+            ${input.geo?.lat ?? null}, ${input.geo?.lng ?? null}, ${input.geo?.accuracy ?? null}, ${input.photoIds ?? []}, true)`;
 
-  if (rider && !delivery.rider_snapshot) await tx`update deliveries set rider_snapshot = ${tx.json(rider as never)} where id = ${delivery.id}`;
   const deliveryStatus = input.point === 'rider_to_customer' ? 'delivered' : input.point === 'customer_to_rider' || input.point === 'shop_to_rider' ? 'picked_up' : delivery.status;
-  await tx`update deliveries set status = ${deliveryStatus} where id = ${delivery.id}`;
+  await tx`select mark_delivery_handover(${delivery.id}, ${deliveryStatus}::delivery_status, ${rider ? tx.json(rider as never) : null})`;
   // pickup_requested -> picked_up is not an edge: bring the rider "en route" first if the provider never told us.
-  if (job.status === 'pickup_requested') await tx`select transition_job(${job.id}, 'rider_en_route_to_customer', ${spec.actor}::actor_kind, ${input.actorUserId}, '{}')`;
+  if (job.status === 'pickup_requested') await tx`select transition_job(${job.id}, 'rider_en_route_to_customer', 'customer', ${input.actorUserId}, '{}')`;
   if (job.status === 'return_requested') await tx`select transition_job(${job.id}, 'rider_en_route_to_shop', 'technician', ${input.actorUserId}, '{}')`;
   await tx`select transition_job(${job.id}, ${spec.to}::job_status, ${spec.actor}::actor_kind, ${input.actorUserId}, ${tx.json({ delivery_id: delivery.id, method: input.method } as never)})`;
   return { ok: true, rider };

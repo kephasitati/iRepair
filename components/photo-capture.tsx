@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 
 export type ExistingPhoto = { id: string; kind: string };
 
+const NO_PHOTOS: ExistingPhoto[] = [];
+
 /**
  * A grid of photo slots (front / back / screen on / other) that queue uploads offline.
  * `onChange` reports uploaded photo ids per kind so the parent can enforce the minimum set.
@@ -16,7 +18,7 @@ export function PhotoCapture({
   jobId,
   stage,
   slots,
-  existing = [],
+  existing = NO_PHOTOS,
   allowExtra = true,
   onChange,
 }: {
@@ -44,7 +46,14 @@ export function PhotoCapture({
   const pending = items.filter((i) => i.status === 'queued' || i.status === 'uploading').length;
   const cb = useRef(onChange);
   cb.current = onChange;
-  useEffect(() => cb.current?.(uploaded, pending), [uploaded, pending]);
+  // Notify only when the uploaded set or pending count really changes (parents re-render on every call).
+  const signature = `${uploaded.map((u) => `${u.kind}:${u.photoId}`).join(',')}|${pending}`;
+  const lastSig = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastSig.current === signature) return;
+    lastSig.current = signature;
+    cb.current?.(uploaded, pending);
+  }, [signature, uploaded, pending]);
 
   const pick = (kind: string) => {
     pendingKind.current = kind;

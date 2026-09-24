@@ -28,15 +28,16 @@ export function isValidHex(hex: string) {
   return /^#[0-9a-fA-F]{6}$/.test(hex);
 }
 
-/** Inline style for <html> that overrides the shadcn primary/accent tokens. */
+/**
+ * Inline style for <html>: the shop's colours drive primary actions and the immersive brand wash. Neutral surfaces,
+ * hovers and focus rings stay on the shared palette so every shop looks equally polished.
+ */
 export function brandCssVars(primary: string, accent: string): Record<string, string> {
   return {
     '--primary': primary,
-    '--primary-foreground': foregroundFor(primary),
-    '--accent': accent,
-    '--accent-foreground': foregroundFor(accent),
-    '--ring': primary,
+    '--primary-foreground': foregroundFor(primary) === '#ffffff' ? '#ffffff' : '#1d1d1f',
     '--brand-primary': primary,
     '--brand-accent': accent,
+    '--brand-accent-foreground': foregroundFor(accent) === '#ffffff' ? '#ffffff' : '#1d1d1f',
   };
 }

@@ -4,12 +4,15 @@ import { BookingWizard, type WizardInitial } from '@/components/booking-wizard';
 import { requestCtx, requireCustomer } from '@/lib/auth';
 import { withUser } from '@/lib/db';
 import type { JobRow } from '@/lib/jobs/types';
+import { DEFAULT_DEVICE_TYPES } from '@/lib/core/device-id';
 
 export const metadata = { title: 'Book a pickup' };
 
-export default async function BookPage({ searchParams }: { searchParams: Promise<{ job?: string }> }) {
+export default async function BookPage({ searchParams }: { searchParams: Promise<{ job?: string; type?: string }> }) {
   const sp = await searchParams;
-  const { tenant } = await requireCustomer(`/book${sp.job ? `?job=${sp.job}` : ''}`);
+  const { tenant } = await requireCustomer(`/book${sp.job ? `?job=${sp.job}` : sp.type ? `?type=${sp.type}` : ''}`);
+  const deviceTypes = tenant.settings.device_types?.length ? tenant.settings.device_types : DEFAULT_DEVICE_TYPES;
+  const requestedType = deviceTypes.find((d) => d === sp.type);
   const t = await getTranslations('wizard');
   const ctx = await requestCtx();
 
@@ -25,7 +28,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   const c = draft?.declared_condition ?? {};
   const initial: WizardInitial = {
     jobId: draft?.id ?? null,
-    device_type: draft?.device_type ?? 'iphone',
+    device_type: draft?.device_type ?? requestedType ?? deviceTypes[0],
     device_brand: draft?.device_brand ?? 'Apple',
     device_model: draft?.device_model ?? '',
     device_colour: draft?.device_colour ?? '',
@@ -45,6 +48,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{t('title')}</h1>
       <BookingWizard
+        deviceTypes={deviceTypes}
         initial={initial}
         savedAddresses={addresses.map((a) => ({ id: a.id, label: a.label, formatted: a.formatted, lat: a.lat, lng: a.lng, landmark: a.landmark, building_floor: a.building_floor, zone: a.zone, place_id: a.place_id }))}
         zones={tenant.settings.service_zones}

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { ShopHeader } from '@/components/shop-header';
+import { CookieBanner } from '@/components/cookie-banner';
 import { getSession } from '@/lib/auth';
 import { getTenant } from '@/lib/tenant';
 
@@ -9,8 +10,8 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   if (tenant.status === 'suspended') {
     return (
       <main className="mx-auto max-w-md px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold">{tenant.branding.display_name}</h1>
-        <p className="mt-2 text-muted-foreground">Online bookings are temporarily unavailable. Please call {tenant.settings.contact_phone}.</p>
+        <h1 className="display text-[32px]">{tenant.branding.display_name}</h1>
+        <p className="mt-3 text-ink-3">Online bookings are temporarily unavailable. Please call {tenant.settings.contact_phone}.</p>
       </main>
     );
   }
@@ -18,7 +19,8 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   return (
     <>
       <ShopHeader tenant={tenant} session={session} />
-      <main className="mx-auto max-w-3xl px-4 pt-4 pb-24">{children}</main>
+      <main>{children}</main>
+      <CookieBanner />
     </>
   );
 }

@@ -104,6 +104,11 @@ async function main() {
       ['MB-LIQ', 'MacBook liquid damage cleaning & board inspection', 'macbook', 7500],
       ['MB-BOARD', 'MacBook logic board repair (component level)', 'macbook', 25000],
       ['IPAD-GLASS', 'iPad digitiser glass replacement', 'ipad', 9500],
+      ['IPAD-BAT', 'iPad battery replacement', 'ipad', 8500],
+      ['IMAC24-SCR', 'iMac 24" display replacement', 'imac', 65000],
+      ['IMAC-SSD', 'iMac SSD replacement / upgrade', 'imac', 18000],
+      ['IMAC27-PSU', 'iMac 27" power supply repair', 'imac', 15000],
+      ['IMAC-SVC', 'iMac cleaning and thermal service', 'imac', 6000],
       ['LAB-DIAG', 'Advanced diagnosis (micro-soldering bench)', 'other', 2500],
       ['LAB-HOUR', 'Technician labour (per hour)', 'other', 2000],
     ];
@@ -148,9 +153,9 @@ async function main() {
       const created = new Date(Date.now() - o.daysAgo * 86400000);
       const start = new Date(created.getTime() + 2 * 3600000);
       const [j] = await tx`insert into jobs (tenant_id, ref, customer_user_id, assigned_tech_id, device_type, device_brand, device_model, fault_description, declared_condition, accessories,
-          declared_value_cents, pickup_address, pickup_window_start, pickup_window_end, consultation_fee_cents, pickup_fee_cents, passcode_locked, passcode_shared, created_at)
+          declared_value_cents, pickup_address, pickup_window_start, pickup_window_end, consultation_fee_cents, pickup_fee_cents, passcode_locked, passcode_shared, created_at, terms_version, terms_accepted_at)
         values (${tid}, ${ref}, ${o.customer}, ${o.tech ?? null}, ${o.type}::device_type, ${o.brand}, ${o.model}, ${o.fault}, ${tx.json(o.condition as never)}, ${o.accessories},
-          ${o.value * 100}, ${tx.json(o.address as never)}, ${start}, ${new Date(start.getTime() + 7200000)}, 50000, ${50000 + o.deliveryKes * 100}, true, true, ${created}) returning id`;
+          ${o.value * 100}, ${tx.json(o.address as never)}, ${start}, ${new Date(start.getTime() + 7200000)}, 50000, ${50000 + o.deliveryKes * 100}, true, true, ${created}, '2026-09-25', ${created}) returning id`;
       const dk = (await tx`select wrapped_data_key from tenant_keys where tenant_id = ${tid}`)[0].wrapped_data_key;
       const { unwrapDataKey } = await import('../lib/core/crypto');
       const tkey = unwrapDataKey(dk, master, tid);

@@ -12,8 +12,13 @@ export async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   } catch (e) {
     unstable_rethrow(e);
     if (e instanceof UserError) return { ok: false, error: e.message };
-    if (isGuardError(e) || (e as { code?: string })?.code === '42501') return { ok: false, error: friendlyDbError(e) };
-    if (/row-level security/.test((e as Error)?.message ?? '')) return { ok: false, error: 'You are not allowed to do that.' };
+    if (isGuardError(e)) return { ok: false, error: friendlyDbError(e) };
+    if ((e as { code?: string })?.code === '42501' || /row-level security/.test((e as Error)?.message ?? '')) {
+      // Permission refusals are shown to the user politely but must never be invisible to us: a refusal on a
+      // legitimate action is a bug (for example a write that should go through a checked function).
+      console.warn('[action] permission refused:', (e as Error).message);
+      return { ok: false, error: 'You are not allowed to do that.' };
+    }
     console.error('[action]', e);
     return { ok: false, error: 'Something went wrong. Please try again.' };
   }

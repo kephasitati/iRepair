@@ -87,7 +87,7 @@ export async function customerCounter(tx: Tx, tenant: Tenant, job: JobRow, kind:
   if (!Number.isInteger(proposedTotalCents) || proposedTotalCents <= 0 || proposedTotalCents % 100 !== 0) throw new UserError('Enter a whole KES amount.');
   await tx`insert into negotiations (quote_id, tenant_id, author_user_id, author_side, kind, proposed_total_cents, body, quote_version_id)
     values (${q.id}, ${tenant.id}, ${actorUserId}, 'customer', 'counter', ${proposedTotalCents}, ${message}, ${q.current_version_id})`;
-  await tx`update quotes set status = 'negotiating', rounds_used = rounds_used + 1 where id = ${q.id}`;
+  await tx`select customer_quote_action(${q.id}, 'counter')`;
   if (kind === 'main' && job.status === 'quote_sent') {
     await tx`select transition_job(${job.id}, 'quote_negotiating', 'customer', ${actorUserId}, '{}')`;
   } else if (kind === 'main') {
@@ -101,7 +101,7 @@ export async function customerAccept(tx: Tx, tenant: Tenant, job: JobRow, kind: 
   if (!q || !['sent', 'negotiating'].includes(q.status)) throw new UserError('This quote can no longer be accepted.');
   const [v] = await tx`select * from quote_versions where id = ${q.current_version_id}`;
   if (v.expires_at && new Date(v.expires_at) < new Date()) throw new UserError('This quote has expired. Ask the shop for a new one.');
-  await tx`update quotes set status = 'accepted', accepted_version_id = ${v.id}, accepted_total_cents = ${v.total_cents}, accepted_at = now() where id = ${q.id}`;
+  await tx`select customer_quote_action(${q.id}, 'accept', ${v.id})`;
   await tx`insert into negotiations (quote_id, tenant_id, author_user_id, author_side, kind, proposed_total_cents, quote_version_id) values (${q.id}, ${tenant.id}, ${actorUserId}, 'customer', 'accept', ${v.total_cents}, ${v.id})`;
   if (kind === 'main') {
     await tx`select transition_job(${job.id}, 'deposit_pending', 'customer', ${actorUserId}, '{}')`;
@@ -133,7 +133,7 @@ export async function shopAcceptCounter(tx: Tx, tenant: Tenant, job: JobRow, kin
       values (${v.id}, ${tenant.id}, ${l.position}, ${l.kind}, ${l.part_id}, ${l.description}, ${l.qty}, ${l.unit_price_cents}, ${l.line_total_cents})`;
   }
   await tx`insert into quote_line_items (quote_version_id, tenant_id, position, kind, description, qty, unit_price_cents, line_total_cents)
-    values (${v.id}, ${tenant.id}, ${lines.length}, 'other', 'Agreed price adjustment', 1, ${agreed - Number(cur.total_cents)}, ${agreed - Number(cur.total_cents)})`;
+    values (${v.id}, ${tenant.id}, ${lines.length}, 'discount', 'Agreed price adjustment', 1, ${agreed - Number(cur.total_cents)}, ${agreed - Number(cur.total_cents)})`;
   await tx`update quotes set current_version_id = ${v.id}, status = 'accepted', accepted_version_id = ${v.id}, accepted_total_cents = ${agreed}, accepted_at = now() where id = ${q.id}`;
   await tx`insert into negotiations (quote_id, tenant_id, author_user_id, author_side, kind, proposed_total_cents, quote_version_id) values (${q.id}, ${tenant.id}, ${actorUserId}, 'shop', 'accept', ${agreed}, ${v.id})`;
   if (kind === 'main') await tx`select transition_job(${job.id}, 'deposit_pending', 'technician', ${actorUserId}, '{}')`;
@@ -151,7 +151,7 @@ export async function shopDeclineCounter(tx: Tx, tenant: Tenant, job: JobRow, ki
 export async function customerDecline(tx: Tx, tenant: Tenant, job: JobRow, kind: 'main' | 'supplementary', actorUserId: string) {
   const q = await loadQuote(tx, job.id, kind);
   if (!q || !['sent', 'negotiating', 'expired'].includes(q.status)) throw new UserError('This quote can no longer be declined.');
-  await tx`update quotes set status = 'declined' where id = ${q.id}`;
+  await tx`select customer_quote_action(${q.id}, 'decline')`;
   await tx`insert into negotiations (quote_id, tenant_id, author_user_id, author_side, kind, quote_version_id) values (${q.id}, ${tenant.id}, ${actorUserId}, 'customer', 'decline', ${q.current_version_id})`;
   if (kind === 'main') await tx`select transition_job(${job.id}, 'quote_declined', 'customer', ${actorUserId}, '{}')`;
 }

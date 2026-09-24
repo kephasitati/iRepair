@@ -5,7 +5,7 @@ import { Section, KV } from '@/components/fields';
 import { StatusBadge } from '@/components/status-badge';
 import { LiveRefresh } from '@/components/live-refresh';
 import { PayPanel } from '@/components/pay-panel';
-import { InvoiceSummary, PhotoGrid, QuoteBreakdown, QuoteThread, RiderCard, StepBar, Timeline } from '@/components/job-parts';
+import { InvoiceSummary, PaymentReceipt, PhotoGrid, QuoteBreakdown, QuoteThread, RiderCard, StepBar, Timeline } from '@/components/job-parts';
 import {
   CancelBooking,
   DeliveredConfirm,
@@ -46,19 +46,22 @@ export default async function CustomerJobPage({ params }: { params: Promise<{ id
   const simulator = isSimulatedMpesa(await mpesaFor(tenant));
   const phone = session.user.phone_e164 ?? '';
   const s = job.status;
+  // The pay panel disappears once the job moves on, so the receipt for a payment in the last 15 minutes stays on top.
+  const recentPayment = v.payments.filter((p) => p.status === 'success' && p.confirmed_at && Date.now() - new Date(p.confirmed_at).getTime() < 15 * 60_000).at(-1);
 
   return (
     <div className="space-y-4">
       <LiveRefresh jobId={job.id} />
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-end justify-between gap-3 pt-2">
         <div>
-          <p className="text-xs text-muted-foreground">{job.ref}</p>
-          <h1 className="text-xl font-semibold">{`${job.device_brand} ${job.device_model}`.trim()}</h1>
+          <p className="eyebrow">{job.ref}</p>
+          <h1 className="display text-[32px] sm:text-[40px]">{`${job.device_model}`.trim()}</h1>
         </div>
-        <StatusBadge status={s} />
+        <StatusBadge status={s} className="mb-1.5" />
       </div>
       <StepBar status={s} />
 
+      {recentPayment ? <PaymentReceipt payment={recentPayment} /> : null}
       <NextStep v={v} tenant={tenant} simulator={simulator} phone={phone} t={t} />
 
       {v.mainQuote && !['quote_sent', 'quote_negotiating', 'quote_expired'].includes(s) && v.mainQuote.current ? (

@@ -234,7 +234,7 @@ export function DropoffChooser({
   const [choice, setChoice] = useState(current.choice ?? 'pickup_address');
   const [address, setAddress] = useState<Address>(current.address ?? { formatted: '', lat: null, lng: null, zone: null });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(nairobiToday(), i)), []);
-  const [day, setDay] = useState(days[0]);
+  const [day, setDay] = useState(() => days.find((d) => deliverySlots(d, openingHours).length > 0) ?? days[0]);
   const slots = useMemo(() => deliverySlots(day, openingHours), [day, openingHours]);
   const [slotIdx, setSlotIdx] = useState(0);
 

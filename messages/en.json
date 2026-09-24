@@ -60,7 +60,26 @@
     "hours": "Opening hours",
     "closed": "Closed",
     "serviceArea": "We collect from",
-    "privacy": "Privacy notice"
+    "privacy": "Privacy policy",
+    "bookShort": "Book",
+    "heroTitle": "Repair without the trip.",
+    "heroSub": "Doorstep pickup. Expert repair. Returned to your hand. Every step verified, photographed and paid by M-Pesa.",
+    "learnHow": "See how it works",
+    "trustTitle": "Peace of mind, built in.",
+    "trust1": "QR-verified handovers",
+    "trust1d": "You scan the rider at your door. That scan is your receipt.",
+    "trust2": "Photos at every step",
+    "trust2d": "Before pickup, at the bench and after the repair.",
+    "trust3": "Quote before any work",
+    "trust3d": "Accept, decline or make an offer. Nothing starts without you.",
+    "trust4": "Pay with M-Pesa",
+    "trust4d": "Straight to the shop. Receipts on your phone.",
+    "bandTitle": "Your device, on the record.",
+    "bandBody": "From the moment a rider collects it to the moment it is back in your hand, every handover, quote, payment and update is timestamped and visible to you.",
+    "warranty": "{days}-day repair warranty",
+    "footerNote": "Prices include VAT where applicable. Delivery by independent couriers.",
+    "terms": "Terms of Service",
+    "weRepair": "Which device needs repair?"
   },
   "auth": {
     "signIn": "Sign in",
@@ -156,8 +175,9 @@
   },
   "devices": {
     "iphone": "iPhone",
-    "ipad": "iPad",
     "macbook": "MacBook",
+    "ipad": "iPad",
+    "imac": "iMac",
     "android": "Android phone",
     "windows_laptop": "Windows laptop",
     "other": "Other device"
@@ -168,7 +188,7 @@
     "device": "Your device",
     "deviceType": "What kind of device is it?",
     "model": "Model",
-    "modelPlaceholder": "e.g. iPhone 13 Pro, MacBook Air M2",
+    "modelPlaceholder": "e.g. iPhone 15 Pro, MacBook Air M2, iMac 24\"",
     "brand": "Brand",
     "colour": "Colour",
     "storage": "Storage",
@@ -231,7 +251,7 @@
     "feeConsultation": "Consultation & diagnosis",
     "feeConsultationCredit": "Credited against your repair if you accept the quote",
     "feeTotal": "Pickup fee to pay now",
-    "agree": "I confirm the details above are accurate and I have read the {privacy}.",
+    "agree": "I confirm the details above are accurate and I agree to the <terms>Terms of Service</terms> and <privacy>Privacy policy</privacy>, including collection and return by TumaBoda.",
     "payAndBook": "Pay {amount} and book",
     "draftSaved": "Your booking is saved. Pay the pickup fee to book the rider.",
     "zoneLabel": "Area",
@@ -254,7 +274,7 @@
     "amount": "Amount",
     "phone": "M-Pesa number",
     "phoneHelp": "We will send a payment prompt to this phone.",
-    "send": "Send M-Pesa prompt",
+    "send": "Pay with M-Pesa",
     "sent": "Check your phone",
     "sentHelp": "Enter your M-Pesa PIN on the prompt. This screen updates automatically.",
     "waiting": "Waiting for M-Pesa…",
@@ -274,7 +294,10 @@
       "supplementary": "Additional work"
     },
     "stkRejected": "M-Pesa did not accept the request: {reason}",
-    "rateLimited": "Too many payment prompts. Please wait a minute."
+    "rateLimited": "Too many payment prompts. Please wait a minute.",
+    "stepUnlock": "Unlock your phone when the M-Pesa prompt appears.",
+    "stepPin": "Check the amount and business name, then enter your M-Pesa PIN.",
+    "stepWait": "Keep this screen open. It updates the moment Safaricom confirms."
   },
   "job": {
     "title": "Repair {ref}",
@@ -514,7 +537,8 @@
     "unclaimedDevices": "Unclaimed devices",
     "messages": "Message templates",
     "templateHelp": "Variables: {vars}",
-    "auditLog": "Audit log"
+    "auditLog": "Audit log",
+    "deviceTypes": "Devices you accept"
   },
   "platform": {
     "title": "Platform console",

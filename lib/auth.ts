@@ -159,7 +159,7 @@ export async function sendOtp(rawPhone: string, tenant: Tenant | null): Promise<
   if (!phone) return { ok: false, error: 'invalid_phone' };
   const h = await headers();
   const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'local';
-  if (!(await rateLimit(`otp:phone:${phone}`, 3, 15 * 60)) || !(await rateLimit(`otp:ip:${ip}`, 10, 60 * 60))) {
+  if (!(await rateLimit(`otp:phone:${phone}`, 3, 15 * 60)) || (isProd() && !(await rateLimit(`otp:ip:${ip}`, 10, 60 * 60)))) {
     return { ok: false, error: 'rate_limited' };
   }
   const code = env().OTP_DEV_CODE && !isProd() ? env().OTP_DEV_CODE! : randomDigits(6);

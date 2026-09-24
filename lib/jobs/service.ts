@@ -92,13 +92,14 @@ export async function setPickup(tx: Tx, tenant: Tenant, userId: string, jobId: s
   }
   await tx`update jobs set pickup_address = ${tx.json(input.address as never)}, pickup_window_start = ${input.window_start}, pickup_window_end = ${input.window_end} where id = ${jobId}`;
   const fresh = await loadJob(tx, jobId);
-  const q = await quoteLeg(tx, tenant, fresh, 'pickup');
+  const q = await quoteLeg(tenant, fresh, 'pickup');
   await tx`update jobs set pickup_fee_cents = ${q.chargedCents + fresh.consultation_fee_cents} where id = ${jobId}`;
   return { deliveryFeeCents: q.chargedCents, consultationCents: fresh.consultation_fee_cents, totalCents: q.chargedCents + fresh.consultation_fee_cents };
 }
 
-export async function submitDraft(tx: Tx, jobId: string, userId: string) {
-  await tx`select transition_job(${jobId}, 'pickup_fee_pending', 'customer', ${userId}, '{}')`;
+export async function submitDraft(tx: Tx, jobId: string, userId: string, termsVersion: string) {
+  await tx`update jobs set terms_version = ${termsVersion}, terms_accepted_at = now() where id = ${jobId} and status = 'draft'`;
+  await tx`select transition_job(${jobId}, 'pickup_fee_pending', 'customer', ${userId}, ${tx.json({ terms_version: termsVersion })})`;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,10 +197,11 @@ export async function chooseDropoff(tx: Tx, tenant: Tenant, job: JobRow, input: 
   let fresh = await loadJob(tx, job.id);
   let returnFee = 0;
   if (input.choice !== 'collect_at_shop') {
-    const q = await quoteLeg(tx, tenant, fresh, 'return');
+    const q = await quoteLeg(tenant, fresh, 'return');
     returnFee = q.chargedCents;
   } else {
-    await tx`update deliveries set status = 'cancelled' where job_id = ${job.id} and leg = 'return' and status = 'quoted'`;
+    // Delivery rows are system-owned; the caller has already proven access to this job above.
+    await withService((s) => s`update deliveries set status = 'cancelled' where job_id = ${job.id} and leg = 'return' and status = 'quoted'`);
   }
   await tx`update jobs set return_fee_cents = ${returnFee} where id = ${job.id}`;
   fresh = await loadJob(tx, job.id);

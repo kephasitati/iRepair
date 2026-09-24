@@ -1,6 +1,11 @@
-export type DeviceType = 'iphone' | 'ipad' | 'macbook' | 'android' | 'windows_laptop' | 'other';
+export type DeviceType = 'iphone' | 'macbook' | 'ipad' | 'imac' | 'android' | 'windows_laptop' | 'other';
 
-export const DEVICE_TYPES: DeviceType[] = ['iphone', 'ipad', 'macbook', 'android', 'windows_laptop', 'other'];
+export const DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop', 'other'];
+
+/** The launch line-up (default for every new shop). */
+export const DEFAULT_DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac'];
+
+export const APPLE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac'];
 
 export function luhnValid(digits: string): boolean {
   if (!/^\d+$/.test(digits)) return false;
@@ -47,7 +52,7 @@ export function checkDeviceIdentifier(type: DeviceType, raw: string): Identifier
     if (value.length === 15) return isValidImei(value) ? { ok: true, kind: 'imei', normalized: value } : { ok: false, error: 'imei_checksum' };
     if (type === 'iphone' || type === 'android') return { ok: false, error: 'imei_length' };
   }
-  const apple = type === 'iphone' || type === 'ipad' || type === 'macbook';
+  const apple = APPLE_TYPES.includes(type);
   const ok = apple ? looksLikeAppleSerial(value) : looksLikeGenericSerial(value);
   return ok ? { ok: true, kind: 'serial', normalized: value } : { ok: false, error: 'serial_format' };
 }
