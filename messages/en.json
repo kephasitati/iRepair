@@ -233,7 +233,21 @@
     "feeTotal": "Pickup fee to pay now",
     "agree": "I confirm the details above are accurate and I have read the {privacy}.",
     "payAndBook": "Pay {amount} and book",
-    "draftSaved": "Your booking is saved. Pay the pickup fee to book the rider."
+    "draftSaved": "Your booking is saved. Pay the pickup fee to book the rider.",
+    "zoneLabel": "Area",
+    "useLocation": "Use my current location for the rider",
+    "pickDate": "Day",
+    "pickSlot": "Time window",
+    "saving": "Saving…",
+    "brandPlaceholder": "e.g. Apple, Samsung, HP",
+    "deviceSummary": "Device",
+    "faultSummary": "Fault",
+    "pickupSummary": "Pickup",
+    "photoCount": "{n} photos",
+    "resumeDraft": "Continue your booking",
+    "saveAddress": "Save this address",
+    "addressLabel": "Label (e.g. Home, Office)",
+    "saveDevice": "Save this device to my account"
   },
   "pay": {
     "title": "Pay with M-Pesa",

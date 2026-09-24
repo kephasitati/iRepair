@@ -62,9 +62,9 @@ async function main() {
 
     // ---------------------------------------------------------------- people
     const user = async (u: { phone?: string; email?: string; name: string; pw?: boolean; pa?: boolean; totp?: string }) => {
-      const [r] = await tx`insert into users (phone_e164, email, full_name, password_hash, is_platform_admin, totp_secret_enc, totp_enabled)
-        values (${u.phone ?? null}, ${u.email ?? null}, ${u.name}, ${u.pw ? password : null}, ${u.pa ?? false},
-                ${u.totp ? encrypt(u.totp, master, 'totp:platform') : null}, ${!!u.totp}) returning id`;
+      const [r] = await tx`insert into users (phone_e164, email, full_name, password_hash, is_platform_admin)
+        values (${u.phone ?? null}, ${u.email ?? null}, ${u.name}, ${u.pw ? password : null}, ${u.pa ?? false}) returning id`;
+      if (u.totp) await tx`update users set totp_secret_enc = ${encrypt(u.totp, master, `totp:${r.id}`)}, totp_enabled = true where id = ${r.id}`;
       return r.id as string;
     };
     const totpSecret = generateTotpSecret();

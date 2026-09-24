@@ -13,7 +13,7 @@ begin
   insert into job_sequences (tenant_id, year, next_value) values (tid, yr, 2)
   on conflict (tenant_id, year) do update set next_value = job_sequences.next_value + 1
   returning next_value - 1 into n;
-  return format('DR-%s-%s', to_char(yr, 'FM00')::text, lpad(n::text, 5, '0'));
+  return format('DR-%s-%s', right(yr::text, 2), lpad(n::text, 5, '0'));
 end $$;
 
 create or replace function next_invoice_number(tid uuid) returns text
