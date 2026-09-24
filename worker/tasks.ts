@@ -60,7 +60,17 @@ export async function generateInvoicePdf(invoiceId: string) {
   if (!inv) return;
   const payments = await sql`select mpesa_receipt as receipt, amount_cents, purpose, confirmed_at from payments where job_id = ${inv.job_id} and status = 'success' order by confirmed_at`;
   const pdf = await renderInvoicePdf({
-    ...inv,
+    number: inv.number,
+    status: inv.status,
+    issued_at: inv.issued_at,
+    created_at: inv.created_at,
+    lines: inv.lines,
+    customer_snapshot: inv.customer_snapshot,
+    tenant_snapshot: inv.tenant_snapshot,
+    job_ref: inv.job_ref,
+    device: inv.device,
+    warranty_until: inv.warranty_until,
+    etims: inv.etims_payload,
     subtotal_cents: Number(inv.subtotal_cents),
     vat_cents: Number(inv.vat_cents),
     vat_rate_bp: Number(inv.vat_rate_bp),
