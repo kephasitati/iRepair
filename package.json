@@ -1,12 +1,23 @@
 {
-  "name": "web-tmp",
+  "name": "repairdesk",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "worker": "tsx watch worker/index.ts",
+    "db:up": "docker compose up -d postgres minio minio-init",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:reset": "tsx scripts/migrate.ts --reset",
+    "db:seed": "tsx scripts/seed.ts",
+    "gen:state-machine": "tsx scripts/gen-state-machine.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:db": "vitest run tests/db",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1140.0",
