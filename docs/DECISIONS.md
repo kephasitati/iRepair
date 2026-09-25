@@ -135,3 +135,21 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   domain on a fresh service needs its service name typed manually. Both now in `DEPLOY.md` §1. Left deliberately
   unfinished, by the user's own choice, not because of an unknown: the domain's DNS A record (so nothing is
   reachable yet) and S3-compatible storage credentials (so photo/logo uploads will fail once it is).
+- **D-24 Onboarded the first real shop (Primefix Kenya) from the command line, and copied its catalogue in.** The
+  user first chose "onboard Primefix as a standard shop" (no custom work), then asked to "copy all the data and
+  products" from primefixke.com. Rather than a Primefix-specific script, two generic ops scripts that mirror what a
+  shop admin can do in Settings/Parts, for shops whose admin hasn't signed in yet: `scripts/import-woocommerce.ts`
+  (reads a WooCommerce store's *public, unauthenticated* Store API — no scraping, no credentials — and upserts its
+  products into `parts_catalogue` keyed by SKU `WC-<id>`, so re-runs update prices and deactivate delisted items
+  instead of duplicating; device family inferred from categories/name) and `scripts/shop-settings.ts` (contact,
+  address, tagline/about, colours, device types — only the flags passed). Judgement calls: only repair parts
+  (screens/LCDs, batteries, charging ports, cameras, keyboards — 620 of 1,235) are marked `published`; retail
+  phones/laptops/watches and accessories are quote-only, because the landing page renders *every* published row
+  and `publish_price_list` stays off by default anyway (one toggle in Settings → Operations turns it on, and the
+  admin curates in Admin → Parts). Apple Watch/AirPods land in family `other` (no such device type in the
+  booking wizard — adding one is a product decision, not an import detail). The logo was *not* uploaded: production
+  has no S3 storage yet (D-23), so `logo_path` stays null until it does. Also `scripts/reinvite.ts`: the
+  original invite link printed by `create-tenant.ts` was lost in this session's tooling (tokens are stored hashed,
+  so it can't be re-read), and the platform console had no "resend invite" — this re-issues one without touching
+  `active`, so re-inviting an already-signed-in admin can't lock them out.
+

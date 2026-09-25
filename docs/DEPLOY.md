@@ -78,7 +78,10 @@ reflect what actually happened, including the parts the Dokploy UI doesn't make 
     `cd /app && npx tsx scripts/create-tenant.ts --name "Shop" --slug shop --phone +2547... --admin-email you@example.com`
     prints the admin invite link. If that link is lost (it's stored hashed, so it can't be re-read), issue a new
     one with `npx tsx scripts/reinvite.ts --slug shop` — the old link stops working. Note: `tsx` compiles cold on
-    the server, so either script takes ~30–60 s to print anything.
+    the server, so any of these scripts takes ~30–60 s to print anything. Two more for a shop that already has
+    a website: `npx tsx scripts/shop-settings.ts --slug shop --phone ... --about ...` (Settings fields as flags)
+    and `npx tsx scripts/import-woocommerce.ts --slug shop --site https://their-store.example` (their public
+    WooCommerce catalogue into Admin → Parts; `--dry-run` first).
 12. Visit `https://<your-platform-domain>/platform` and sign in (create the first platform admin by inserting a row
     directly, or via `npx tsx scripts/seed.ts` if you want the demo tenant as a starting point instead of a bare
     platform).
