@@ -177,4 +177,10 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   FAQs were copied nearly verbatim; two answers were adjusted where iRepair changes the facts (online booking
   exists now; repairs are tracked live in the account). Not built: a cart/checkout — orders go through WhatsApp,
   exactly as on their current site, and payments here are for repairs only (money flow untouched).
+- **D-27 Admin → Products & parts is the products backend.** The user asked for admins to "add the products on
+  the backend"; they already could, but the page was called "Parts catalogue" and rendered all 1,235 rows in one
+  list. Rebuilt as a searchable, filterable (device family, category, Shop / price list / added-by-hand / inactive),
+  paginated (50) list with thumbnails and a clearly labelled "Add a product or part" form; nav entry renamed
+  "Products". Still one table underneath: a retail product and a quote line are the same row with different
+  flags, which is what lets a screen sold in the shop also be the part a technician quotes.
 
