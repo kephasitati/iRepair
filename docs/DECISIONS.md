@@ -72,12 +72,17 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   navigation, dark hero sections) carrying mnofu's interaction patterns (glass cards, an immersive gradient backdrop,
   a pulsing M-Pesa STK prompt, a green delivery timeline). Tokens live in `app/globals.css`; per-tenant primary/accent
   colours are injected as a handful of CSS variables (`lib/branding.ts`) without overriding the base Apple palette.
-- **D-19 Brand: "iRepairs".** Mark (`components/irepairs-logo.tsx`, `public/brand/irepairs-logo.svg`): an outline apple
-  with a lowercase "i" inside and a screw head in place of the bite, nodding to the bitten-apple silhouette without
-  reproducing Apple's filled mark. Wordmark: the first "i" of "iRepairs" is a normal letter; the second is a precision
-  screwdriver turning a cross-head screw (the tool used to open a phone), not a spanner. **Trademark caution:** "iRepairs"
-  and any apple-derived mark sit close to Apple Inc.'s trademarks and product-naming conventions; before real-world use,
-  run a KIPI (Kenya) trademark search and get legal sign-off. The footer already carries an Apple-trademark disclaimer
+- **D-19 Brand: "iRepair"** (singular — went through two earlier drafts: an apple-bite mark, then a dark-tile "One
+  colour.pdf" draft, before the user supplied the official mark). Official design: a blue rounded-square tile
+  holding a white precision screwdriver bit (hex-drive head, shaft, tapering to a point — the tool used to open a
+  phone), used either alone or beside the wordmark "iRepair" set in a bold rounded sans-serif in dark navy; the
+  leading "i" is a normal two-tone letter (blue dot, navy stem), and the "i" in "...pair" is replaced by the same
+  bit glyph in blue. `components/irepair-logo.tsx` exports `IRepairMark` (icon alone: favicon, tight spaces) and
+  `IRepairLogo` (the wordmark, which carries its own small icon tile) — the two are used independently, not always
+  paired. `public/brand/irepair-logo.svg` is the same wordmark drawing as a standalone file, used as the shop's
+  uploaded logo; `public/icon.svg` reuses the icon-alone glyph as the site/app icon. **Trademark caution:** the name
+  and icon-as-letterform styling still echo Apple Inc.'s product-naming conventions; before real-world use, run a
+  KIPI (Kenya) trademark search and get legal sign-off. The footer already carries an Apple-trademark disclaimer
   whenever an Apple device type is enabled.
 - **D-20 Default device line-up: Apple family + Android + Windows laptops.** `DEFAULT_DEVICE_TYPES` and the
   `tenant_settings.device_types` column default now ship as `{iphone,macbook,ipad,imac,android,windows_laptop}`
@@ -89,3 +94,29 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   it renders pinned to the window's top-left instead of anchored under the field. `components/booking-wizard.tsx`
   (`ModelField`) replaces it with a small absolutely-positioned `glass-card` listbox that filters as you type,
   supports arrow keys/Enter/Escape, and is always positioned correctly relative to the input.
+- **D-22 Three bugs found running the app end to end, all fixed:**
+  - **Sharing a device passcode blocked the booking wizard.** `tenant_keys` (the wrapped per-tenant data key,
+    DECISIONS D-5) has row-level security enabled with no policy for `repairdesk_app` — intentionally, since it's a
+    system secret rather than a tenant-scoped one. `lib/tenant-crypto.ts`'s `tenantKey()` used to accept the
+    caller's transaction and use it for the lookup; called from a customer's or technician's own transaction, the
+    `select` came back RLS-filtered to zero rows and the fallback `insert` then hit the same policy, throwing. It
+    now always looks the key up through `servicePool()` (`BYPASSRLS`) regardless of the caller's transaction, so
+    sharing a passcode, and revealing one at the bench, both work from any caller.
+  - **"No rider has been assigned yet" on every handover scan.** Booking a courier (`bookLeg`, called for the
+    `delivery.create` outbox job) only runs when something drains the `outbox` table — the resident worker process
+    (`npm run worker`) or `POST /api/internal/tick`. Running only `next dev` without also starting the worker means
+    no delivery ever gets a `provider_delivery_id`, so every scan legitimately has no rider to verify against. Two
+    bugs in the worker script itself meant this was true even when it *was* started: (a) `worker/index.ts` is a
+    plain `tsx` entry point, not a Next.js route, so nothing populated `process.env` from `.env` — `scripts/shim-
+    server-only.ts` (already the first import of every Node entry point, worker and seed alike) now loads `.env`
+    the same dependency-free way `scripts/seed.ts` already did; (b) `@react-pdf/renderer`'s dependency chain is
+    pure ESM, including a hyphenation package with no `require()`-compatible export — fine when Next's own bundler
+    resolves it for the in-app invoice PDF route, but a hard crash at import time under `tsx`'s CommonJS loader.
+    `worker/tasks.ts` now imports `renderInvoicePdf` lazily inside `generateInvoicePdf`, so the rest of the worker
+    (including booking couriers) no longer depends on that chain resolving. **Known residual limitation:** the
+    `invoice.pdf` outbox job itself still cannot render inside the raw `tsx` worker process (same ESM chain, just
+    deferred instead of avoided) — harmless in practice, since `GET /api/invoices/[id]/pdf` already regenerates the
+    PDF on demand inside the correctly-bundled Next.js process if the worker hasn't produced one, and the outbox
+    row backs off and eventually goes `dead` rather than looping. A production build should bundle the worker
+    (esbuild/webpack) rather than run it via raw `tsx`, which would resolve this properly; tracked for the
+    Dockerfile/CI work.

@@ -65,5 +65,5 @@ test('per-device SEO pages, robots, sitemap and llms.txt are served', async ({ p
 
   const llms = await tenantGet('/llms.txt');
   expect(llms.ok()).toBe(true);
-  expect(await llms.text()).toContain('# iRepairs');
+  expect(await llms.text()).toContain('# iRepair');
 });

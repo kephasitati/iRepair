@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 254 64" role="img" aria-label="iRepair">
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#0071e3"/>
+  <g transform="translate(2 2) scale(0.6)">
+    <polygon points="61.26,35.5 50,42 38.74,35.5 38.74,22.5 50,16 61.26,22.5" fill="#fff"/>
+    <path d="M44,45 H56 V71 L50,85 L44,71 Z" fill="#fff"/>
+  </g>
+  <circle cx="84" cy="20" r="5.5" fill="#0071e3"/>
+  <rect x="80.5" y="26" width="7" height="21" rx="3.5" fill="#16233f"/>
+  <text x="92" y="47" font-family="'SF Pro Rounded', 'SF Pro Display', Poppins, Inter, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="42" letter-spacing="-0.5" fill="#16233f" textLength="115" lengthAdjust="spacingAndGlyphs">Repa</text>
+  <g transform="translate(193.3 10) scale(0.4348)">
+    <polygon points="61.26,35.5 50,42 38.74,35.5 38.74,22.5 50,16 61.26,22.5" fill="#0071e3"/>
+    <path d="M44,45 H56 V71 L50,85 L44,71 Z" fill="#0071e3"/>
+  </g>
+  <text x="223" y="47" font-family="'SF Pro Rounded', 'SF Pro Display', Poppins, Inter, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="42" letter-spacing="-0.5" fill="#16233f" textLength="20" lengthAdjust="spacingAndGlyphs">r</text>
+</svg>

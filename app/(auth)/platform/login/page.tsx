@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AuthCard } from '@/components/auth-card';
 import { StaffLoginForm } from '@/components/auth-forms';
-import { IRepairsLogo } from '@/components/irepairs-logo';
+import { IRepairLogo } from '@/components/irepair-logo';
 import { env } from '@/lib/env';
 import { getTenant } from '@/lib/tenant';
 
@@ -12,7 +12,7 @@ export default async function PlatformLoginPage({ searchParams }: { searchParams
   return (
     <AuthCard
       brand={env().PLATFORM_NAME}
-      logo={<IRepairsLogo className="h-6 w-auto text-ink" />}
+      logo={<IRepairLogo className="h-6 w-auto" />}
       title="Platform console"
       subtitle="Platform administrators only. Two-factor authentication is required."
     >

@@ -4,7 +4,6 @@ import { deliveryProviderFor, emailSender, loadTenantSecrets, smsSender } from '
 import { loadTenantById } from '@/lib/tenant';
 import { applyDeliveryStatus, bookLeg, cancelDelivery } from '@/lib/jobs/logistics';
 import { reconcilePayment } from '@/lib/jobs/payments';
-import { renderInvoicePdf } from '@/lib/invoice-pdf';
 import type { DeliveryRow, JobRow } from '@/lib/jobs/types';
 
 /**
@@ -59,6 +58,10 @@ export async function generateInvoicePdf(invoiceId: string) {
     from invoices i join jobs j on j.id = i.job_id where i.id = ${invoiceId}`;
   if (!inv) return;
   const payments = await sql`select mpesa_receipt as receipt, amount_cents, purpose, confirmed_at from payments where job_id = ${inv.job_id} and status = 'success' order by confirmed_at`;
+  // Loaded lazily: @react-pdf/renderer pulls in an ESM-only hyphenation package that fails to resolve through
+  // tsx's CommonJS require() path at process startup. A dynamic import always uses the ESM resolver, so it only
+  // needs to succeed once a PDF is actually being generated (Next's own bundler doesn't hit this at all).
+  const { renderInvoicePdf } = await import('@/lib/invoice-pdf');
   const pdf = await renderInvoicePdf({
     number: inv.number,
     status: inv.status,

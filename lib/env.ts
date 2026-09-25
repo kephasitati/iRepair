@@ -6,7 +6,7 @@ const schema = z.object({
   DATABASE_URL: z.string().default('postgres://repairdesk_app:app_dev_password@localhost:55432/repairdesk'),
   DATABASE_SERVICE_URL: z.string().default('postgres://repairdesk_service:service_dev_password@localhost:55432/repairdesk'),
   APP_MASTER_KEY: z.string().min(40),
-  PLATFORM_NAME: z.string().default('iRepairs'),
+  PLATFORM_NAME: z.string().default('iRepair'),
   PLATFORM_ROOT_DOMAIN: z.string().default('localhost:3000'),
   PUBLIC_SCHEME: z.enum(['http', 'https']).default('http'),
   INTERNAL_CRON_SECRET: z.string().min(16),

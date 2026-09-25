@@ -63,7 +63,7 @@ export async function createOrUpdateDraft(tx: Tx, tenant: Tenant, userId: string
         ${input.declared_value_cents}, ${tenant.settings.consultation_fee_cents}) returning *`) as JobRow[];
   }
 
-  const passcodeEnc = input.passcode_locked && input.passcode_shared && input.passcode ? await encryptForTenant(tenant.id, input.passcode, `passcode:${job.id}`, tx) : null;
+  const passcodeEnc = input.passcode_locked && input.passcode_shared && input.passcode ? await encryptForTenant(tenant.id, input.passcode, `passcode:${job.id}`) : null;
   await tx`insert into job_secrets (job_id, tenant_id, identifier, identifier_kind, passcode_enc, passcode_key_version)
     values (${job.id}, ${tenant.id}, ${id.normalized}, ${id.kind}, ${passcodeEnc?.ciphertext ?? null}, ${passcodeEnc?.version ?? null})
     on conflict (job_id) do update set identifier = excluded.identifier, identifier_kind = excluded.identifier_kind,
@@ -156,7 +156,7 @@ export async function revealPasscode(tx: Tx, tenant: Tenant, job: JobRow, actorU
   const [sec] = await tx`select passcode_enc from job_secrets where job_id = ${job.id}`;
   if (!sec?.passcode_enc) return null;
   await audit(tx, { tenantId: tenant.id, actorUserId, action: 'passcode.reveal', entity: 'job', entityId: job.id });
-  return decryptForTenant(tenant.id, sec.passcode_enc, `passcode:${job.id}`, tx);
+  return decryptForTenant(tenant.id, sec.passcode_enc, `passcode:${job.id}`);
 }
 
 // ---------------------------------------------------------------------------

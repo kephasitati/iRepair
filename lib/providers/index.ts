@@ -22,9 +22,9 @@ export async function loadTenantSecrets(tenantId: string, tx?: Tx): Promise<Tena
   const sql = tx ?? servicePool();
   const [row] = await sql`select daraja_enc, courier_enc, sms_enc from tenant_secrets where tenant_id = ${tenantId}`;
   return {
-    daraja: await decryptJson<DarajaConfig>(tenantId, row?.daraja_enc, `tenant-secrets:${tenantId}:daraja`, tx),
-    courier: await decryptJson<TumaBodaConfig>(tenantId, row?.courier_enc, `tenant-secrets:${tenantId}:courier`, tx),
-    sms: await decryptJson<TenantSecrets['sms']>(tenantId, row?.sms_enc, `tenant-secrets:${tenantId}:sms`, tx),
+    daraja: await decryptJson<DarajaConfig>(tenantId, row?.daraja_enc, `tenant-secrets:${tenantId}:daraja`),
+    courier: await decryptJson<TumaBodaConfig>(tenantId, row?.courier_enc, `tenant-secrets:${tenantId}:courier`),
+    sms: await decryptJson<TenantSecrets['sms']>(tenantId, row?.sms_enc, `tenant-secrets:${tenantId}:sms`),
   };
 }
 

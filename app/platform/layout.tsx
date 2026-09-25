@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requirePlatformAdmin } from '@/lib/auth';
-import { IRepairsLogo } from '@/components/irepairs-logo';
+import { IRepairLogo } from '@/components/irepair-logo';
 import { getTenant } from '@/lib/tenant';
 import { signOutAction } from '@/app/(auth)/actions';
 
@@ -13,7 +13,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       <header className="border-b bg-background">
         <div className="mx-auto flex h-12 max-w-6xl items-center gap-4 px-4">
           <Link href="/platform" className="flex items-center gap-2 font-semibold text-foreground">
-            <IRepairsLogo className="h-5 w-auto" />
+            <IRepairLogo className="h-5 w-auto" />
             <span className="text-muted-foreground">console</span>
           </Link>
           <nav className="flex gap-1 text-sm">
