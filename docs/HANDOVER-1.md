@@ -110,6 +110,15 @@ adds a new required environment variable.
   columns exist in `invoices`, nothing calls it), tenant billing/platform-fee invoicing (the ledger is written,
   nothing invoices it), Swahili, parts inventory levels, warranty-claim job type, a public shareable status page.
 
+## Command-line shop onboarding (used for the first real shop)
+
+Primefix Kenya (`primefix.irepair.tumaboda.co.ke`) was onboarded on the live deployment entirely from the
+container terminal, since the platform console isn't reachable until DNS points at the server — `DECISIONS.md`
+D-24. The scripts are generic and documented in `DEPLOY.md` §1 step 11: `scripts/create-tenant.ts` (new shop +
+admin invite), `scripts/reinvite.ts` (re-issue a lost invite), `scripts/shop-settings.ts` (Settings fields as
+flags) and `scripts/import-woocommerce.ts` (a WooCommerce store's public catalogue into Admin → Parts; Primefix's
+1,235 products came in this way, repair parts marked publishable, retail items quote-only).
+
 ## Access, for whoever picks this up
 
 - Demo tenant: `npx tsx scripts/migrate.ts --reset && npx tsx scripts/seed.ts` prints fresh demo credentials every
