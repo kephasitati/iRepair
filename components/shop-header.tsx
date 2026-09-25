@@ -14,14 +14,17 @@ export async function ShopHeader({ tenant, session, dark = false }: { tenant: Te
       <div className="mx-auto flex h-12 max-w-5xl items-center gap-2 px-4">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           {tenant.branding.logo_path ? (
+            // The shop's logo already carries its name.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/api/branding/logo" alt="" className="h-7 w-auto max-w-28 object-contain" />
+            <img src="/api/branding/logo" alt={tenant.branding.display_name} className="h-8 w-auto max-w-40 object-contain" />
           ) : (
-            <span className="grid size-7 place-items-center rounded-[8px] text-[13px] font-semibold" style={{ background: 'var(--brand-primary)', color: 'var(--primary-foreground)' }}>
-              {tenant.branding.display_name.slice(0, 1)}
-            </span>
+            <>
+              <span className="grid size-7 place-items-center rounded-[8px] text-[13px] font-semibold" style={{ background: 'var(--brand-primary)', color: 'var(--primary-foreground)' }}>
+                {tenant.branding.display_name.slice(0, 1)}
+              </span>
+              <span className="truncate text-[15px] font-semibold tracking-tight">{tenant.branding.display_name}</span>
+            </>
           )}
-          <span className="truncate text-[15px] font-semibold tracking-tight">{tenant.branding.display_name}</span>
         </Link>
         <nav className="ml-auto flex items-center">
           {session ? (

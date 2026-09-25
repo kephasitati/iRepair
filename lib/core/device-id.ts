@@ -2,8 +2,8 @@ export type DeviceType = 'iphone' | 'macbook' | 'ipad' | 'imac' | 'android' | 'w
 
 export const DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop', 'other'];
 
-/** The launch line-up (default for every new shop). */
-export const DEFAULT_DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac'];
+/** The launch line-up (default for every new shop): the Apple family first, then Android and Windows laptops. */
+export const DEFAULT_DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop'];
 
 export const APPLE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac'];
 

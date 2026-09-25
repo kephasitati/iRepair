@@ -31,8 +31,39 @@ test('cookie banner records consent and legal pages name the courier', async ({ 
   await expect(page.locator('#cookies')).toContainText('rd_session');
 });
 
-test('landing shows the launch line-up: iPhone, MacBook, iPad, iMac', async ({ page }) => {
+test('landing shows the launch line-up: iPhone, MacBook, iPad, iMac, Android, Windows laptop', async ({ page }) => {
   await page.goto('/');
-  for (const d of ['iphone', 'macbook', 'ipad', 'imac']) await expect(page.getByTestId(`landing-device-${d}`)).toBeVisible();
-  await expect(page.getByTestId('landing-device-android')).toHaveCount(0);
+  for (const d of ['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop']) await expect(page.getByTestId(`landing-device-${d}`)).toBeVisible();
+  await expect(page.getByTestId('landing-device-other')).toHaveCount(0);
+});
+
+test('per-device SEO pages, robots, sitemap and llms.txt are served', async ({ page, request }) => {
+  await page.goto('/repairs/android');
+  await expect(page.getByRole('heading', { name: 'Android phone repair, at your door' })).toBeVisible();
+  await expect(page).toHaveTitle(/Android phone repair/);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(3);
+
+  // Node (unlike the browser) doesn't resolve the *.localhost tenant subdomain, so hit localhost directly
+  // and set the Host header the app actually reads for tenant resolution.
+  const port = new URL(page.url()).port;
+  const origin = `http://localhost:${port}`;
+  const tenantGet = (path: string) => request.get(`${origin}${path}`, { headers: { host: `demo.localhost:${port}` } });
+
+  // "other" is a valid device type but not in this shop's enabled line-up, so it 404s rather than rendering.
+  const otherDevice = await tenantGet('/repairs/other');
+  expect(otherDevice.status()).toBe(404);
+
+  const robots = await tenantGet('/robots.txt');
+  expect(robots.ok()).toBe(true);
+  expect(await robots.text()).toContain('Sitemap:');
+
+  const sitemap = await tenantGet('/sitemap.xml');
+  expect(sitemap.ok()).toBe(true);
+  const sitemapBody = await sitemap.text();
+  expect(sitemapBody).toContain('/repairs/iphone');
+  expect(sitemapBody).toContain('/repairs/windows_laptop');
+
+  const llms = await tenantGet('/llms.txt');
+  expect(llms.ok()).toBe(true);
+  expect(await llms.text()).toContain('# iRepairs');
 });

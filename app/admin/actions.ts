@@ -48,6 +48,7 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
         const patch: Record<string, unknown> = {
           display_name: str(fd, 'display_name') || tenant.name,
           tagline: str(fd, 'tagline') || null,
+          about: str(fd, 'about').slice(0, 500) || null,
           primary_hex: primary,
           accent_hex: accent,
           sms_sender_id: str(fd, 'sms_sender_id') || null,
@@ -69,6 +70,9 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
       } else if (section === 'contact') {
         const phone = normalizeKenyanPhone(str(fd, 'contact_phone'));
         if (!phone) throw new UserError('Enter a valid shop phone number.');
+        const whatsappRaw = str(fd, 'whatsapp_phone');
+        const whatsapp = whatsappRaw ? normalizeKenyanPhone(whatsappRaw) : null;
+        if (whatsappRaw && !whatsapp) throw new UserError('Enter a valid WhatsApp number.');
         const lat = str(fd, 'address_lat') ? Number(str(fd, 'address_lat')) : null;
         const lng = str(fd, 'address_lng') ? Number(str(fd, 'address_lng')) : null;
         const hours: Record<string, { open: string; close: string } | null> = {};
@@ -81,6 +85,7 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
         const patch = {
           contact_phone: phone,
           contact_email: str(fd, 'contact_email') || null,
+          whatsapp_phone: whatsapp,
           address_formatted: str(fd, 'address_formatted'),
           address_landmark: str(fd, 'address_landmark') || null,
           address_lat: lat,

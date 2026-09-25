@@ -67,3 +67,25 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   so status is a pure function of elapsed time and it works identically in Node, Deno and tests.
 - **D-17 Scheduler logic lives in `_shared/worker.ts`**, invoked by the `scheduler` Edge Function (pg_cron → pg_net, production)
   and by `POST /api/internal/tick` (local dev and a fallback for Vercel Cron). Both are protected by `INTERNAL_CRON_SECRET`.
+- **D-18 Visual theme: Apple-style, mnofu interactions.** The requested "sleek, classy, immersive" look is Apple's own
+  visual language (`#f5f5f7` canvas, `#1d1d1f` ink, `#0071e3` blue, SF Pro with an Inter fallback, pill buttons, glass
+  navigation, dark hero sections) carrying mnofu's interaction patterns (glass cards, an immersive gradient backdrop,
+  a pulsing M-Pesa STK prompt, a green delivery timeline). Tokens live in `app/globals.css`; per-tenant primary/accent
+  colours are injected as a handful of CSS variables (`lib/branding.ts`) without overriding the base Apple palette.
+- **D-19 Brand: "iRepairs".** Mark (`components/irepairs-logo.tsx`, `public/brand/irepairs-logo.svg`): an outline apple
+  with a lowercase "i" inside and a screw head in place of the bite, nodding to the bitten-apple silhouette without
+  reproducing Apple's filled mark. Wordmark: the first "i" of "iRepairs" is a normal letter; the second is a precision
+  screwdriver turning a cross-head screw (the tool used to open a phone), not a spanner. **Trademark caution:** "iRepairs"
+  and any apple-derived mark sit close to Apple Inc.'s trademarks and product-naming conventions; before real-world use,
+  run a KIPI (Kenya) trademark search and get legal sign-off. The footer already carries an Apple-trademark disclaimer
+  whenever an Apple device type is enabled.
+- **D-20 Default device line-up: Apple family + Android + Windows laptops.** `DEFAULT_DEVICE_TYPES` and the
+  `tenant_settings.device_types` column default now ship as `{iphone,macbook,ipad,imac,android,windows_laptop}`
+  (migration `0016_android_laptop_default.sql`); existing shops keep whatever they already chose. Android and Windows
+  laptop repair reuse the same device tiles, icons, model suggestions and identifier help as the Apple types so the
+  line-up grows without diluting the Apple-inspired visual design.
+- **D-21 Model suggestions: an in-page combobox, not `<input list>`.** The native HTML `<datalist>` popup is drawn by
+  the browser/OS chrome rather than the page; inside some embedded webviews (e.g. an app's built-in preview browser)
+  it renders pinned to the window's top-left instead of anchored under the field. `components/booking-wizard.tsx`
+  (`ModelField`) replaces it with a small absolutely-positioned `glass-card` listbox that filters as you type,
+  supports arrow keys/Enter/Escape, and is always positioned correctly relative to the input.

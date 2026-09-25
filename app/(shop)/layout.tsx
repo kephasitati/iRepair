@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation';
 import { ShopHeader } from '@/components/shop-header';
+import { ShopFooter } from '@/components/shop-footer';
 import { CookieBanner } from '@/components/cookie-banner';
+import { WhatsAppFloat } from '@/components/whatsapp';
 import { getSession } from '@/lib/auth';
+import { whatsappLink } from '@/lib/public-data';
 import { getTenant } from '@/lib/tenant';
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +23,8 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     <>
       <ShopHeader tenant={tenant} session={session} />
       <main>{children}</main>
+      <ShopFooter tenant={tenant} />
+      <WhatsAppFloat href={whatsappLink(tenant, `Hi ${tenant.branding.display_name}, I need help with a repair.`)} />
       <CookieBanner />
     </>
   );

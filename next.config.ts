@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
         ],
       },
       { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }, { key: 'Service-Worker-Allowed', value: '/' }] },
+      // Private, account-gated or internal paths: keep them out of search results even if a bot ignores robots.txt.
+      {
+        source: '/:path(book|jobs|account|admin|bench|platform|staff|api|track|dev|l)/:rest*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+      { source: '/:path(book|jobs|account|admin|bench|platform|staff|api|track|dev|l)', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
     ];
   },
 };

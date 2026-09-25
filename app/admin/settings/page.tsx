@@ -36,6 +36,9 @@ export default async function SettingsPage() {
           <Field label={t('tagline')} htmlFor="tagline">
             <Input id="tagline" name="tagline" defaultValue={b.tagline ?? ''} />
           </Field>
+          <Field label="About" htmlFor="about" hint="A short paragraph used on the landing page, in search results and in AI answers.">
+            <Textarea id="about" name="about" defaultValue={b.about ?? ''} rows={3} maxLength={500} />
+          </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t('primary')} htmlFor="primary_hex">
               <Input id="primary_hex" name="primary_hex" type="color" defaultValue={b.primary_hex} className="h-11 p-1" />
@@ -77,6 +80,9 @@ export default async function SettingsPage() {
               <Input id="contact_email" name="contact_email" type="email" defaultValue={s.contact_email ?? ''} />
             </Field>
           </div>
+          <Field label="WhatsApp number" htmlFor="whatsapp_phone" hint="Shown as a chat button on every page. Leave blank to use the phone number above.">
+            <Input id="whatsapp_phone" name="whatsapp_phone" defaultValue={s.whatsapp_phone ?? ''} placeholder="07XX XXX XXX" />
+          </Field>
           <Field label="Shop address (where riders collect and deliver)" htmlFor="address_formatted">
             <Input id="address_formatted" name="address_formatted" defaultValue={s.address_formatted} required />
           </Field>

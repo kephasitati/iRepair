@@ -38,6 +38,80 @@ export type WizardInitial = {
 
 const APPLE: DeviceType[] = APPLE_TYPES;
 
+/**
+ * Model field with suggestions. A native `<input list>` datalist looks right on paper, but its popup is drawn by the
+ * OS/browser chrome rather than the page, and in some embedded webviews it renders pinned to the window's top-left
+ * instead of anchored under the field. This in-page combobox reuses the same glass-card styling as the rest of the
+ * app so positioning is always correct and it never breaks the Apple-style look, on any device.
+ */
+function ModelField({ id, value, onChange, suggestions, placeholder }: { id: string; value: string; onChange: (v: string) => void; suggestions: string[]; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    const list = q ? suggestions.filter((m) => m.toLowerCase().includes(q)) : suggestions;
+    return list.slice(0, 8);
+  }, [value, suggestions]);
+
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+          setHighlight(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onKeyDown={(e) => {
+          if (!open || !filtered.length) return;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setHighlight((h) => Math.min(h + 1, filtered.length - 1));
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setHighlight((h) => Math.max(h - 1, 0));
+          } else if (e.key === 'Enter' && open) {
+            e.preventDefault();
+            onChange(filtered[highlight]);
+            setOpen(false);
+          } else if (e.key === 'Escape') {
+            setOpen(false);
+          }
+        }}
+        placeholder={placeholder}
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        aria-controls={`${id}-listbox`}
+        autoComplete="off"
+        required
+      />
+      {open && filtered.length ? (
+        <ul id={`${id}-listbox`} role="listbox" className="glass-card absolute inset-x-0 top-[calc(100%+6px)] z-20 max-h-56 overflow-auto rounded-[12px] p-1.5">
+          {filtered.map((m, i) => (
+            <li key={m} role="option" aria-selected={i === highlight}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onChange(m);
+                  setOpen(false);
+                }}
+                className={cn('block w-full rounded-[8px] px-3 py-2 text-left text-[15px]', i === highlight ? 'bg-fill' : 'hover:bg-fill')}
+              >
+                {m}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export function BookingWizard({
   initial,
   savedAddresses,
@@ -178,12 +252,7 @@ export function BookingWizard({
               </Field>
             ) : null}
             <Field label={tw('model')} htmlFor="model">
-              <Input id="model" list="model-suggestions" value={s.device_model} onChange={(e) => set({ device_model: e.target.value })} placeholder={tw('modelPlaceholder')} required autoComplete="off" />
-              <datalist id="model-suggestions">
-                {(MODEL_SUGGESTIONS[s.device_type] ?? []).map((m) => (
-                  <option key={m} value={m} />
-                ))}
-              </datalist>
+              <ModelField id="model" value={s.device_model} onChange={(v) => set({ device_model: v })} suggestions={MODEL_SUGGESTIONS[s.device_type] ?? []} placeholder={tw('modelPlaceholder')} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={tw('colour')} htmlFor="colour">

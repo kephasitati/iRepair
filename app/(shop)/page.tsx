@@ -1,25 +1,39 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { Bike, Camera, ClipboardCheck, MessageSquareText, QrCode, ShieldCheck, Smartphone, Wallet } from 'lucide-react';
 import { PhoneMock } from '@/components/phone-mock';
 import { DeviceIcon } from '@/components/device-icon';
+import { FaqList, JsonLd } from '@/components/seo-bits';
 import { DEFAULT_DEVICE_TYPES } from '@/lib/core/device-id';
-import { CookieSettingsLink } from '@/components/cookie-banner';
-import { formatKes } from '@/lib/core/money';
-import { formatKenyanPhone } from '@/lib/core/phone';
-import { WEEKDAYS } from '@/lib/core/time';
-import { servicePool } from '@/lib/db';
+import { generalFaqs } from '@/lib/faq';
+import { getPublishedCatalogue, getRatingSummary } from '@/lib/public-data';
+import { faqJsonLd, localBusinessJsonLd, pageMetadata } from '@/lib/seo';
 import { requireTenant } from '@/lib/tenant';
+import { formatKenyanPhone } from '@/lib/core/phone';
+import { formatKes } from '@/lib/core/money';
+import { WEEKDAYS } from '@/lib/core/time';
 import { getSession } from '@/lib/auth';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await requireTenant();
+  const name = tenant.branding.display_name;
+  const description =
+    tenant.branding.about ??
+    `${name} collects your iPhone, MacBook, iPad or iMac from your door in Nairobi, repairs it, and returns it. Pay by M-Pesa. Track every step live.`;
+  return pageMetadata(tenant, { title: `${name} — Device repair, picked up and returned`, description, path: '/', absoluteTitle: true });
+}
 
 /** Apple product-page style landing: dark immersive hero, generous tiles, one primary action. */
 export default async function Landing() {
   const [tenant, session, t] = await Promise.all([requireTenant(), getSession(), getTranslations()]);
-  const parts = tenant.settings.publish_price_list
-    ? await servicePool()`select name, device_family, default_price_cents from parts_catalogue where tenant_id = ${tenant.id} and published and active order by array_position(array['iphone','macbook','ipad','imac','android','windows_laptop','other']::text[], device_family), default_price_cents`
-    : [];
-  const families = [...new Set(parts.map((p) => (p.device_family as string | null) ?? 'other'))];
+  const [parts, rating] = await Promise.all([
+    tenant.settings.publish_price_list ? getPublishedCatalogue(tenant.id) : Promise.resolve([]),
+    getRatingSummary(tenant.id),
+  ]);
+  const families = [...new Set(parts.map((p) => p.device_family ?? 'other'))];
   const deviceTypes = tenant.settings.device_types?.length ? tenant.settings.device_types : DEFAULT_DEVICE_TYPES;
+  const faqs = generalFaqs(tenant, parts);
   const steps = [
     { icon: ClipboardCheck, title: t('landing.step1'), body: t('landing.step1d') },
     { icon: Bike, title: t('landing.step2'), body: t('landing.step2d') },
@@ -35,6 +49,8 @@ export default async function Landing() {
 
   return (
     <div>
+      <JsonLd data={localBusinessJsonLd(tenant, parts, rating)} />
+      <JsonLd data={faqJsonLd(faqs)} />
       {/* Hero */}
       <section className="hero-surface">
         <div className="mx-auto grid max-w-5xl items-center gap-10 px-5 pt-14 pb-16 sm:pt-20 md:grid-cols-[1.1fr_1fr] md:pb-24">
@@ -76,7 +92,7 @@ export default async function Landing() {
           <ul className="no-scrollbar mt-5 flex justify-center gap-2 overflow-x-auto sm:gap-8">
             {deviceTypes.map((d) => (
               <li key={d}>
-                <Link href={`/book?type=${d}`} className="group flex w-20 flex-col items-center gap-2 rounded-2xl px-1 py-2 text-ink sm:w-24" data-testid={`landing-device-${d}`}>
+                <Link href={`/repairs/${d}`} className="group flex w-20 flex-col items-center gap-2 rounded-2xl px-1 py-2 text-ink sm:w-24" data-testid={`landing-device-${d}`}>
                   <DeviceIcon type={d} className="h-12 w-14 transition-transform duration-300 group-hover:-translate-y-0.5" />
                   <span className="text-[13px] group-hover:text-link">{t(`devices.${d}`)}</span>
                 </Link>
@@ -117,6 +133,15 @@ export default async function Landing() {
             ))}
           </div>
         </section>
+
+        {tenant.branding.about ? (
+          <section className="pt-10 text-center">
+            <h2 className="display text-[28px] sm:text-[40px]">
+              {t('landing.about', { shop: tenant.branding.display_name })}
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-[17px] leading-relaxed text-ink-2">{tenant.branding.about}</p>
+          </section>
+        ) : null}
       </div>
 
       {/* Dark band */}
@@ -192,6 +217,8 @@ export default async function Landing() {
           </div>
         </section>
 
+        <FaqList faqs={faqs} />
+
         <div className="tile flex flex-col items-center gap-4 px-6 py-12 text-center">
           <h2 className="display text-[28px] sm:text-[40px]">{t('landing.hero')}</h2>
           <Link href="/book" className="inline-flex h-12 items-center rounded-full px-7 text-[17px]" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>
@@ -200,27 +227,6 @@ export default async function Landing() {
         </div>
       </div>
 
-      <footer className="border-t border-line bg-canvas">
-        <div className="mx-auto max-w-5xl px-5 py-8 text-[12px] text-ink-3">
-          <p>{t('landing.footerNote')}</p>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3">
-            <span>
-              © {new Date().getFullYear()} {tenant.branding.display_name}
-            </span>
-            {tenant.settings.kra_pin ? <span>KRA PIN {tenant.settings.kra_pin}</span> : null}
-            <Link href="/terms" className="hover:underline">
-              {t('landing.terms')}
-            </Link>
-            <Link href="/privacy" className="hover:underline">
-              {t('landing.privacy')}
-            </Link>
-            <CookieSettingsLink className="hover:underline" />
-            <Link href="/staff/login" className="hover:underline">
-              Staff
-            </Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -24,6 +24,16 @@ export const MODEL_SUGGESTIONS: Partial<Record<DeviceType, string[]>> = {
     'iPad Pro 12.9" (older)', 'iPad Pro 11" (older)', 'iPad Air (5th generation)',
   ],
   imac: ['iMac 24" (M4)', 'iMac 24" (M3)', 'iMac 24" (M1)', 'iMac 27" (Intel, 2020)', 'iMac 27" (Intel, 2017-2019)', 'iMac 21.5" (Intel)', 'iMac Pro'],
+  android: [
+    'Samsung Galaxy S25 Ultra', 'Samsung Galaxy S25', 'Samsung Galaxy S24 Ultra', 'Samsung Galaxy S24', 'Samsung Galaxy A55', 'Samsung Galaxy A15',
+    'Samsung Galaxy Z Fold 6', 'Samsung Galaxy Z Flip 6', 'Google Pixel 9 Pro', 'Google Pixel 9', 'Google Pixel 8',
+    'Tecno Camon 30', 'Tecno Spark 20', 'Infinix Note 40', 'Infinix Hot 40', 'Xiaomi Redmi Note 13', 'Xiaomi 14', 'OnePlus 12', 'Oppo Reno 11',
+  ],
+  windows_laptop: [
+    'Dell XPS 13/15', 'Dell Inspiron', 'Dell Latitude', 'HP Spectre x360', 'HP Pavilion', 'HP EliteBook', 'HP ProBook',
+    'Lenovo ThinkPad X1 Carbon', 'Lenovo ThinkPad T-series', 'Lenovo IdeaPad', 'Lenovo Legion', 'Asus ZenBook', 'Asus VivoBook', 'Asus ROG',
+    'Acer Swift', 'Acer Aspire', 'Microsoft Surface Laptop', 'Microsoft Surface Pro',
+  ],
 };
 
 /** Where to find the identifier for each device type (shown under the IMEI/serial field). */
@@ -32,4 +42,6 @@ export const IDENTIFIER_HELP: Partial<Record<DeviceType, string>> = {
   ipad: 'Settings › General › About. Cellular iPads also show an IMEI.',
   macbook: 'Apple menu › About This Mac, or the underside of the case.',
   imac: 'Apple menu › About This Mac, or the underside of the stand.',
+  android: 'Dial *#06# or open Settings › About phone › IMEI information. The IMEI has 15 digits.',
+  windows_laptop: 'Run "wmic bios get serialnumber" in Command Prompt, or check the underside of the laptop.',
 };

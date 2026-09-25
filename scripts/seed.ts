@@ -1,6 +1,6 @@
 /**
  * Demo data: npm run db:seed  (after npm run db:reset)
- *   Tenant "Demo Repairs" at http://demo.localhost:3000
+ *   Tenant "iRepairs" at http://demo.localhost:3000
  *   Shop admin  admin@demo.test / DemoRepairs2026   Technicians tech1@demo.test, tech2@demo.test (same password)
  *   Customers   0700000001, 0700000002, 0700000003 (OTP = OTP_DEV_CODE, default 123456)
  *   Platform    root@platform.test / DemoRepairs2026 at http://localhost:3000/platform (TOTP secret printed below)
@@ -47,16 +47,20 @@ async function main() {
     await tx`select set_config('app.trusted', 'true', true)`;
 
     // ---------------------------------------------------------------- tenant
-    const [t] = await tx`insert into tenants (slug, name) values ('demo', 'Demo Repairs') returning id`;
+    const [t] = await tx`insert into tenants (slug, name) values ('demo', 'iRepairs') returning id`;
     const tid: string = t.id;
     await tx`insert into tenant_domains (hostname, tenant_id, kind, is_primary, verified_at) values (${'demo.' + root}, ${tid}, 'subdomain', true, now())`;
-    await tx`insert into tenant_branding (tenant_id, display_name, tagline, primary_hex, accent_hex, email_from_name)
-      values (${tid}, 'Demo Repairs', 'iPhone & MacBook specialists, Nairobi CBD', '#0f3d3e', '#e0a100', 'Demo Repairs')`;
+    const logoKey = `t/${tid}/branding/logo.svg`;
+    await putObject(logoKey, readFileSync(path.join(__dirname, '..', 'public', 'brand', 'irepairs-logo.svg')), 'image/svg+xml');
+    await tx`insert into tenant_branding (tenant_id, display_name, tagline, about, primary_hex, accent_hex, email_from_name, logo_path)
+      values (${tid}, 'iRepairs', 'Apple repairs, collected from your door.',
+        'iRepairs is an independent Apple device repair workshop in Nairobi CBD, trusted by other technicians with complex board-level jobs. We repair iPhone, MacBook, iPad and iMac, with doorstep pickup and return by TumaBoda and payment by M-Pesa.',
+        '#0071e3', '#a855f7', 'iRepairs', ${logoKey})`;
     await tx`insert into tenant_settings (tenant_id, contact_phone, contact_email, address_formatted, address_lat, address_lng, address_landmark, kra_pin, vat_registered,
-        consultation_fee_cents, service_zones, publish_price_list)
+        consultation_fee_cents, service_zones, publish_price_list, whatsapp_phone)
       values (${tid}, '+254700123456', 'hello@demorepairs.test', 'Kimathi House, Kimathi Street, Nairobi CBD', -1.28333, 36.82278, '3rd floor, room 305, opposite Nation Centre',
         'P051234567X', true, 50000,
-        ${['CBD', 'Westlands', 'Kilimani', 'Upper Hill', 'Parklands', 'South B', 'South C', 'Lavington', 'Kileleshwa', 'Hurlingham', 'Ngara', 'Eastleigh']}, true)`;
+        ${['CBD', 'Westlands', 'Kilimani', 'Upper Hill', 'Parklands', 'South B', 'South C', 'Lavington', 'Kileleshwa', 'Hurlingham', 'Ngara', 'Eastleigh']}, true, '+254700123456')`;
     await tx`insert into tenant_keys (tenant_id, wrapped_data_key) values (${tid}, ${wrapDataKey(generateDataKey(), master, tid)})`;
     await tx`insert into platform_fee_rules (tenant_id, kind, value) values (${tid}, 'percent', 300)`;
 
@@ -109,6 +113,14 @@ async function main() {
       ['IMAC-SSD', 'iMac SSD replacement / upgrade', 'imac', 18000],
       ['IMAC27-PSU', 'iMac 27" power supply repair', 'imac', 15000],
       ['IMAC-SVC', 'iMac cleaning and thermal service', 'imac', 6000],
+      ['AND-SCR', 'Android screen replacement (mid-range)', 'android', 8500],
+      ['AND-SCR-FLAG', 'Android screen replacement (flagship)', 'android', 19500],
+      ['AND-BAT', 'Android battery replacement', 'android', 3500],
+      ['AND-PORT', 'Android charging port replacement', 'android', 3000],
+      ['WL-SCR', 'Windows laptop screen replacement', 'windows_laptop', 12000],
+      ['WL-KBD', 'Windows laptop keyboard replacement', 'windows_laptop', 6500],
+      ['WL-BAT', 'Windows laptop battery replacement', 'windows_laptop', 7500],
+      ['WL-OS', 'Windows reinstall and data backup', 'windows_laptop', 3000],
       ['LAB-DIAG', 'Advanced diagnosis (micro-soldering bench)', 'other', 2500],
       ['LAB-HOUR', 'Technician labour (per hour)', 'other', 2000],
     ];
@@ -279,7 +291,7 @@ async function main() {
     await tx`insert into invoices (tenant_id, job_id, status, lines, subtotal_cents, vat_cents, vat_rate_bp, total_cents, paid_cents, balance_cents, customer_snapshot, tenant_snapshot)
       values (${tid}, ${j6}, 'proforma', ${tx.json(lines as never)}, ${520000 - vat}, ${vat}, 1600, 520000, 315000, 205000,
               ${tx.json({ name: 'Amina Hassan', phone: '+254700000003', email: null, address: a3 } as never)},
-              ${tx.json({ name: 'Demo Repairs', kra_pin: 'P051234567X', vat_registered: true, address: 'Kimathi House, Kimathi Street, Nairobi CBD', phone: '+254700123456', email: 'hello@demorepairs.test', primary_hex: '#0f3d3e' } as never)})`;
+              ${tx.json({ name: 'iRepairs', kra_pin: 'P051234567X', vat_registered: true, address: 'Kimathi House, Kimathi Street, Nairobi CBD', phone: '+254700123456', email: 'hello@demorepairs.test', primary_hex: '#0f3d3e' } as never)})`;
     await go(j6, 'final_payment_pending', 'customer', c3);
     await pay(j6, 'final_balance', 205000, '+254700000003');
     await tx`update outbox set status = 'done', done_at = now() where payload ->> 'job_id' = ${j6} and kind = 'delivery.create'`;
@@ -295,7 +307,7 @@ async function main() {
     // Don't SMS the seed customers when the worker starts.
     await tx`update notifications set status = 'sent', sent_at = now() where channel in ('sms', 'email')`;
 
-    console.log('\nSeeded Demo Repairs');
+    console.log('\nSeeded iRepairs');
     console.log(`  Customer site:   http://demo.${root}`);
     console.log(`  Staff sign-in:   http://demo.${root}/staff/login   admin@demo.test / DemoRepairs2026 (also tech1@, tech2@)`);
     console.log(`  Customers:       0700000001, 0700000002, 0700000003  (OTP ${process.env.OTP_DEV_CODE ?? '(sent to console)'})`);

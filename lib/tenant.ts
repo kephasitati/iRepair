@@ -28,6 +28,7 @@ export type Tenant = {
     accent_hex: string;
     sms_sender_id: string | null;
     email_from_name: string | null;
+    about: string | null;
   };
   settings: {
     contact_phone: string;
@@ -61,6 +62,7 @@ export type Tenant = {
     require_admin_mfa: boolean;
     collect_supplementary_upfront: boolean;
     device_types: import('./core/device-id').DeviceType[];
+    whatsapp_phone: string | null;
   };
 };
 

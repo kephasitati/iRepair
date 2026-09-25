@@ -74,6 +74,7 @@
     "trust3d": "Accept, decline or make an offer. Nothing starts without you.",
     "trust4": "Pay with M-Pesa",
     "trust4d": "Straight to the shop. Receipts on your phone.",
+    "about": "About {shop}",
     "bandTitle": "Your device, on the record.",
     "bandBody": "From the moment a rider collects it to the moment it is back in your hand, every handover, quote, payment and update is timestamped and visible to you.",
     "warranty": "{days}-day repair warranty",
