@@ -117,7 +117,10 @@ container terminal, since the platform console isn't reachable until DNS points 
 D-24. The scripts are generic and documented in `DEPLOY.md` §1 step 11: `scripts/create-tenant.ts` (new shop +
 admin invite), `scripts/reinvite.ts` (re-issue a lost invite), `scripts/shop-settings.ts` (Settings fields as
 flags) and `scripts/import-woocommerce.ts` (a WooCommerce store's public catalogue into Admin → Parts; Primefix's
-1,235 products came in this way, repair parts marked publishable, retail items quote-only).
+1,235 products came in this way with photos and descriptions, listed on its `/shop` page, repair parts also marked
+for the price list) and `scripts/set-faqs.ts` (its 14 FAQs, kept in `scripts/data/primefix-faqs.txt` as the
+onboarding record). `DECISIONS.md` D-25/D-26 cover the Apple Watch device type and the shop/FAQ features that
+came out of it.
 
 ## Access, for whoever picks this up
 

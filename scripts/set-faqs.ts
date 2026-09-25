@@ -2,7 +2,8 @@
  * Replace a shop's FAQ from a text file — the same format as Settings → FAQ (blocks of `Q:` / `A:` separated by a
  * blank line). Custom FAQs replace the generated ones on the landing page and llms.txt.
  *
- *   npx tsx scripts/set-faqs.ts --slug primefix --file faqs.txt
+ *   npx tsx scripts/set-faqs.ts --slug primefix --file scripts/data/primefix-faqs.txt
+ *   (`--file -` reads the text from stdin)
  */
 import './shim-server-only';
 import { readFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ async function main() {
     console.error('Usage: npx tsx scripts/set-faqs.ts --slug shop-slug --file faqs.txt');
     process.exit(1);
   }
-  const faqs = parseFaqText(readFileSync(file, 'utf8'));
+  const faqs = parseFaqText(readFileSync(file === '-' ? 0 : file, 'utf8'));
   if (!faqs.length) throw new Error('No "Q: … / A: …" blocks found in the file.');
 
   await withService(async (tx) => {
