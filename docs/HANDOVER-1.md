@@ -36,9 +36,16 @@ actually running the app end to end, D-22).
 - **Security and compliance controls**: envelope-encrypted passcodes purged on job close, RLS on every table, an
   audit log for every staff mutation, TOTP for platform admins, private storage with signed URLs only, rate-limited
   OTP/STK — see `COMPLIANCE.md` for the full list with pointers to the enforcing code.
-- **Deployment**: a working multi-stage `Dockerfile` (built and smoke-tested this session — see below),
-  `docker-compose.prod.yml` with Caddy on-demand TLS for a bare VPS, and a Dokploy/Coolify path documented in
-  `DEPLOY.md`; a documented (though architecturally weaker — see below) Vercel path in `DEPLOY-VERCEL.md`.
+- **Deployment**: a working multi-stage `Dockerfile`, `docker-compose.prod.yml` (bare VPS, Caddy on-demand TLS) and
+  `docker-compose.dokploy.yml` (Dokploy/Coolify, no bundled proxy) — **actually deployed and running** this session
+  on the user's own Dokploy instance (project "iRepair", `irepair.tumaboda.co.ke`): image built, all three
+  containers (`postgres`, `web`, `worker`) up, roles created, all 16 migrations applied, worker confirmed running
+  clean against the real schema. `DEPLOY.md` §1 documents the exact steps and the Dokploy-specific gotchas found
+  doing this for real (private-repo access, manual service-name entry for the first domain, the terminal's working
+  directory). Outstanding before it's reachable: the domain's DNS A record hasn't been pointed at the server yet,
+  and no S3-compatible storage is configured (photo/logo uploads will fail until one is added) — both deliberate,
+  user-deferred choices, not unknowns. A documented (though architecturally weaker — see below) Vercel path exists
+  in `DEPLOY-VERCEL.md`, not used for the real deployment.
 
 ## Testing
 

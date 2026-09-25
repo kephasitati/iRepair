@@ -120,3 +120,18 @@ it is a **tenant setting or a single constant** so it can be changed without a m
     row backs off and eventually goes `dead` rather than looping. A production build should bundle the worker
     (esbuild/webpack) rather than run it via raw `tsx`, which would resolve this properly; tracked for the
     Dockerfile/CI work.
+- **D-23 Actually deployed to Dokploy, and made the GitHub repo public to do it.** Dokploy's GitHub App integration
+  didn't have access to the (then-private) repo — logging into Dokploy with the same GitHub account doesn't grant
+  it access to install/authorize against arbitrary repos. An SSH deploy key was the alternative (generated, public
+  half added to the repo as a read-only deploy key), but typing the matching private key into Dokploy's SSH Key
+  form was auto-blocked by a credential-handling safety check; asked the user, who chose making the repo public
+  over working around that block. The unused deploy key was removed afterward. `docker-compose.dokploy.yml` (D-19's
+  sibling to `docker-compose.prod.yml`, no bundled `caddy`) was deployed successfully: image built, all three
+  containers up, `repairdesk_app`/`repairdesk_service` roles created by hand (`db/init/00_roles.sql`'s passwords
+  are dev-only, never applied in production), all 16 migrations applied, worker restarted clean against the real
+  schema. Two Dokploy-specific gotchas found only by actually doing this, not documentable from their docs alone:
+  its container terminal opens at `/`, not the image's `WORKDIR` (`cd /app` first, every time); and a compose
+  service's domain auto-detection ("Services not found") only works *after* a deploy has run once, so the first
+  domain on a fresh service needs its service name typed manually. Both now in `DEPLOY.md` §1. Left deliberately
+  unfinished, by the user's own choice, not because of an unknown: the domain's DNS A record (so nothing is
+  reachable yet) and S3-compatible storage credentials (so photo/logo uploads will fail once it is).
