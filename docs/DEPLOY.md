@@ -74,7 +74,12 @@ reflect what actually happened, including the parts the Dokploy UI doesn't make 
    added in step 4 only routes traffic *once DNS actually resolves there*; Let's Encrypt issuance also waits on this.
 10. Add more shop domains the same way as shops sign up — `tenant_domains` rows in the database only decide which
     *shop* a hostname resolves to once traffic already reaches the app via a domain Dokploy knows about.
-11. Visit `https://<your-platform-domain>/platform` and sign in (create the first platform admin by inserting a row
+11. **Onboard shops from the terminal** while the platform console isn't reachable yet:
+    `cd /app && npx tsx scripts/create-tenant.ts --name "Shop" --slug shop --phone +2547... --admin-email you@example.com`
+    prints the admin invite link. If that link is lost (it's stored hashed, so it can't be re-read), issue a new
+    one with `npx tsx scripts/reinvite.ts --slug shop` — the old link stops working. Note: `tsx` compiles cold on
+    the server, so either script takes ~30–60 s to print anything.
+12. Visit `https://<your-platform-domain>/platform` and sign in (create the first platform admin by inserting a row
     directly, or via `npx tsx scripts/seed.ts` if you want the demo tenant as a starting point instead of a bare
     platform).
 
