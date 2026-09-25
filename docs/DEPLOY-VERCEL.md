@@ -29,9 +29,9 @@ over the direct one.
 
 ## 2. Object storage
 
-Already supported without changes: set `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`,
-`STORAGE_BUCKET`, `STORAGE_REGION` (see `.env.example`) to a Cloudflare R2 or AWS S3 bucket instead of the local
-SeaweedFS container. Nothing else changes — `lib/storage.ts` already targets any S3-compatible endpoint.
+Already supported without changes: set `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION`,
+`S3_FORCE_PATH_STYLE` (see `.env.example`) to a Cloudflare R2 or AWS S3 bucket instead of the local SeaweedFS
+container. Nothing else changes — `lib/storage.ts` already targets any S3-compatible endpoint.
 
 ## 3. The worker, as a Vercel Cron Job
 

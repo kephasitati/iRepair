@@ -4,7 +4,11 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  // Not 'standalone': the worker container runs `npx tsx worker/index.ts` against the full source tree with
+  // devDependencies (tsx, typescript) installed (Dockerfile, DECISIONS D-22), so the image already carries the
+  // full node_modules and repo regardless — standalone's minimal-copy pruning buys nothing here, and `next start`
+  // (used by both the web container and this smoke-tested locally) explicitly doesn't work correctly against a
+  // standalone build without extra manual copying of `public/` and `.next/static` that this setup doesn't do.
   reactStrictMode: true,
   serverExternalPackages: ['postgres', '@react-pdf/renderer'],
   async headers() {

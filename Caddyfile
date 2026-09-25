@@ -1,0 +1,26 @@
+# Caddy reverse proxy with on-demand TLS: a white-label shop's custom domain is only known once its owner adds it
+# in the platform console, so certificates can't be enumerated up front. Caddy asks the app before issuing one for
+# any hostname it hasn't seen (app/api/caddy/ask/route.ts, checked against tenant_domains) so nobody can make this
+# server request certificates for arbitrary domains.
+#
+# Only used for a plain VPS deployment (docs/DEPLOY.md). Deploying through Dokploy, Coolify or another PaaS that
+# manages its own reverse proxy and TLS: skip this file and the `caddy` service in docker-compose.prod.yml.
+
+{
+	on_demand_tls {
+		ask http://web:3000/api/caddy/ask
+		interval 2m
+		burst 5
+	}
+}
+
+:443 {
+	tls {
+		on_demand
+	}
+	reverse_proxy web:3000
+}
+
+:80 {
+	redir https://{host}{uri} permanent
+}

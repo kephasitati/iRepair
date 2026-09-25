@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # CI-only values — never used against a real M-Pesa/TumaBoda/SMS account or real data.
+  APP_MASTER_KEY: 'Y2ktb25seS1kdW1teS0zMi1ieXRlLWtleSEhISE='
+  INTERNAL_CRON_SECRET: ci-internal-cron-secret
+  MOCK_PROVIDER_SECRET: ci-mock-provider-secret
+  MOCK_DELAY_SECONDS: '2'
+  PLATFORM_ROOT_DOMAIN: 'localhost:3100'
+  PUBLIC_SCHEME: http
+  MPESA_DRIVER: simulator
+  SMS_DRIVER: console
+  EMAIL_DRIVER: console
+  OTP_DEV_CODE: '123456'
+  DATABASE_OWNER_URL: postgres://repairdesk_owner:ci_owner_password@localhost:5432/repairdesk
+  DATABASE_URL: postgres://repairdesk_app:ci_app_password@localhost:5432/repairdesk
+  DATABASE_SERVICE_URL: postgres://repairdesk_service:ci_service_password@localhost:5432/repairdesk
+  TEST_DATABASE_OWNER_URL: postgres://repairdesk_owner:ci_owner_password@localhost:5432/repairdesk_test
+  TEST_DATABASE_URL: postgres://repairdesk_app:ci_app_password@localhost:5432/repairdesk_test
+  TEST_DATABASE_SERVICE_URL: postgres://repairdesk_service:ci_service_password@localhost:5432/repairdesk_test
+  S3_ENDPOINT: http://localhost:59000
+  S3_REGION: auto
+  S3_BUCKET: repairdesk-private
+  S3_ACCESS_KEY: ci_s3_key
+  S3_SECRET_KEY: ci_s3_secret
+  S3_FORCE_PATH_STYLE: 'true'
+
+jobs:
+  typecheck-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # Non-blocking for now: there's a pre-existing backlog of ~16 lint errors (mostly react-hooks rules in
+      # photo-capture.tsx and qr-scanner.tsx — see HANDOVER-1.md) that predate this workflow. Once that's cleared,
+      # drop `continue-on-error` so lint actually gates merges.
+      - run: npm run lint
+        continue-on-error: true
+
+  unit-and-db-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: repairdesk_owner
+          POSTGRES_PASSWORD: ci_owner_password
+          POSTGRES_DB: repairdesk
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U repairdesk_owner -d repairdesk"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # db/init/00_roles.sql is normally run by Postgres's own docker-entrypoint-initdb.d on first boot (see
+      # docker-compose.yml); the GitHub-hosted postgres service doesn't support that, so run it explicitly instead.
+      - name: Create app/service roles and the test database
+        env:
+          PGPASSWORD: ci_owner_password
+        run: |
+          psql -h localhost -U repairdesk_owner -d repairdesk -v ON_ERROR_STOP=1 <<'SQL'
+          create role repairdesk_app login password 'ci_app_password' nobypassrls;
+          create role repairdesk_service login password 'ci_service_password' bypassrls;
+          create database repairdesk_test owner repairdesk_owner;
+          SQL
+      - run: npx tsx scripts/migrate.ts
+      - run: npm test # tests/unit (no DB) and tests/db (migrates+resets repairdesk_test itself, see tests/db/helpers.ts)
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: unit-and-db-tests
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: repairdesk_owner
+          POSTGRES_PASSWORD: ci_owner_password
+          POSTGRES_DB: repairdesk
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U repairdesk_owner -d repairdesk"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Create app/service roles
+        env:
+          PGPASSWORD: ci_owner_password
+        run: |
+          psql -h localhost -U repairdesk_owner -d repairdesk -v ON_ERROR_STOP=1 <<'SQL'
+          create role repairdesk_app login password 'ci_app_password' nobypassrls;
+          create role repairdesk_service login password 'ci_service_password' bypassrls;
+          SQL
+      - run: npx tsx scripts/migrate.ts
+      # The seaweedfs service image's default entrypoint needs args we can't pass via `services:`, so it's started
+      # manually here instead of relying on the container's own CMD.
+      - name: Start SeaweedFS S3
+        run: |
+          docker run -d --name seaweedfs -p 59000:8333 chrislusf/seaweedfs:latest \
+            server -dir=/data -s3 -s3.port=8333
+          for i in $(seq 1 30); do curl -sf http://localhost:59000 && break || sleep 1; done
+      - run: npx tsx scripts/seed.ts
+      - run: npx playwright test
+        env:
+          E2E_PORT: '3100'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

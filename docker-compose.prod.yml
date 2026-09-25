@@ -1,0 +1,74 @@
+# Production stack: web + worker (same image, built from ./Dockerfile) + Postgres, behind Caddy for on-demand TLS.
+#
+# Deploying through Dokploy, Coolify, Railway or another Docker-based PaaS instead of a bare VPS? Skip the `caddy`
+# service below (and don't publish 80/443 from `web`) — the platform's own reverse proxy and TLS take over that job.
+# Everything else here (web, worker, postgres) still applies; see docs/DEPLOY.md for both paths.
+#
+# Object storage is Cloudflare R2 or AWS S3 in production (STORAGE_* in .env.production) — there's no storage
+# service to run here, unlike the local SeaweedFS container in docker-compose.yml.
+name: repairdesk
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: repairdesk_owner
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?set a strong password in .env.production}
+      POSTGRES_DB: repairdesk
+      TZ: Africa/Nairobi
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repairdesk_owner -d repairdesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Deliberately not exposed to the host: only web/worker reach it, over the compose network. Run migrations
+    # and the one-time role setup (docs/DEPLOY.md) with `docker compose exec postgres psql ...`.
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgres://repairdesk_app:${POSTGRES_APP_PASSWORD}@postgres:5432/repairdesk
+      DATABASE_SERVICE_URL: postgres://repairdesk_service:${POSTGRES_SERVICE_PASSWORD}@postgres:5432/repairdesk
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "3000"
+    # Plain-VPS-without-Caddy fallback (skip if the `caddy` service below is running, or your PaaS proxies for you):
+    # ports:
+    #   - "3000:3000"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["npx", "tsx", "worker/index.ts"]
+    env_file: .env.production
+    environment:
+      DATABASE_SERVICE_URL: postgres://repairdesk_service:${POSTGRES_SERVICE_PASSWORD}@postgres:5432/repairdesk
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Plain VPS only — see the note at the top of this file for Dokploy/Coolify/etc.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
