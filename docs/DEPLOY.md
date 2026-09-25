@@ -30,27 +30,26 @@ env vars":
 
 1. Push this repo to GitHub (already done: https://github.com/kephasitati/iRepair).
 2. In Dokploy, create a new **Compose** application (not "Application" from a single Dockerfile — you want the
-   multi-service stack) pointing at this repo, using `docker-compose.prod.yml` as the compose file.
-3. **Remove the `caddy` service** from the compose file for this deployment (Dokploy's own Traefik instance
-   terminates TLS and proxies to `web`) — either delete it in Dokploy's compose editor, or keep a
-   `docker-compose.prod.dokploy.yml` copy without it if you also deploy the same repo to a bare VPS elsewhere.
-4. Set every variable from `.env.example` (with real values) plus `POSTGRES_OWNER_PASSWORD`,
-   `POSTGRES_APP_PASSWORD`, `POSTGRES_SERVICE_PASSWORD` (three different strong passwords) in Dokploy's
-   environment variables UI.
-5. Deploy. Dokploy builds the image from `Dockerfile` for both the `web` and `worker` services.
-6. **One-time role setup** (Dokploy doesn't run `db/init/00_roles.sql` automatically — that file's passwords are
+   multi-service stack) pointing at this repo, using **`docker-compose.dokploy.yml`** as the compose file — not
+   `docker-compose.prod.yml`, which bundles a `caddy` service that would fight Dokploy's own Traefik for ports 80/443.
+3. Set every variable from `.env.example` (with real values) plus `POSTGRES_OWNER_PASSWORD`,
+   `POSTGRES_APP_PASSWORD`, `POSTGRES_SERVICE_PASSWORD` (three different strong passwords) in the service's
+   **Environment** tab — Dokploy writes these to a `.env` file in the deploy context, which
+   `docker-compose.dokploy.yml` loads via `env_file: .env` on both `web` and `worker`.
+4. Deploy. Dokploy builds the image from `Dockerfile` for both the `web` and `worker` services.
+5. **One-time role setup** (Dokploy doesn't run `db/init/00_roles.sql` automatically — that file's passwords are
    dev-only): open a shell into the `postgres` service from Dokploy and run:
    ```sql
    create role repairdesk_app login password '<POSTGRES_APP_PASSWORD>' nobypassrls;
    create role repairdesk_service login password '<POSTGRES_SERVICE_PASSWORD>' bypassrls;
    ```
-   using the same passwords as step 4.
-7. Run migrations once, from your own machine, pointed at the server's exposed Postgres (or from a one-off shell
+   using the same passwords as step 3.
+6. Run migrations once, from your own machine, pointed at the server's exposed Postgres (or from a one-off shell
    in the `web` container): `DATABASE_OWNER_URL=postgres://repairdesk_owner:<POSTGRES_OWNER_PASSWORD>@<host>:5432/repairdesk npx tsx scripts/migrate.ts`.
-8. Add your platform domain (and each shop's domain, as shops sign up) in Dokploy's domain settings — this is what
+7. Add your platform domain (and each shop's domain, as shops sign up) in Dokploy's domain settings — this is what
    actually routes traffic; `tenant_domains` rows in the database only decide which *shop* a hostname resolves to
    once traffic already reaches the app.
-9. Visit `https://<your-platform-domain>/platform` and sign in (create the first platform admin by inserting a row
+8. Visit `https://<your-platform-domain>/platform` and sign in (create the first platform admin by inserting a row
    directly, or via `npx tsx scripts/seed.ts` if you want the demo tenant as a starting point instead of a bare
    platform).
 

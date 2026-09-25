@@ -1,0 +1,52 @@
+# Same stack as docker-compose.prod.yml, for Dokploy (or Coolify/CapRover) specifically: no bundled `caddy`
+# service and no published ports on `web` — the PaaS's own Traefik/reverse-proxy reaches `web` over the compose
+# network by service name and port, and terminates TLS for whatever domain you add in its own Domains UI. Env vars
+# come from Dokploy's own Environment tab, which writes them to a `.env` file in the deploy context that Docker
+# Compose loads automatically (referenced below via `env_file: .env`) — see docs/DEPLOY.md.
+name: repairdesk
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: repairdesk_owner
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?set a strong password in Dokploy's Environment tab}
+      POSTGRES_DB: repairdesk
+      TZ: Africa/Nairobi
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repairdesk_owner -d repairdesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Not exposed to the host: only web/worker reach it, over the compose network. Run the one-time role setup and
+    # migrations (docs/DEPLOY.md) via Dokploy's "Open Terminal" on this service, or `docker compose exec postgres psql ...`.
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://repairdesk_app:${POSTGRES_APP_PASSWORD}@postgres:5432/repairdesk
+      DATABASE_SERVICE_URL: postgres://repairdesk_service:${POSTGRES_SERVICE_PASSWORD}@postgres:5432/repairdesk
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "3000"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["npx", "tsx", "worker/index.ts"]
+    env_file: .env
+    environment:
+      DATABASE_SERVICE_URL: postgres://repairdesk_service:${POSTGRES_SERVICE_PASSWORD}@postgres:5432/repairdesk
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
