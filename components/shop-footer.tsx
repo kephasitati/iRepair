@@ -30,6 +30,13 @@ export async function ShopFooter({ tenant }: { tenant: Tenant }) {
                   {t('landing.cta')}
                 </Link>
               </li>
+              {tenant.settings.shop_page ? (
+                <li>
+                  <Link href="/shop" className="hover:text-ink hover:underline">
+                    {t('nav.shop')}
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </div>
           <div>

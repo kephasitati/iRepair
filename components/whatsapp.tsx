@@ -24,9 +24,9 @@ export function WhatsAppFloat({ href, label = 'Chat with us on WhatsApp' }: { hr
   );
 }
 
-export function WhatsAppLink({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) {
+export function WhatsAppLink({ href, children, className, style }: { href: string; children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <a href={href} target="_blank" rel="noopener" className={`inline-flex items-center gap-2 ${className ?? ''}`}>
+    <a href={href} target="_blank" rel="noopener" className={`inline-flex items-center gap-2 ${className ?? ''}`} style={style}>
       <WhatsAppGlyph className="size-5 text-[#25d366]" />
       {children}
     </a>

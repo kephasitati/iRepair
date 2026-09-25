@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { formatKes } from '@/lib/core/money';
 import { generalFaqs } from '@/lib/faq';
-import { cityOf, DEVICE_LABEL, enabledDevices, getPublishedCatalogue, whatsappNumber } from '@/lib/public-data';
+import { cityOf, DEVICE_LABEL, enabledDevices, getPublishedCatalogue, getTenantFaqs, whatsappNumber } from '@/lib/public-data';
 import { requireTenant } from '@/lib/tenant';
 
 /**
@@ -11,7 +11,8 @@ import { requireTenant } from '@/lib/tenant';
 export async function GET() {
   const tenant = await requireTenant();
   const parts = tenant.settings.publish_price_list ? await getPublishedCatalogue(tenant.id) : [];
-  const faqs = generalFaqs(tenant, parts);
+  const customFaqs = await getTenantFaqs(tenant.id);
+  const faqs = customFaqs.length ? customFaqs : generalFaqs(tenant, parts);
   const name = tenant.branding.display_name;
   const devices = enabledDevices(tenant).map((d) => DEVICE_LABEL[d]);
 

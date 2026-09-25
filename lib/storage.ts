@@ -45,6 +45,10 @@ export function brandingKey(tenantId: string, name: string, ext: string) {
   return `t/${tenantId}/branding/${name}.${ext}`;
 }
 
+export function productKey(tenantId: string, name: string, ext: string) {
+  return `t/${tenantId}/products/${name}.${ext}`;
+}
+
 export async function signedUploadUrl(key: string, contentType: string, maxBytes = 8 * 1024 * 1024) {
   return getSignedUrl(s3(), new PutObjectCommand({ Bucket: env().S3_BUCKET, Key: key, ContentType: contentType, ContentLength: maxBytes }), { expiresIn: 300 });
 }

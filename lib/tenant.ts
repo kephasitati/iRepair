@@ -63,6 +63,7 @@ export type Tenant = {
     collect_supplementary_upfront: boolean;
     device_types: import('./core/device-id').DeviceType[];
     whatsapp_phone: string | null;
+    shop_page: boolean;
   };
 };
 

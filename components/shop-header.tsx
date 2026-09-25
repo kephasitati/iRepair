@@ -27,6 +27,11 @@ export async function ShopHeader({ tenant, session, dark = false }: { tenant: Te
           )}
         </Link>
         <nav className="ml-auto flex items-center">
+          {tenant.settings.shop_page ? (
+            <Link href="/shop" className={link}>
+              {t('nav.shop')}
+            </Link>
+          ) : null}
           {session ? (
             <>
               <Link href="/jobs" className={link}>

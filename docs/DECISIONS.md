@@ -160,4 +160,21 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   untouched — the demo tenant and Primefix were switched on explicitly. `import-woocommerce.ts` now maps watches,
   watch parts and straps to it. Fixed in passing: the per-device FAQ said "a Apple Watch" (article logic existed
   in the page heading but not in `lib/faq.ts`).
+- **D-26 A shop can have a product catalogue page and its own FAQ.** The user's "copy all the stuff" from
+  primefixke.com meant more than a price list: the site is a WooCommerce store with photos and descriptions, and
+  has its own FAQ. Asked which gaps to close; chose all three (products page, logo once storage exists, custom FAQ).
+  Built generically, not for Primefix: `parts_catalogue` gains `listed`, `category`, `description`, `image_path`
+  (our copy in private storage, served by `/api/products/<id>/image`) and `image_url` (the source website's photo,
+  used until a copy exists — so the shop page works *before* S3 is configured, which production still lacks);
+  `tenant_settings.shop_page` gates a public `/shop` (family + category filters, 48 per page, Product/ItemList
+  JSON-LD, in the sitemap) and `/shop/<id>` (WhatsApp "ask about this" prefilled with the product; "Book this
+  repair" only for repair parts of an enabled device type); Admin → Parts edits all of it including a photo
+  upload. `tenant_faqs` (RLS like the catalogue) replaces the generated FAQ on the landing page and llms.txt when
+  non-empty — the per-device pages keep their generated, price-aware FAQs; edited as plain `Q:`/`A:` blocks in
+  Settings (one textarea is the whole list, so it's trivially re-orderable) or `scripts/set-faqs.ts`. Importer:
+  `--list-all` (list existing rows too — flags are otherwise the admin's, so a re-import never re-lists something
+  they hid) and `--copy-images` (downloads every photo into our storage; run it once S3 exists). Primefix's 14
+  FAQs were copied nearly verbatim; two answers were adjusted where iRepair changes the facts (online booking
+  exists now; repairs are tracked live in the account). Not built: a cart/checkout — orders go through WhatsApp,
+  exactly as on their current site, and payments here are for repairs only (money flow untouched).
 

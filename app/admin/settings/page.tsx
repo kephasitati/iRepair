@@ -6,8 +6,10 @@ import { ActionForm } from '@/components/action-form';
 import { requireStaff } from '@/lib/auth';
 import { servicePool } from '@/lib/db';
 import { env } from '@/lib/env';
-import { saveCredentialsAction, saveSettingsAction } from '@/app/admin/actions';
+import { saveCredentialsAction, saveFaqsAction, saveSettingsAction } from '@/app/admin/actions';
 import { DEFAULT_DEVICE_TYPES, DEVICE_TYPES } from '@/lib/core/device-id';
+import { formatFaqText } from '@/lib/core/faq-text';
+import { getTenantFaqs } from '@/lib/public-data';
 
 export const metadata = { title: 'Settings' };
 export const dynamic = 'force-dynamic';
@@ -21,6 +23,7 @@ export default async function SettingsPage() {
   const s = tenant.settings;
   const b = tenant.branding;
   const [secrets] = await servicePool()`select daraja_enc is not null as daraja, courier_enc is not null as courier, sms_enc is not null as sms from tenant_secrets where tenant_id = ${tenant.id}`;
+  const faqs = await getTenantFaqs(tenant.id);
   const configured = (k: 'daraja' | 'courier' | 'sms') => (secrets?.[k] ? t('credentialsSet') : t('credentialsNotSet'));
 
   return (
@@ -207,12 +210,23 @@ export default async function SettingsPage() {
             </NativeSelect>
           </Field>
           <CheckRow name="publish_price_list" label={t('publishPrices')} defaultChecked={s.publish_price_list} />
+          <CheckRow name="shop_page" label="Show a Shop page with the products marked “listed” in the parts catalogue" defaultChecked={s.shop_page} />
           <CheckRow name="require_admin_mfa" label={t('requireMfa')} defaultChecked={s.require_admin_mfa} />
           {!session.user.totp_enabled ? (
             <p className="text-xs">
               Your own account does not use 2FA yet. <a href="/staff/mfa/setup" className="underline">Set it up</a>.
             </p>
           ) : null}
+        </ActionForm>
+      </Section>
+
+      <Section title="Questions and answers">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Your own FAQ for the landing page and AI assistants. Leave empty to use the generated one (built from your prices and settings). One block per question,
+          separated by a blank line: a line starting <code>Q:</code>, then a line starting <code>A:</code>.
+        </p>
+        <ActionForm action={saveFaqsAction}>
+          <Textarea name="faqs" rows={14} defaultValue={formatFaqText(faqs)} placeholder={'Q: Do you use original parts?\nA: We offer both original and high-quality OEM parts.'} />
         </ActionForm>
       </Section>
 

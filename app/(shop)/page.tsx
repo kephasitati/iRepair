@@ -7,7 +7,7 @@ import { DeviceIcon } from '@/components/device-icon';
 import { FaqList, JsonLd } from '@/components/seo-bits';
 import { DEFAULT_DEVICE_TYPES } from '@/lib/core/device-id';
 import { generalFaqs } from '@/lib/faq';
-import { getPublishedCatalogue, getRatingSummary } from '@/lib/public-data';
+import { getPublishedCatalogue, getRatingSummary, getTenantFaqs } from '@/lib/public-data';
 import { faqJsonLd, localBusinessJsonLd, pageMetadata } from '@/lib/seo';
 import { requireTenant } from '@/lib/tenant';
 import { formatKenyanPhone } from '@/lib/core/phone';
@@ -33,7 +33,8 @@ export default async function Landing() {
   ]);
   const families = [...new Set(parts.map((p) => p.device_family ?? 'other'))];
   const deviceTypes = tenant.settings.device_types?.length ? tenant.settings.device_types : DEFAULT_DEVICE_TYPES;
-  const faqs = generalFaqs(tenant, parts);
+  const customFaqs = await getTenantFaqs(tenant.id);
+  const faqs = customFaqs.length ? customFaqs : generalFaqs(tenant, parts);
   const steps = [
     { icon: ClipboardCheck, title: t('landing.step1'), body: t('landing.step1d') },
     { icon: Bike, title: t('landing.step2'), body: t('landing.step2d') },

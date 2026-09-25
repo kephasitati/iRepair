@@ -20,7 +20,7 @@ async function main() {
 
   const slug = arg('slug')?.toLowerCase();
   if (!slug) {
-    console.error('Usage: npx tsx scripts/shop-settings.ts --slug shop-slug [--phone] [--whatsapp] [--email] [--address] [--landmark] [--tagline] [--about] [--primary] [--accent] [--devices a,b,c]');
+    console.error('Usage: npx tsx scripts/shop-settings.ts --slug shop-slug [--phone] [--whatsapp] [--email] [--address] [--landmark] [--tagline] [--about] [--primary] [--accent] [--devices a,b,c] [--shop-page on|off]');
     process.exit(1);
   }
 
@@ -52,6 +52,7 @@ async function main() {
     if (bad.length || !devices.length) throw new Error(`--devices: choose from ${DEVICE_TYPES.join(', ')}.`);
     settings.device_types = devices;
   }
+  if (arg('shop-page') !== undefined) settings.shop_page = arg('shop-page') === 'on';
   if (arg('tagline') !== undefined) branding.tagline = arg('tagline');
   if (arg('about') !== undefined) branding.about = arg('about');
   const primary = hex('primary');

@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { CheckRow, Field, NativeSelect, Section } from '@/components/fields';
 import { ActionForm } from '@/components/action-form';
 import { requestCtx, requireStaff } from '@/lib/auth';
@@ -27,14 +28,22 @@ export default async function PartsPage() {
               <details>
                 <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm">
                   <span className={p.active ? '' : 'text-muted-foreground line-through'}>
-                    {p.name} <span className="text-xs text-muted-foreground">{p.device_family} {p.sku ? `· ${p.sku}` : ''} {p.published ? '· public' : ''}</span>
+                    {p.name}{' '}
+                    <span className="text-xs text-muted-foreground">
+                      {p.device_family} {p.sku ? `· ${p.sku}` : ''} {p.category ? `· ${p.category}` : ''} {p.published ? '· price list' : ''} {p.listed ? '· shop' : ''}
+                    </span>
                   </span>
                   <span className="tabular-nums">{formatKes(Number(p.default_price_cents))}</span>
                 </summary>
                 <div className="mt-3">
                   <ActionForm action={savePartAction}>
                     <input type="hidden" name="id" value={p.id} />
-                    <PartFields part={{ name: p.name, sku: p.sku, device_family: p.device_family, kind: p.kind, published: p.published, price: Number(p.default_price_cents) / 100 }} />
+                    <PartFields
+                      part={{
+                        name: p.name, sku: p.sku, device_family: p.device_family, kind: p.kind, published: p.published, price: Number(p.default_price_cents) / 100,
+                        listed: p.listed, category: p.category, description: p.description, hasImage: !!(p.image_path || p.image_url),
+                      }}
+                    />
                     <CheckRow name="active" label="Active" defaultChecked={p.active} />
                   </ActionForm>
                 </div>
@@ -47,7 +56,13 @@ export default async function PartsPage() {
   );
 }
 
-function PartFields({ part }: { part?: { name: string; sku: string | null; device_family: string | null; kind: string; price: number; published: boolean } }) {
+type PartForm = {
+  name: string; sku: string | null; device_family: string | null; kind: string; price: number; published: boolean;
+  listed?: boolean; category?: string | null; description?: string | null; hasImage?: boolean;
+};
+
+function PartFields({ part }: { part?: PartForm }) {
+  const k = part?.sku ?? 'new';
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
@@ -80,7 +95,19 @@ function PartFields({ part }: { part?: { name: string; sku: string | null; devic
           <Input id={`s-${part?.sku ?? 'new'}`} name="sku" defaultValue={part?.sku ?? ''} />
         </Field>
       </div>
-      <CheckRow name="published" label="Show on the landing page" defaultChecked={part?.published ?? false} />
+      <CheckRow name="published" label="Show on the public price list" defaultChecked={part?.published ?? false} />
+      <CheckRow name="listed" label="List on the Shop page (with photo and description)" defaultChecked={part?.listed ?? false} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Shop category" htmlFor={`c-${k}`} hint="e.g. Screen Replacement, Batteries, Accessories">
+          <Input id={`c-${k}`} name="category" defaultValue={part?.category ?? ''} />
+        </Field>
+        <Field label="Photo" htmlFor={`i-${k}`} hint={part?.hasImage ? 'Has a photo ✓ (upload to replace)' : 'JPG, PNG or WebP, under 2 MB'}>
+          <Input id={`i-${k}`} name="image" type="file" accept="image/png,image/jpeg,image/webp" />
+        </Field>
+      </div>
+      <Field label="Description (shown on the product page)" htmlFor={`d-${k}`}>
+        <Textarea id={`d-${k}`} name="description" rows={3} defaultValue={part?.description ?? ''} />
+      </Field>
     </div>
   );
 }

@@ -12,7 +12,8 @@ import { validateTemplate } from '@/lib/core/templates';
 import { DEVICE_TYPES } from '@/lib/core/device-id';
 import { withUser } from '@/lib/db';
 import { UserError } from '@/lib/jobs/types';
-import { brandingKey, putObject } from '@/lib/storage';
+import { brandingKey, productKey, putObject } from '@/lib/storage';
+import { parseFaqText } from '@/lib/core/faq-text';
 import { invalidateTenantCache } from '@/lib/tenant';
 import { encryptJson } from '@/lib/tenant-crypto';
 
@@ -130,6 +131,7 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
           quiet_hours_end: str(fd, 'quiet_hours_end') || '07:00',
           delivery_provider: str(fd, 'delivery_provider') === 'tumaboda' ? 'tumaboda' : 'mock',
           publish_price_list: bool(fd, 'publish_price_list'),
+          shop_page: bool(fd, 'shop_page'),
           require_admin_mfa: bool(fd, 'require_admin_mfa'),
           device_types: DEVICE_TYPES.filter((d) => bool(fd, `device_${d}`)),
         };
@@ -236,15 +238,27 @@ export async function savePartAction(_prev: unknown, fd: FormData): Promise<Acti
     const id = str(fd, 'id') || null;
     const name = str(fd, 'name');
     if (!name) throw new UserError('Enter a name.');
-    const row = {
+    const row: Record<string, unknown> = {
       name,
       sku: str(fd, 'sku') || null,
       device_family: str(fd, 'device_family') || null,
       kind: ['part', 'labour', 'service'].includes(str(fd, 'kind')) ? str(fd, 'kind') : 'part',
       default_price_cents: kesField(fd, 'price'),
       published: bool(fd, 'published'),
+      listed: bool(fd, 'listed'),
+      category: str(fd, 'category') || null,
+      description: str(fd, 'description').slice(0, 4000) || null,
       active: id ? bool(fd, 'active') : true,
     };
+    const image = fd.get('image');
+    if (image instanceof File && image.size > 0) {
+      if (image.size > 2 * 1024 * 1024) throw new UserError('Product photos must be under 2 MB.');
+      const ext = image.type === 'image/png' ? 'png' : image.type === 'image/webp' ? 'webp' : image.type === 'image/jpeg' ? 'jpg' : null;
+      if (!ext) throw new UserError('Use a PNG, JPG or WebP photo.');
+      const key = productKey(tenant.id, `${id ?? 'new'}-${Date.now()}`, ext);
+      await putObject(key, Buffer.from(await image.arrayBuffer()), image.type);
+      row.image_path = key;
+    }
     await withUser(ctx, async (tx) => {
       if (id) await tx`update parts_catalogue set ${tx(row)} where id = ${id} and tenant_id = ${tenant.id}`;
       else await tx`insert into parts_catalogue ${tx({ ...row, tenant_id: tenant.id })}`;
@@ -253,6 +267,25 @@ export async function savePartAction(_prev: unknown, fd: FormData): Promise<Acti
     return null;
   });
   revalidatePath('/admin/parts');
+  return r;
+}
+
+/** Replaces the shop's own FAQ wholesale (the textarea is the whole list). Empty text = back to the generated FAQ. */
+export async function saveFaqsAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
+  const r = await run(async () => {
+    const { tenant, ctx, userId, impersonatedBy } = await admin();
+    const text = str(fd, 'faqs');
+    const faqs = parseFaqText(text);
+    if (text.trim() && !faqs.length) throw new UserError('No "Q: … / A: …" blocks found — check the format.');
+    if (faqs.length > 50) throw new UserError('Keep it to 50 questions or fewer.');
+    await withUser(ctx, async (tx) => {
+      await tx`delete from tenant_faqs where tenant_id = ${tenant.id}`;
+      for (const [i, f] of faqs.entries()) await tx`insert into tenant_faqs (tenant_id, position, question, answer) values (${tenant.id}, ${i}, ${f.q}, ${f.a})`;
+      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'settings.faqs', entity: 'tenant', entityId: tenant.id, diff: { count: faqs.length } });
+    });
+    return null;
+  });
+  revalidatePath('/', 'layout');
   return r;
 }
 
