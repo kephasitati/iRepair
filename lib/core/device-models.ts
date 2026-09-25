@@ -24,6 +24,11 @@ export const MODEL_SUGGESTIONS: Partial<Record<DeviceType, string[]>> = {
     'iPad Pro 12.9" (older)', 'iPad Pro 11" (older)', 'iPad Air (5th generation)',
   ],
   imac: ['iMac 24" (M4)', 'iMac 24" (M3)', 'iMac 24" (M1)', 'iMac 27" (Intel, 2020)', 'iMac 27" (Intel, 2017-2019)', 'iMac 21.5" (Intel)', 'iMac Pro'],
+  apple_watch: [
+    'Apple Watch Ultra 3', 'Apple Watch Series 11 46mm', 'Apple Watch Series 11 42mm', 'Apple Watch SE (3rd generation)',
+    'Apple Watch Ultra 2', 'Apple Watch Series 10 46mm', 'Apple Watch Series 10 42mm', 'Apple Watch Series 9 45mm', 'Apple Watch Series 9 41mm',
+    'Apple Watch Series 8', 'Apple Watch SE (2nd generation)', 'Apple Watch Series 7', 'Apple Watch Series 6', 'Apple Watch Series 5', 'Apple Watch Series 4', 'Apple Watch Series 3',
+  ],
   android: [
     'Samsung Galaxy S25 Ultra', 'Samsung Galaxy S25', 'Samsung Galaxy S24 Ultra', 'Samsung Galaxy S24', 'Samsung Galaxy A55', 'Samsung Galaxy A15',
     'Samsung Galaxy Z Fold 6', 'Samsung Galaxy Z Flip 6', 'Google Pixel 9 Pro', 'Google Pixel 9', 'Google Pixel 8',
@@ -42,6 +47,7 @@ export const IDENTIFIER_HELP: Partial<Record<DeviceType, string>> = {
   ipad: 'Settings › General › About. Cellular iPads also show an IMEI.',
   macbook: 'Apple menu › About This Mac, or the underside of the case.',
   imac: 'Apple menu › About This Mac, or the underside of the stand.',
+  apple_watch: 'On the watch: Settings › General › About, or in the iPhone Watch app › General › About. Also engraved inside the band slot.',
   android: 'Dial *#06# or open Settings › About phone › IMEI information. The IMEI has 15 digits.',
   windows_laptop: 'Run "wmic bios get serialnumber" in Command Prompt, or check the underside of the laptop.',
 };

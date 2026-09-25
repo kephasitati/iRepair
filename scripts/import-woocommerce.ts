@@ -38,7 +38,8 @@ export function deviceFamily(name: string, categories: string[]): string {
   if (/\bipad\b|apple pencil/.test(h)) return 'ipad';
   if (/\bimac\b/.test(h)) return 'imac';
   if (/macbook|magsafe|magic keyboard|magic mouse/.test(h)) return 'macbook';
-  if (/apple watch|watch series|watch ultra|airpod|earpod|powerbank|power bank|protector/.test(h)) return 'other';
+  if (/apple watch|watch series|watch ultra|watch se\b|\bwatch\b/.test(h)) return 'apple_watch';
+  if (/airpod|earpod|powerbank|power bank|protector/.test(h)) return 'other';
   if (/samsung|galaxy|oneplus|one plus|\bfold\b|\bflip\b|note ?\d|pixel|xiaomi|redmi|tecno|infinix|oppo|huawei|\bs2\d\b|\ba\d{2}\b/.test(h)) return 'android';
   if (/iphone|lightning|\bx-?1\d\b|\bxs\b|\bxr\b/.test(h)) return 'iphone';
   return 'other';

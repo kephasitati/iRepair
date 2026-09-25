@@ -164,6 +164,8 @@ describe('device identifiers', () => {
     expect(checkDeviceIdentifier('iphone', 'F2LXK0ABJG5J')).toMatchObject({ ok: true, kind: 'serial' });
     expect(checkDeviceIdentifier('macbook', 'AB')).toEqual({ ok: false, error: 'serial_format' });
     expect(checkDeviceIdentifier('windows_laptop', '5CD-1234-XYZ')).toMatchObject({ ok: true });
+    expect(checkDeviceIdentifier('apple_watch', 'GX7ZK0ABJG5J')).toMatchObject({ ok: true, kind: 'serial' });
+    expect(checkDeviceIdentifier('apple_watch', '5CD-1234-XYZ')).toEqual({ ok: false, error: 'serial_format' });
     expect(checkDeviceIdentifier('other', '')).toEqual({ ok: false, error: 'required' });
   });
 

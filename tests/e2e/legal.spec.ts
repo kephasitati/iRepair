@@ -31,9 +31,9 @@ test('cookie banner records consent and legal pages name the courier', async ({ 
   await expect(page.locator('#cookies')).toContainText('rd_session');
 });
 
-test('landing shows the launch line-up: iPhone, MacBook, iPad, iMac, Android, Windows laptop', async ({ page }) => {
+test('landing shows the launch line-up: iPhone, MacBook, iPad, iMac, Apple Watch, Android, Windows laptop', async ({ page }) => {
   await page.goto('/');
-  for (const d of ['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop']) await expect(page.getByTestId(`landing-device-${d}`)).toBeVisible();
+  for (const d of ['iphone', 'macbook', 'ipad', 'imac', 'apple_watch', 'android', 'windows_laptop']) await expect(page.getByTestId(`landing-device-${d}`)).toBeVisible();
   await expect(page.getByTestId('landing-device-other')).toHaveCount(0);
 });
 
@@ -62,6 +62,7 @@ test('per-device SEO pages, robots, sitemap and llms.txt are served', async ({ p
   const sitemapBody = await sitemap.text();
   expect(sitemapBody).toContain('/repairs/iphone');
   expect(sitemapBody).toContain('/repairs/windows_laptop');
+  expect(sitemapBody).toContain('/repairs/apple_watch');
 
   const llms = await tenantGet('/llms.txt');
   expect(llms.ok()).toBe(true);

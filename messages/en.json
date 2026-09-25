@@ -179,6 +179,7 @@
     "macbook": "MacBook",
     "ipad": "iPad",
     "imac": "iMac",
+    "apple_watch": "Apple Watch",
     "android": "Android phone",
     "windows_laptop": "Windows laptop",
     "other": "Other device"

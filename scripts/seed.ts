@@ -112,6 +112,8 @@ async function main() {
       ['IMAC24-SCR', 'iMac 24" display replacement', 'imac', 65000],
       ['IMAC-SSD', 'iMac SSD replacement / upgrade', 'imac', 18000],
       ['IMAC27-PSU', 'iMac 27" power supply repair', 'imac', 15000],
+      ['AW-SCR', 'Apple Watch screen replacement', 'apple_watch', 14500],
+      ['AW-BAT', 'Apple Watch battery replacement', 'apple_watch', 6500],
       ['IMAC-SVC', 'iMac cleaning and thermal service', 'imac', 6000],
       ['AND-SCR', 'Android screen replacement (mid-range)', 'android', 8500],
       ['AND-SCR-FLAG', 'Android screen replacement (flagship)', 'android', 19500],

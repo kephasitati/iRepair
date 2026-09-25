@@ -11,7 +11,7 @@ export type PublicPart = { name: string; device_family: string | null; default_p
 export const getPublishedCatalogue = cache(async (tenantId: string): Promise<PublicPart[]> => {
   const rows = await servicePool()`select name, device_family, default_price_cents from parts_catalogue
     where tenant_id = ${tenantId} and published and active
-    order by array_position(array['iphone','macbook','ipad','imac','android','windows_laptop','other']::text[], device_family), default_price_cents`;
+    order by array_position(array['iphone','macbook','ipad','imac','apple_watch','android','windows_laptop','other']::text[], device_family), default_price_cents`;
   return rows.map((r) => ({ name: r.name, device_family: r.device_family, default_price_cents: Number(r.default_price_cents) }));
 });
 
@@ -30,6 +30,7 @@ export const DEVICE_LABEL: Record<DeviceType, string> = {
   macbook: 'MacBook',
   ipad: 'iPad',
   imac: 'iMac',
+  apple_watch: 'Apple Watch',
   android: 'Android phone',
   windows_laptop: 'Windows laptop',
   other: 'device',

@@ -1,11 +1,11 @@
-export type DeviceType = 'iphone' | 'macbook' | 'ipad' | 'imac' | 'android' | 'windows_laptop' | 'other';
+export type DeviceType = 'iphone' | 'macbook' | 'ipad' | 'imac' | 'apple_watch' | 'android' | 'windows_laptop' | 'other';
 
-export const DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop', 'other'];
+export const DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'apple_watch', 'android', 'windows_laptop', 'other'];
 
 /** The launch line-up (default for every new shop): the Apple family first, then Android and Windows laptops. */
-export const DEFAULT_DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'android', 'windows_laptop'];
+export const DEFAULT_DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'apple_watch', 'android', 'windows_laptop'];
 
-export const APPLE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac'];
+export const APPLE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'apple_watch'];
 
 export function luhnValid(digits: string): boolean {
   if (!/^\d+$/.test(digits)) return false;

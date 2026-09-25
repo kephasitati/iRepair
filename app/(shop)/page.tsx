@@ -163,7 +163,7 @@ export default async function Landing() {
             <div className="mt-8 gap-4 md:columns-2">
               {families.map((f) => (
                 <div key={f} className="tile mb-4 break-inside-avoid p-6">
-                  <p className="eyebrow">{f === 'iphone' ? 'iPhone' : f === 'macbook' ? 'MacBook' : f === 'ipad' ? 'iPad' : f === 'imac' ? 'iMac' : f === 'other' ? 'Services' : f.replace('_', ' ')}</p>
+                  <p className="eyebrow">{f === 'iphone' ? 'iPhone' : f === 'macbook' ? 'MacBook' : f === 'ipad' ? 'iPad' : f === 'imac' ? 'iMac' : f === 'apple_watch' ? 'Apple Watch' : f === 'other' ? 'Services' : f.replace('_', ' ')}</p>
                   <ul className="incl mt-3 text-[15px]">
                     {parts
                       .filter((p) => ((p.device_family as string | null) ?? 'other') === f)

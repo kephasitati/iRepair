@@ -35,6 +35,15 @@ export function DeviceIcon({ type, className }: { type: DeviceType; className?: 
           <path d="M22 48h20" />
         </svg>
       );
+    case 'apple_watch':
+      return (
+        <svg viewBox="0 0 40 54" {...common} aria-hidden>
+          <rect x="9" y="14" width="22" height="26" rx="6" />
+          <path d="M13 14V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5" />
+          <path d="M13 40v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+          <path d="M31 22h1.5v6H31" />
+        </svg>
+      );
     case 'android':
       return (
         <svg viewBox="0 0 40 54" {...common} aria-hidden>

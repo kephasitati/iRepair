@@ -152,4 +152,12 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   original invite link printed by `create-tenant.ts` was lost in this session's tooling (tokens are stored hashed,
   so it can't be re-read), and the platform console had no "resend invite" — this re-issues one without touching
   `active`, so re-inviting an already-signed-in admin can't lock them out.
+- **D-25 Apple Watch is a device type.** Asked for by the user after D-24 filed Primefix's 73 watch products under
+  `other`. Enum value `apple_watch` (migration 0017, after `imac`), in the Apple family for identifier validation
+  (Apple serial format; cellular models' 15-digit IMEI is accepted like any other), model suggestions, where-to-find
+  help, its own line icon, label, per-device SEO page, and the public price-list ordering. Added to the *default*
+  line-up for new shops (it's Apple, and the launch premise is "the Apple family first"); existing shops are
+  untouched — the demo tenant and Primefix were switched on explicitly. `import-woocommerce.ts` now maps watches,
+  watch parts and straps to it. Fixed in passing: the per-device FAQ said "a Apple Watch" (article logic existed
+  in the page heading but not in `lib/faq.ts`).
 

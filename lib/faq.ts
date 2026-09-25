@@ -85,7 +85,7 @@ export function deviceFaqs(tenant: Tenant, device: DeviceType, parts: PublicPart
     },
     ...(models.length ? [{ q: `Which ${label} models do you repair?`, a: `All recent models, including ${models.join(', ')}.` }] : []),
     {
-      q: `How long does a ${label} repair take?`,
+      q: `How long does ${/^[aeiou]/i.test(label) ? 'an' : 'a'} ${label} repair take?`,
       a: `Your quote states the estimated turnaround before you accept. You can follow every step live in the app.`,
     },
   ];
