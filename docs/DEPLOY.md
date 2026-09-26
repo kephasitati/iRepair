@@ -84,7 +84,9 @@ reflect what actually happened, including the parts the Dokploy UI doesn't make 
     WooCommerce catalogue into Admin → Parts; `--dry-run` first, `--list-all` to also put everything on the
     shop's `/shop` page, `--copy-images` once S3 storage exists) and `npx tsx scripts/set-faqs.ts --slug shop
     --file faqs.txt` (the shop's own FAQ, `Q:`/`A:` blocks). `--shop-page on` in `shop-settings.ts` turns the
-    product page on.
+    product page on. Once the `S3_*` variables point at real storage: `npx tsx scripts/set-logo.ts --slug shop
+    --logo https://…/logo.png [--icon …]` stores the logo, and `import-woocommerce.ts … --copy-images` copies the
+    product photos in.
 12. Visit `https://<your-platform-domain>/platform` and sign in (create the first platform admin by inserting a row
     directly, or via `npx tsx scripts/seed.ts` if you want the demo tenant as a starting point instead of a bare
     platform).

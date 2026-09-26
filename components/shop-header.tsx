@@ -16,7 +16,7 @@ export async function ShopHeader({ tenant, session, dark = false }: { tenant: Te
           {tenant.branding.logo_path ? (
             // The shop's logo already carries its name.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/api/branding/logo" alt={tenant.branding.display_name} className="h-8 w-auto max-w-40 object-contain" />
+            <img src="/api/branding/logo" alt={tenant.branding.display_name} className="h-10 w-auto max-w-44 object-contain" />
           ) : (
             <>
               <span className="grid size-7 place-items-center rounded-[8px] text-[13px] font-semibold" style={{ background: 'var(--brand-primary)', color: 'var(--primary-foreground)' }}>
