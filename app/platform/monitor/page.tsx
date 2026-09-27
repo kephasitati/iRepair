@@ -31,7 +31,7 @@ export default async function MonitorPage() {
               </span>
               {o.status !== 'pending' ? (
                 <form action={retryOutboxAction.bind(null, Number(o.id))}>
-                  <Button size="sm" variant="outline">
+                  <Button type="submit" size="sm" variant="outline">
                     Retry
                   </Button>
                 </form>

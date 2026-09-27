@@ -203,11 +203,17 @@ export async function inviteStaffAction(_prev: unknown, fd: FormData): Promise<A
     const email = str(fd, 'email').toLowerCase();
     const role = str(fd, 'role') === 'shop_admin' ? 'shop_admin' : 'technician';
     const phone = str(fd, 'phone') ? normalizeKenyanPhone(str(fd, 'phone')) : null;
+    if (str(fd, 'phone') && !phone) throw new UserError('Enter a valid Kenyan phone number, or leave it blank.');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new UserError('Enter a valid email.');
+    if (email === (await admin()).session.user.email?.toLowerCase()) throw new UserError('That is your own account.');
     const token = randomToken(24);
     const { withService } = await import('@/lib/db');
     await withService(async (tx) => {
       let [u] = await tx`select id from users where email = ${email}`;
+      if (!u && phone) {
+        const [taken] = await tx`select 1 from users where phone_e164 = ${phone}`;
+        if (taken) throw new UserError('That phone number already belongs to another account — invite them by that account’s email, or leave the phone blank.');
+      }
       if (!u) [u] = await tx`insert into users (email, phone_e164, full_name, password_hash) values (${email}, ${phone}, ${str(fd, 'name')}, ${await hashPassword(randomToken(24))}) returning id`;
       await tx`insert into tenant_memberships (tenant_id, user_id, role, active, invited_by, invite_token_hash, invite_expires_at)
         values (${tenant.id}, ${u.id}, ${role}, false, ${userId}, ${sha256Hex(token)}, now() + interval '48 hours')
@@ -219,11 +225,16 @@ export async function inviteStaffAction(_prev: unknown, fd: FormData): Promise<A
   });
 }
 
-export async function updateMemberAction(memberId: string, patch: { role?: 'technician' | 'shop_admin'; active?: boolean }) {
+export async function updateMemberAction(memberId: string, patch: { role?: 'technician' | 'shop_admin'; active?: boolean; revoke?: boolean }) {
   const { tenant, ctx, userId, impersonatedBy } = await admin();
   if (memberId === userId && (patch.active === false || patch.role === 'technician')) return; // cannot lock yourself out
   await withUser(ctx, async (tx) => {
-    await tx`update tenant_memberships set ${tx(patch as Record<string, unknown>)} where tenant_id = ${tenant.id} and user_id = ${memberId}`;
+    if (patch.revoke) {
+      // A pending invite is just a hashed token on an inactive membership; clearing it leaves nothing usable behind.
+      await tx`update tenant_memberships set invite_token_hash = null, invite_expires_at = null where tenant_id = ${tenant.id} and user_id = ${memberId} and not active`;
+    } else {
+      await tx`update tenant_memberships set ${tx(patch as Record<string, unknown>)} where tenant_id = ${tenant.id} and user_id = ${memberId}`;
+    }
     await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'staff.update', entity: 'user', entityId: memberId, diff: patch });
   });
   revalidatePath('/admin/staff');

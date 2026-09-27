@@ -67,7 +67,7 @@ export default async function AccountPage() {
                   <span className="block text-muted-foreground">{[a.formatted, a.building_floor, a.landmark].filter(Boolean).join(' · ')}</span>
                 </span>
                 <form action={deleteAddressAction.bind(null, a.id)}>
-                  <Button variant="ghost" size="icon" aria-label={t('common.delete')}>
+                  <Button type="submit" variant="ghost" size="icon" aria-label={t('common.delete')}>
                     <Trash2 className="size-4" />
                   </Button>
                 </form>
@@ -89,7 +89,7 @@ export default async function AccountPage() {
                   <span className="block text-muted-foreground">{d.identifier}</span>
                 </span>
                 <form action={deleteDeviceAction.bind(null, d.id)}>
-                  <Button variant="ghost" size="icon" aria-label={t('common.delete')}>
+                  <Button type="submit" variant="ghost" size="icon" aria-label={t('common.delete')}>
                     <Trash2 className="size-4" />
                   </Button>
                 </form>

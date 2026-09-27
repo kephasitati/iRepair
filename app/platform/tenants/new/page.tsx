@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Field, NativeSelect, Section } from '@/components/fields';
-import { ActionForm, InviteResult } from '@/components/action-form';
+import { ActionForm } from '@/components/action-form';
 import { env } from '@/lib/env';
 import { createTenantAction } from '@/app/platform/actions';
 
@@ -11,7 +11,7 @@ export default function NewTenantPage() {
     <div className="mx-auto max-w-xl">
       <Section title="New shop">
         <p className="mb-4 text-sm text-muted-foreground">Creates the shop with sensible defaults and an invite link for its admin. The admin then sets branding, fees, M-Pesa and courier credentials themselves (docs/WHITELABEL.md).</p>
-        <ActionForm action={createTenantAction} submitLabel="Create shop" successMessage="Shop created" renderSuccess={(d) => <InviteResult data={d} />}>
+        <ActionForm action={createTenantAction} submitLabel="Create shop" successMessage="Shop created" successKind="invite">
           <Field label="Shop name" htmlFor="name">
             <Input id="name" name="name" required />
           </Field>

@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Field, NativeSelect, Section } from '@/components/fields';
-import { ActionForm, InviteResult } from '@/components/action-form';
+import { ActionForm } from '@/components/action-form';
 import { requestCtx, requireStaff } from '@/lib/auth';
 import { formatDate } from '@/lib/core/time';
 import { withUser } from '@/lib/db';
@@ -28,25 +28,34 @@ export default async function StaffPage() {
                   {m.full_name || m.email} {m.id === session.user.id ? <span className="text-xs text-muted-foreground">(you)</span> : null}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {m.email} · {m.open_jobs} open jobs · {m.totp_enabled ? '2FA on' : '2FA off'} · {m.last_login_at ? `last seen ${formatDate(m.last_login_at)}` : m.invite_expires_at ? 'invited' : 'never signed in'}
+                  {m.email} · {m.open_jobs} open {m.open_jobs === 1 ? 'job' : 'jobs'} · {m.totp_enabled ? '2FA on' : '2FA off'} ·{' '}
+                  {m.last_login_at ? `last seen ${formatDate(m.last_login_at)}` : m.invite_expires_at ? (new Date(m.invite_expires_at) > new Date() ? `invited, link valid until ${formatDate(m.invite_expires_at)}` : 'invite expired') : 'never signed in'}
                 </p>
               </div>
               <form action={updateMemberAction.bind(null, m.id, { role: m.role === 'shop_admin' ? 'technician' : 'shop_admin' })}>
-                <Button size="sm" variant="outline" disabled={m.id === session.user.id}>
+                <Button type="submit" size="sm" variant="outline" disabled={m.id === session.user.id}>
                   {m.role === 'shop_admin' ? 'Admin → Technician' : 'Technician → Admin'}
                 </Button>
               </form>
-              <form action={updateMemberAction.bind(null, m.id, { active: !m.active })}>
-                <Button size="sm" variant={m.active ? 'ghost' : 'default'} disabled={m.id === session.user.id}>
-                  {m.active ? 'Deactivate' : 'Reactivate'}
-                </Button>
-              </form>
+              {!m.active && m.invite_expires_at ? (
+                <form action={updateMemberAction.bind(null, m.id, { revoke: true })}>
+                  <Button type="submit" size="sm" variant="ghost">
+                    Revoke invite
+                  </Button>
+                </form>
+              ) : (
+                <form action={updateMemberAction.bind(null, m.id, { active: !m.active })}>
+                  <Button type="submit" size="sm" variant={m.active ? 'ghost' : 'default'} disabled={m.id === session.user.id}>
+                    {m.active ? 'Deactivate' : 'Reactivate'}
+                  </Button>
+                </form>
+              )}
             </li>
           ))}
         </ul>
       </Section>
       <Section title="Invite staff member">
-        <ActionForm action={inviteStaffAction} submitLabel="Create invite link" successMessage="Invite created" renderSuccess={(d) => <InviteResult data={d} />}>
+        <ActionForm action={inviteStaffAction} submitLabel="Create invite link" successMessage="Invite created" successKind="invite" resetOnSuccess>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Name" htmlFor="name">
               <Input id="name" name="name" />

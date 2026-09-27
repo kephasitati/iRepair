@@ -18,7 +18,7 @@ export function ActionForm({
   successMessage = 'Saved',
   resetOnSuccess = false,
   className,
-  renderSuccess,
+  successKind,
   encType,
 }: {
   action: (prev: Result, fd: FormData) => Promise<Result>;
@@ -27,7 +27,8 @@ export function ActionForm({
   successMessage?: string;
   resetOnSuccess?: boolean;
   className?: string;
-  renderSuccess?: (data: unknown) => React.ReactNode;
+  /** What to show under the form on success — a plain flag, since server pages can't pass render functions to this client component. */
+  successKind?: 'invite';
   encType?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
@@ -42,7 +43,7 @@ export function ActionForm({
     <form ref={ref} action={formAction} className={className ?? 'space-y-4'} encType={encType}>
       {children}
       <ErrorText>{state && !state.ok ? state.error : null}</ErrorText>
-      {state?.ok && renderSuccess ? renderSuccess(state.data) : null}
+      {state?.ok && successKind === 'invite' ? <InviteResult data={state.data} /> : null}
       <Button type="submit" disabled={pending}>
         {pending ? 'Saving…' : submitLabel}
       </Button>

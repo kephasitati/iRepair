@@ -183,4 +183,17 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   paginated (50) list with thumbnails and a clearly labelled "Add a product or part" form; nav entry renamed
   "Products". Still one table underneath: a retail product and a quote line are the same row with different
   flags, which is what lets a screen sold in the shop also be the part a technician quotes.
+- **D-28 Admin → Staff, exercised element by element, found broken twice over.** (1) The page crashed on load:
+  `renderSuccess={(d) => …}` passed a function from a server page into the client `ActionForm` — React refuses
+  ("Functions cannot be passed directly to Client Components"). Replaced with a serialisable `successKind="invite"`
+  flag; the platform console's New-shop page had the identical bug. (2) Every `<Button>` inside a bare
+  `<form action={serverAction}>` was `type="button"` (the shadcn/Base UI default), so role changes, deactivation,
+  the account page's delete buttons and two platform-console actions never submitted — six forms across the app,
+  all now `type="submit"`. Also fixed while there: an invalid phone on the invite form was silently dropped (now an
+  error), a phone already on another account would have surfaced as a raw unique-constraint error (now a message),
+  "1 open jobs", and a pending invitee showed "Reactivate" (which would mark them active with no password) — now
+  "Revoke invite", which clears the token so the link 404s, plus the invite's expiry date. Verified in the browser:
+  validation messages, invite link creation and acceptance page, revoke → dead link, role toggle both ways,
+  deactivate → reactivate. **Lesson, again (D-22):** both bugs were invisible to the type checker and the test
+  suite; the page had simply never been opened after the form component was refactored.
 

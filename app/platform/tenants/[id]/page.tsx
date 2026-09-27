@@ -37,7 +37,7 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
           <KV k="VAT" v={t.vat_registered ? `registered · ${t.kra_pin}` : 'not registered'} />
           <KV k="Courier" v={t.delivery_provider} />
           <form action={setTenantStatusAction.bind(null, id, t.status === 'active' ? 'suspended' : 'active')} className="mt-3">
-            <Button variant={t.status === 'active' ? 'destructive' : 'default'} size="sm">
+            <Button type="submit" variant={t.status === 'active' ? 'destructive' : 'default'} size="sm">
               {t.status === 'active' ? 'Suspend shop' : 'Reactivate shop'}
             </Button>
           </form>
