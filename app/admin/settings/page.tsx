@@ -25,6 +25,13 @@ export default async function SettingsPage() {
   const [secrets] = await servicePool()`select daraja_enc is not null as daraja, courier_enc is not null as courier, sms_enc is not null as sms from tenant_secrets where tenant_id = ${tenant.id}`;
   const faqs = await getTenantFaqs(tenant.id);
   const configured = (k: 'daraja' | 'courier' | 'sms') => (secrets?.[k] ? t('credentialsSet') : t('credentialsNotSet'));
+  const clearButton = (k: 'daraja' | 'courier' | 'sms') =>
+    secrets?.[k] ? (
+      <ActionForm action={saveCredentialsAction} submitLabel="Remove saved credentials" successMessage="Credentials removed" className="mt-2">
+        <input type="hidden" name="kind" value={k} />
+        <input type="hidden" name="clear" value="1" />
+      </ActionForm>
+    ) : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -266,6 +273,7 @@ export default async function SettingsPage() {
                 <Input id="d-pk" name="passkey" type="password" autoComplete="off" />
               </Field>
             </ActionForm>
+            {clearButton('daraja')}
           </div>
           <div>
             <p className="font-medium">{t('courier')} <span className="text-xs text-muted-foreground">· {configured('courier')}</span></p>
@@ -282,6 +290,7 @@ export default async function SettingsPage() {
                 <Input id="c-wh" name="webhookSecret" type="password" autoComplete="off" />
               </Field>
             </ActionForm>
+            {clearButton('courier')}
           </div>
           <div>
             <p className="font-medium">{t('sms')} <span className="text-xs text-muted-foreground">· {configured('sms')}</span></p>
@@ -297,6 +306,7 @@ export default async function SettingsPage() {
                 <Input id="s-sid" name="senderId" />
               </Field>
             </ActionForm>
+            {clearButton('sms')}
           </div>
         </div>
       </Section>

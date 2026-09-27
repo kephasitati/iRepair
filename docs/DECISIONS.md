@@ -196,4 +196,16 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   validation messages, invite link creation and acceptance page, revoke → dead link, role toggle both ways,
   deactivate → reactivate. **Lesson, again (D-22):** both bugs were invisible to the type checker and the test
   suite; the page had simply never been opened after the form component was refactored.
+- **D-29 Admin → Settings, exercised element by element.** All six sections (branding, contact & hours, fees,
+  operations, FAQ, integrations) were driven in the browser with invalid and valid input and checked after a
+  reload and on the public landing page. Worked as built: every numeric/percentage limit, KRA PIN format, VAT-
+  without-PIN, phone/WhatsApp formats, device-type minimum, FAQ format, Daraja/courier/SMS required fields,
+  persistence of every field, and the landing page picking up FAQ, price list and warranty changes. Fixed: opening
+  hours with a closing time at or before opening were silently saved as "closed that day" (now an error naming the
+  day); non-numeric or out-of-range latitude/longitude would have been stored (Postgres accepts `NaN` for double
+  precision) — now validated, and lat/lng must come as a pair; an empty address was accepted. Added: a "Remove
+  saved credentials" button per integration — the action already supported `clear=1` but nothing in the UI sent
+  it, so a shop could never go back to platform defaults once it had entered a key. Not testable in the embedded
+  browser: the logo/icon file inputs (no file-upload capability there); the same code path was exercised by
+  `scripts/set-logo.ts` locally and by the earlier seed uploads.
 

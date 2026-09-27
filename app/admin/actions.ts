@@ -76,11 +76,21 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
         if (whatsappRaw && !whatsapp) throw new UserError('Enter a valid WhatsApp number.');
         const lat = str(fd, 'address_lat') ? Number(str(fd, 'address_lat')) : null;
         const lng = str(fd, 'address_lng') ? Number(str(fd, 'address_lng')) : null;
+        if (lat !== null && !(Number.isFinite(lat) && Math.abs(lat) <= 90)) throw new UserError('Latitude must be a number between -90 and 90 (e.g. -1.2864).');
+        if (lng !== null && !(Number.isFinite(lng) && Math.abs(lng) <= 180)) throw new UserError('Longitude must be a number between -180 and 180 (e.g. 36.8172).');
+        if ((lat === null) !== (lng === null)) throw new UserError('Enter both latitude and longitude, or neither.');
+        if (!str(fd, 'address_formatted')) throw new UserError('Enter the shop address.');
         const hours: Record<string, { open: string; close: string } | null> = {};
         for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) {
+          if (!bool(fd, `${d}_on`)) {
+            hours[d] = null;
+            continue;
+          }
           const open = str(fd, `${d}_open`);
           const close = str(fd, `${d}_close`);
-          hours[d] = bool(fd, `${d}_on`) && /^\d{2}:\d{2}$/.test(open) && /^\d{2}:\d{2}$/.test(close) && open < close ? { open, close } : null;
+          if (!/^\d{2}:\d{2}$/.test(open) || !/^\d{2}:\d{2}$/.test(close)) throw new UserError(`Enter opening and closing times for ${d.charAt(0).toUpperCase() + d.slice(1)}.`);
+          if (open >= close) throw new UserError(`${d.charAt(0).toUpperCase() + d.slice(1)}: closing time must be after opening time.`);
+          hours[d] = { open, close };
         }
         const zones = str(fd, 'service_zones').split(/\r?\n|,/).map((z) => z.trim()).filter(Boolean);
         const patch = {
