@@ -69,9 +69,8 @@ export async function generateInvoicePdf(invoiceId: string) {
   if (!inv) return;
   const payments =
     await sql`select mpesa_receipt as receipt, method, amount_cents, purpose, confirmed_at from payments where job_id = ${inv.job_id} and status = 'success' order by confirmed_at`;
-  // Loaded lazily: @react-pdf/renderer pulls in an ESM-only hyphenation package that fails to resolve through
-  // tsx's CommonJS require() path at process startup. A dynamic import always uses the ESM resolver, so it only
-  // needs to succeed once a PDF is actually being generated (Next's own bundler doesn't hit this at all).
+  // Loaded lazily so the worker starts even if PDF rendering is broken; renderInvoicePdf itself loads react-pdf
+  // through a dynamic import, which is what keeps its ESM-only dependencies resolvable under tsx (see there).
   const { renderInvoicePdf } = await import("@/lib/invoice-pdf");
   const pdf = await renderInvoicePdf({
     number: inv.number,
