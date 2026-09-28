@@ -114,8 +114,11 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
         const kra = str(fd, 'kra_pin').toUpperCase();
         if (kra && !/^[AP]\d{9}[A-Z]$/.test(kra)) throw new UserError('KRA PIN looks wrong (e.g. P051234567X).');
         if (bool(fd, 'vat_registered') && !kra) throw new UserError('A VAT-registered shop needs a KRA PIN on its invoices.');
+        const perType: Record<string, number> = {};
+        for (const d of DEVICE_TYPES) if (str(fd, `fee_${d}`)) perType[d] = kesField(fd, `fee_${d}`);
         const patch = {
           consultation_fee_cents: kesField(fd, 'consultation_fee'),
+          consultation_fees: tx.json(perType),
           consultation_fee_credited: bool(fd, 'consultation_fee_credited'),
           deposit_rule: tx.json({ kind: depositKind, value: depositValue }),
           deposit_min_quote_cents: kesField(fd, 'deposit_min'),

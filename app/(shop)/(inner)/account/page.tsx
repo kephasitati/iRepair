@@ -9,17 +9,20 @@ import { formatKes } from '@/lib/core/money';
 import { formatKenyanPhone } from '@/lib/core/phone';
 import { formatDate } from '@/lib/core/time';
 import { withUser } from '@/lib/db';
-import { deleteAddressAction, deleteDeviceAction, updateNameAction } from '@/app/(shop)/actions';
+import { deleteAddressAction, deleteDeviceAction, deleteIdAction, updateNameAction } from '@/app/(shop)/actions';
+import { ID_KIND_LABEL } from '@/lib/core/identity';
+import { getCustomerIdSummary } from '@/lib/customer-ids';
 
 export const metadata = { title: 'Account' };
 
 export default async function AccountPage() {
-  const { session } = await requireCustomer('/account');
+  const { session, tenant } = await requireCustomer('/account');
   const [ctx, t] = await Promise.all([requestCtx(), getTranslations()]);
-  const { addresses, devices, invoices } = await withUser(ctx, async (tx) => ({
+  const { addresses, devices, invoices, identity } = await withUser(ctx, async (tx) => ({
     addresses: await tx`select * from addresses where user_id = ${ctx.userId} order by created_at desc`,
     devices: await tx`select * from devices where user_id = ${ctx.userId} order by created_at desc`,
     invoices: await tx`select i.id, i.number, i.total_cents, i.issued_at, j.ref from invoices i join jobs j on j.id = i.job_id where j.customer_user_id = ${ctx.userId} and i.status = 'issued' order by i.issued_at desc`,
+    identity: await getCustomerIdSummary(tx, tenant.id, ctx.userId!),
   }));
   return (
     <div className="space-y-4">
@@ -98,6 +101,34 @@ export default async function AccountPage() {
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">{t('common.noResults')}</p>
+        )}
+      </Section>
+      <Section title="Identity document">
+        {identity ? (
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span>
+              <span className="font-medium">
+                {ID_KIND_LABEL[identity.kind]} ending {identity.last4}
+              </span>
+              <span className="block text-muted-foreground">
+                {identity.hasPhoto ? (
+                  <a href={`/api/customer-ids/${ctx.userId}/photo`} target="_blank" className="underline">
+                    Photo on file
+                  </a>
+                ) : (
+                  'No photo yet — you will be asked for one on your next booking'
+                )}
+                {' · '}used instead of an IMEI/serial when you book with {tenant.branding.display_name}. Stored encrypted; only staff handling your repair can see it, and every view is logged.
+              </span>
+            </span>
+            <form action={deleteIdAction}>
+              <Button type="submit" variant="ghost" size="icon" aria-label={t('common.delete')}>
+                <Trash2 className="size-4" />
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">None saved. When booking, you can give your ID instead of the device&apos;s IMEI or serial number.</p>
         )}
       </Section>
       <p className="text-center text-xs">

@@ -29,6 +29,8 @@ export type Tenant = {
     sms_sender_id: string | null;
     email_from_name: string | null;
     about: string | null;
+    social_links: Partial<Record<'instagram' | 'facebook' | 'tiktok' | 'x' | 'youtube' | 'website', string>>;
+    instagram_posts: string[];
   };
   settings: {
     contact_phone: string;
@@ -42,6 +44,7 @@ export type Tenant = {
     vat_rate_bp: number;
     prices_include_vat: boolean;
     consultation_fee_cents: number;
+    consultation_fees: Partial<Record<import('./core/device-id').DeviceType, number>>;
     consultation_fee_credited: boolean;
     deposit_rule: { kind: 'percent' | 'fixed'; value: number };
     deposit_min_quote_cents: number;

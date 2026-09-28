@@ -208,4 +208,17 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   it, so a shop could never go back to platform defaults once it had entered a key. Not testable in the embedded
   browser: the logo/icon file inputs (no file-upload capability there); the same code path was exercised by
   `scripts/set-logo.ts` locally and by the earlier seed uploads.
+- **D-30 Identify a booking by the customer's ID document, and consultation fees per device type.** Asked for by
+  the user (2026-09-28) with three other features (D-31, D-32). Decisions confirmed before building: the ID is
+  *kept on the customer's account for that shop* (their choice over purge-at-close — more DPA exposure, so: number
+  encrypted with the tenant key like passcodes, photo in private storage behind a signed URL, every staff view of
+  the photo audited, the customer can delete it from Account, and staff never see the full number — only the last
+  four plus the photo); fees are per device type with the shop-wide fee as fallback, captured on the job at booking
+  as before, credited rule unchanged. Step 2 now requires *either* a valid IMEI/serial *or* an ID (national ID,
+  passport, alien ID; loose format checks — the number is matched by eye against the photo, never used as a key);
+  step 3 requires a photo of that document before the wizard continues. A saved ID is offered for reuse on the next
+  booking; entering a different number invalidates the old photo. Intake still asks the technician to read the
+  device's IMEI/serial; with no declared identifier there is simply nothing to mismatch against. Verified in the
+  browser as a customer (OTP sign-in, step 2 gating, invalid-number message, ID photo upload, account page,
+  signed-URL redirect) and in the database (encrypted number, `identity_method = 'id'`, fee on the job).
 

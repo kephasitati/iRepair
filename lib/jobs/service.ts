@@ -1,5 +1,8 @@
 import 'server-only';
 import { checkDeviceIdentifier, identifiersMatch, type DeviceType } from '@/lib/core/device-id';
+import { consultationFeeFor } from '@/lib/core/fees';
+import { ID_KINDS, type IdKind } from '@/lib/core/identity';
+import { getCustomerIdSummary, upsertCustomerId } from '@/lib/customer-ids';
 import { withService, type Tx } from '@/lib/db';
 import { encryptForTenant, decryptForTenant } from '@/lib/tenant-crypto';
 import type { Tenant } from '@/lib/tenant';
@@ -35,13 +38,29 @@ export type DraftInput = {
   passcode_shared: boolean;
   passcode?: string | null;
   identifier: string;
+  /** 'device' = IMEI/serial declared; 'id' = the customer's ID document stands in for it (photo required at step 3). */
+  identity_method?: 'device' | 'id';
+  id_kind?: IdKind;
+  id_number?: string;
+  /** With 'id': reuse the document already on the customer's account for this shop instead of entering a new number. */
+  use_existing_id?: boolean;
   declared_value_cents: number;
   save_device?: boolean;
 };
 
 export async function createOrUpdateDraft(tx: Tx, tenant: Tenant, userId: string, input: DraftInput, jobId?: string | null): Promise<string> {
-  const id = checkDeviceIdentifier(input.device_type, input.identifier);
-  if (!id.ok) throw new UserError(`identifier:${id.error}`);
+  const method = input.identity_method === 'id' ? 'id' : 'device';
+  let id: ReturnType<typeof checkDeviceIdentifier> | null = null;
+  if (method === 'device') {
+    id = checkDeviceIdentifier(input.device_type, input.identifier);
+    if (!id.ok) throw new UserError(`identifier:${id.error}`);
+  } else if (input.use_existing_id) {
+    if (!(await getCustomerIdSummary(tx, tenant.id, userId))) throw new UserError('id:required');
+  } else {
+    if (!input.id_kind || !ID_KINDS.includes(input.id_kind)) throw new UserError('id:required');
+    await upsertCustomerId(tx, tenant.id, userId, input.id_kind, input.id_number ?? '');
+  }
+  const consultationFee = consultationFeeFor(tenant.settings, input.device_type);
   if (!input.device_model.trim()) throw new UserError('Enter the device model.');
   if (input.fault_description.trim().length < 5) throw new UserError('Describe the fault in a few words.');
   if (input.passcode_locked && input.passcode_shared && !input.passcode) throw new UserError('Enter the passcode or choose not to share it.');
@@ -53,26 +72,28 @@ export async function createOrUpdateDraft(tx: Tx, tenant: Tenant, userId: string
     await tx`update jobs set device_type = ${input.device_type}, device_brand = ${input.device_brand ?? ''}, device_model = ${input.device_model.trim()},
       device_colour = ${input.device_colour ?? null}, device_storage = ${input.device_storage ?? null}, fault_description = ${input.fault_description.trim()},
       declared_condition = ${tx.json(input.declared_condition as never)}, accessories = ${input.accessories}, passcode_locked = ${input.passcode_locked},
-      passcode_shared = ${input.passcode_locked && input.passcode_shared}, declared_value_cents = ${input.declared_value_cents} where id = ${jobId}`;
+      passcode_shared = ${input.passcode_locked && input.passcode_shared}, declared_value_cents = ${input.declared_value_cents},
+      identity_method = ${method}, consultation_fee_cents = ${consultationFee} where id = ${jobId}`;
   } else {
     const [{ ref }] = await tx`select next_job_ref(${tenant.id}) as ref`;
     [job] = (await tx`insert into jobs (tenant_id, ref, customer_user_id, device_type, device_brand, device_model, device_colour, device_storage, fault_description,
-        declared_condition, accessories, passcode_locked, passcode_shared, declared_value_cents, consultation_fee_cents)
+        declared_condition, accessories, passcode_locked, passcode_shared, declared_value_cents, consultation_fee_cents, identity_method)
       values (${tenant.id}, ${ref}, ${userId}, ${input.device_type}, ${input.device_brand ?? ''}, ${input.device_model.trim()}, ${input.device_colour ?? null}, ${input.device_storage ?? null},
         ${input.fault_description.trim()}, ${tx.json(input.declared_condition as never)}, ${input.accessories}, ${input.passcode_locked}, ${input.passcode_locked && input.passcode_shared},
-        ${input.declared_value_cents}, ${tenant.settings.consultation_fee_cents}) returning *`) as JobRow[];
+        ${input.declared_value_cents}, ${consultationFee}, ${method}) returning *`) as JobRow[];
   }
 
   const passcodeEnc = input.passcode_locked && input.passcode_shared && input.passcode ? await encryptForTenant(tenant.id, input.passcode, `passcode:${job.id}`) : null;
+  const identifier = id && id.ok ? id : null;
   await tx`insert into job_secrets (job_id, tenant_id, identifier, identifier_kind, passcode_enc, passcode_key_version)
-    values (${job.id}, ${tenant.id}, ${id.normalized}, ${id.kind}, ${passcodeEnc?.ciphertext ?? null}, ${passcodeEnc?.version ?? null})
+    values (${job.id}, ${tenant.id}, ${identifier?.normalized ?? null}, ${identifier?.kind ?? null}, ${passcodeEnc?.ciphertext ?? null}, ${passcodeEnc?.version ?? null})
     on conflict (job_id) do update set identifier = excluded.identifier, identifier_kind = excluded.identifier_kind,
       passcode_enc = coalesce(excluded.passcode_enc, case when ${input.passcode_locked && input.passcode_shared} then job_secrets.passcode_enc else null end),
       passcode_key_version = case when excluded.passcode_enc is null and not ${input.passcode_locked && input.passcode_shared} then null else coalesce(excluded.passcode_key_version, job_secrets.passcode_key_version) end`;
 
-  if (input.save_device) {
+  if (input.save_device && identifier) {
     const [d] = await tx`insert into devices (user_id, type, brand, model, colour, storage, identifier, identifier_kind)
-      values (${userId}, ${input.device_type}, ${input.device_brand ?? ''}, ${input.device_model.trim()}, ${input.device_colour ?? null}, ${input.device_storage ?? null}, ${id.normalized}, ${id.kind}) returning id`;
+      values (${userId}, ${input.device_type}, ${input.device_brand ?? ''}, ${input.device_model.trim()}, ${input.device_colour ?? null}, ${input.device_storage ?? null}, ${identifier.normalized}, ${identifier.kind}) returning id`;
     await tx`update jobs set device_id = ${d.id} where id = ${job.id}`;
   }
   return job.id;

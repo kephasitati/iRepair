@@ -29,6 +29,7 @@ import type { PaymentPurpose } from '@/lib/jobs/types';
 import { TERMS_VERSION } from '@/lib/legal';
 import { UserError } from '@/lib/jobs/types';
 import type { Address } from '@/lib/providers/delivery/types';
+import { customerIdKey, deleteObject, putObject } from '@/lib/storage';
 
 async function customer() {
   const { session, tenant } = await requireCustomer();
@@ -276,6 +277,31 @@ export async function disputeAction(jobId: string, body: string): Promise<Action
 // ---------------------------------------------------------------------------
 // Account
 // ---------------------------------------------------------------------------
+/** The customer's ID photo (identity method 'id'): straight to private storage, on their account for this shop. */
+export async function uploadIdPhotoAction(fd: FormData): Promise<ActionResult<null>> {
+  return run(async () => {
+    const { tenant, ctx, userId } = await customer();
+    const file = fd.get('photo');
+    if (!(file instanceof File) || file.size === 0) throw new UserError('Take a photo of your ID.');
+    if (file.size > 8 * 1024 * 1024) throw new UserError('That photo is too large (max 8 MB).');
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : file.type === 'image/jpeg' ? 'jpg' : null;
+    if (!ext) throw new UserError('Use a JPG, PNG or WebP photo.');
+    const key = customerIdKey(tenant.id, userId, ext);
+    await putObject(key, Buffer.from(await file.arrayBuffer()), file.type);
+    const updated = await withUser(ctx, (tx) => tx`update customer_ids set photo_path = ${key} where tenant_id = ${tenant.id} and user_id = ${userId} returning id`);
+    if (!updated.length) throw new UserError('Enter your ID number first.');
+    return null;
+  });
+}
+
+/** Removes the ID document from the customer's account for this shop (number and photo). */
+export async function deleteIdAction() {
+  const { tenant, ctx, userId } = await customer();
+  const [row] = await withUser(ctx, (tx) => tx`delete from customer_ids where tenant_id = ${tenant.id} and user_id = ${userId} returning photo_path`);
+  if (row?.photo_path) await deleteObject(row.photo_path).catch(() => undefined);
+  revalidatePath('/account');
+}
+
 export async function deleteAddressAction(id: string) {
   const { ctx } = await customer();
   await withUser(ctx, (tx) => tx`delete from addresses where id = ${id}`);

@@ -5,6 +5,7 @@ import { requestCtx, requireCustomer } from '@/lib/auth';
 import { withUser } from '@/lib/db';
 import type { JobRow } from '@/lib/jobs/types';
 import { DEFAULT_DEVICE_TYPES } from '@/lib/core/device-id';
+import { getCustomerIdSummary } from '@/lib/customer-ids';
 
 export const metadata = { title: 'Book a pickup' };
 
@@ -16,12 +17,13 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   const t = await getTranslations('wizard');
   const ctx = await requestCtx();
 
-  const { draft, secret, photos, addresses } = await withUser(ctx, async (tx) => {
+  const { draft, secret, photos, addresses, existingId } = await withUser(ctx, async (tx) => {
     const [draft] = sp.job ? ((await tx`select * from jobs where id = ${sp.job}`) as JobRow[]) : [];
     const [secret] = draft ? await tx`select identifier from job_secrets where job_id = ${draft.id}` : [];
     const photos = draft ? await tx`select id, kind from job_photos where job_id = ${draft.id} and stage = 'customer_declared' and deleted_at is null` : [];
     const addresses = await tx`select * from addresses where user_id = ${ctx.userId} order by created_at desc`;
-    return { draft, secret, photos, addresses };
+    const existingId = await getCustomerIdSummary(tx, tenant.id, ctx.userId!);
+    return { draft, secret, photos, addresses, existingId };
   });
   if (draft && draft.status !== 'draft') redirect(`/jobs/${draft.id}`);
 
@@ -39,6 +41,10 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     passcode_locked: draft?.passcode_locked ?? false,
     passcode_shared: draft?.passcode_shared ?? false,
     identifier: secret?.identifier ?? '',
+    identity_method: draft?.identity_method ?? 'device',
+    id_kind: existingId?.kind ?? 'national_id',
+    existingId,
+    userId: ctx.userId!,
     declared_value_kes: draft ? String(Number(draft.declared_value_cents) / 100 || '') : '',
     photos: photos.map((p) => ({ id: p.id, kind: p.kind })),
     address: draft?.pickup_address ?? { formatted: '', lat: null, lng: null, landmark: '', building_floor: '', zone: null },
@@ -54,6 +60,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
         zones={tenant.settings.service_zones}
         openingHours={tenant.settings.opening_hours}
         consultationCents={tenant.settings.consultation_fee_cents}
+        consultationFees={tenant.settings.consultation_fees ?? {}}
         consultationCredited={tenant.settings.consultation_fee_credited}
       />
     </div>

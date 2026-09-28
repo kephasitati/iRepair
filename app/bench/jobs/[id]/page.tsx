@@ -29,6 +29,8 @@ import { formatKenyanPhone } from '@/lib/core/phone';
 import { formatDate, formatDateTime } from '@/lib/core/time';
 import { withUser } from '@/lib/db';
 import { loadJobView, type JobView } from '@/lib/jobs/view';
+import { ID_KIND_LABEL } from '@/lib/core/identity';
+import { getCustomerIdSummary } from '@/lib/customer-ids';
 import type { Tenant } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
@@ -51,6 +53,7 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
     notFound();
   }
   const { job } = v;
+  const identity = job.identity_method === 'id' ? await withUser(ctx, (tx) => getCustomerIdSummary(tx, tenant.id, job.customer_user_id)) : null;
   const s = job.status;
   const isAdmin = role === 'shop_admin';
   const canSeeSecrets = !!v.secret;
@@ -161,7 +164,34 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
           </Section>
 
           <Section title="Device">
-            {canSeeSecrets ? <KV k={v.secret?.identifier_kind === 'imei' ? 'IMEI' : 'Serial'} v={<span className="font-mono">{v.secret?.identifier}</span>} /> : <p className="text-xs text-muted-foreground">IMEI/serial visible to the assigned technician and shop admins.</p>}
+            {job.identity_method === 'id' ? (
+              <KV
+                k="Identity"
+                v={
+                  identity ? (
+                    <span>
+                      {ID_KIND_LABEL[identity.kind]} ending {identity.last4}
+                      {identity.hasPhoto ? (
+                        <>
+                          {' · '}
+                          <a href={`/api/customer-ids/${job.customer_user_id}/photo`} target="_blank" className="text-primary underline">
+                            View ID photo
+                          </a>
+                        </>
+                      ) : (
+                        ' · no photo on file'
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Customer ID (no longer on file)</span>
+                  )
+                }
+              />
+            ) : canSeeSecrets ? (
+              <KV k={v.secret?.identifier_kind === 'imei' ? 'IMEI' : 'Serial'} v={<span className="font-mono">{v.secret?.identifier}</span>} />
+            ) : (
+              <p className="text-xs text-muted-foreground">IMEI/serial visible to the assigned technician and shop admins.</p>
+            )}
             {job.passcode_locked ? (
               <div className="mt-2">
                 <p className="mb-1 text-xs text-muted-foreground">{t('bench.passcode')}</p>

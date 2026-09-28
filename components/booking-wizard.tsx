@@ -9,9 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckRow, ErrorText, Field, KV, NativeSelect, RadioRow, Section } from '@/components/fields';
 import { PhotoCapture, type ExistingPhoto } from '@/components/photo-capture';
+import { IdPhotoUpload } from '@/components/id-photo-upload';
 import { AddressPicker } from '@/components/address-picker';
 import { APPLE_TYPES, checkDeviceIdentifier, type DeviceType } from '@/lib/core/device-id';
 import { IDENTIFIER_HELP, MODEL_SUGGESTIONS } from '@/lib/core/device-models';
+import { checkIdNumber, ID_KIND_LABEL, ID_KINDS, type IdKind } from '@/lib/core/identity';
 import { formatKes } from '@/lib/core/money';
 import { addDays, deliverySlots, formatDate, nairobiToday, type OpeningHours } from '@/lib/core/time';
 import type { Address } from '@/lib/providers/delivery/types';
@@ -31,6 +33,11 @@ export type WizardInitial = {
   passcode_locked: boolean;
   passcode_shared: boolean;
   identifier: string;
+  identity_method: 'device' | 'id';
+  id_kind: IdKind;
+  /** The customer's ID already on file for this shop, if any (never the number itself). */
+  existingId: { kind: IdKind; last4: string; hasPhoto: boolean } | null;
+  userId: string;
   declared_value_kes: string;
   photos: ExistingPhoto[];
   address: Address;
@@ -118,6 +125,7 @@ export function BookingWizard({
   zones,
   openingHours,
   consultationCents,
+  consultationFees,
   consultationCredited,
   deviceTypes,
 }: {
@@ -127,6 +135,7 @@ export function BookingWizard({
   zones: string[];
   openingHours: OpeningHours;
   consultationCents: number;
+  consultationFees: Partial<Record<DeviceType, number>>;
   consultationCredited: boolean;
 }) {
   const t = useTranslations();
@@ -135,6 +144,10 @@ export function BookingWizard({
   const [s, setS] = useState(initial);
   const [passcode, setPasscode] = useState('');
   const [saveDevice, setSaveDevice] = useState(false);
+  const [idNumber, setIdNumber] = useState('');
+  const [useExistingId, setUseExistingId] = useState(!!initial.existingId);
+  const [idPhoto, setIdPhoto] = useState(!!initial.existingId?.hasPhoto);
+  const feeForType = consultationFees[s.device_type] ?? consultationCents;
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [photoState, setPhotoState] = useState<{ kinds: string[]; pending: number }>({ kinds: initial.photos.map((p) => p.kind), pending: 0 });
@@ -153,11 +166,16 @@ export function BookingWizard({
   const set = (patch: Partial<WizardInitial>) => setS((x) => ({ ...x, ...patch }));
   const idCheck = s.identifier ? checkDeviceIdentifier(s.device_type, s.identifier) : null;
   const idError = idCheck && !idCheck.ok ? tw(`identifierErrors.${idCheck.error}`) : null;
+  const idNumCheck = idNumber ? checkIdNumber(s.id_kind, idNumber) : null;
+  const idNumError = idNumCheck && !idNumCheck.ok ? tw(`idErrors.${idNumCheck.error}`) : null;
+  const identityOk = s.identity_method === 'device' ? !!idCheck?.ok : (useExistingId && !!s.existingId) || !!idNumCheck?.ok;
   const needScreenOn = s.condition.powers_on;
-  const photosOk = photoState.kinds.includes('front') && photoState.kinds.includes('back') && (!needScreenOn || photoState.kinds.includes('screen_on')) && photoState.pending === 0;
+  const photosOk =
+    photoState.kinds.includes('front') && photoState.kinds.includes('back') && (!needScreenOn || photoState.kinds.includes('screen_on')) && photoState.pending === 0 && (s.identity_method !== 'id' || idPhoto);
 
   const translateError = (e: string) => {
     if (e.startsWith('identifier:')) return tw(`identifierErrors.${e.slice('identifier:'.length)}`);
+    if (e.startsWith('id:')) return tw(`idErrors.${e.slice('id:'.length)}`);
     if (e.startsWith('zone:')) return tw('outsideZone', { zones: e.slice(5) });
     return e;
   };
@@ -177,11 +195,22 @@ export function BookingWizard({
         passcode_locked: s.passcode_locked,
         passcode_shared: s.passcode_shared,
         passcode: passcode || null,
-        identifier: s.identifier,
+        identifier: s.identity_method === 'device' ? s.identifier : '',
+        identity_method: s.identity_method,
+        id_kind: s.id_kind,
+        id_number: idNumber,
+        use_existing_id: s.identity_method === 'id' && useExistingId && !!s.existingId,
         declared_value_cents: Math.round(Number(s.declared_value_kes || 0)) * 100,
-        save_device: saveDevice,
+        save_device: saveDevice && s.identity_method === 'device',
       });
       if (!r.ok) return setError(translateError(r.error));
+      if (s.identity_method === 'id' && !(useExistingId && s.existingId)) {
+        // A new number was saved: the shop needs a photo of that document, whatever was on file before.
+        const kept = s.existingId && s.existingId.kind === s.id_kind && s.existingId.last4 === idNumber.replace(/[\s-]+/g, '').slice(-4);
+        set({ existingId: { kind: s.id_kind, last4: idNumber.replace(/[\s-]+/g, '').slice(-4), hasPhoto: !!kept && s.existingId!.hasPhoto } });
+        setUseExistingId(true);
+        setIdPhoto(!!kept && !!s.existingId?.hasPhoto);
+      }
       set({ jobId: r.data.jobId });
       window.history.replaceState(null, '', `/book?job=${r.data.jobId}`);
       setStep(3);
@@ -287,16 +316,48 @@ export function BookingWizard({
       {step === 2 ? (
         <Section title={tw('identifier')}>
           <div className="space-y-4">
-            <Field label={tw('identifier')} hint={IDENTIFIER_HELP[s.device_type] ?? tw('identifierHelp')} htmlFor="identifier" error={idError}>
-              <Input
-                id="identifier"
-                value={s.identifier}
-                onChange={(e) => set({ identifier: e.target.value })}
-                autoCapitalize="characters"
-                inputMode={s.device_type === 'iphone' || s.device_type === 'android' ? 'numeric' : 'text'}
-                required
-              />
-            </Field>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">{tw('identityMethod')}</p>
+              <RadioRow name="identity" checked={s.identity_method === 'device'} onChange={() => set({ identity_method: 'device' })} label={tw('identityDevice')} description={IDENTIFIER_HELP[s.device_type] ?? tw('identifierHelp')} />
+              <RadioRow name="identity" checked={s.identity_method === 'id'} onChange={() => set({ identity_method: 'id' })} label={tw('identityId')} description={tw('identityIdHelp')} data-testid="identity-id" />
+            </div>
+            {s.identity_method === 'device' ? (
+              <Field label={tw('identifier')} htmlFor="identifier" error={idError}>
+                <Input
+                  id="identifier"
+                  value={s.identifier}
+                  onChange={(e) => set({ identifier: e.target.value })}
+                  autoCapitalize="characters"
+                  inputMode={s.device_type === 'iphone' || s.device_type === 'android' ? 'numeric' : 'text'}
+                  required
+                />
+              </Field>
+            ) : useExistingId && s.existingId ? (
+              <div className="opt flex items-center justify-between gap-3 px-4 py-3 text-[15px]" data-on>
+                <span>
+                  {tw('idOnFile', { kind: ID_KIND_LABEL[s.existingId.kind], last4: s.existingId.last4 })}
+                  <span className="block text-[13px] text-ink-3">{s.existingId.hasPhoto ? tw('idPhotoOnFile') : tw('idPhotoMissing')}</span>
+                </span>
+                <button type="button" className="shrink-0 text-[14px] text-link hover:underline" onClick={() => setUseExistingId(false)}>
+                  {tw('idUseDifferent')}
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-[1fr_2fr]">
+                <Field label={tw('idKind')} htmlFor="id_kind">
+                  <NativeSelect id="id_kind" value={s.id_kind} onChange={(e) => set({ id_kind: e.target.value as IdKind })}>
+                    {ID_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {ID_KIND_LABEL[k]}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </Field>
+                <Field label={tw('idNumber')} htmlFor="id_number" error={idNumError} hint={tw('idConsent')}>
+                  <Input id="id_number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} autoCapitalize="characters" inputMode={s.id_kind === 'passport' ? 'text' : 'numeric'} autoComplete="off" data-testid="id-number" />
+                </Field>
+              </div>
+            )}
             <div className="space-y-2">
               <p className="text-sm font-medium">{tw('accessories')}</p>
               <div className="grid grid-cols-2 gap-2">
@@ -327,9 +388,9 @@ export function BookingWizard({
             <Field label={tw('declaredValue')} hint={tw('declaredValueHelp')} htmlFor="value">
               <Input id="value" inputMode="numeric" value={s.declared_value_kes} onChange={(e) => set({ declared_value_kes: e.target.value.replace(/\D/g, '') })} placeholder="KES" />
             </Field>
-            <CheckRow label={tw('saveDevice')} checked={saveDevice} onChange={(e) => setSaveDevice(e.target.checked)} />
+            {s.identity_method === 'device' ? <CheckRow label={tw('saveDevice')} checked={saveDevice} onChange={(e) => setSaveDevice(e.target.checked)} /> : null}
             <ErrorText>{error}</ErrorText>
-            <Button type="button" size="lg" className="w-full" disabled={pending || !idCheck?.ok || (s.passcode_locked && s.passcode_shared && !passcode && !initial.jobId)} onClick={saveDetails}>
+            <Button type="button" size="lg" className="w-full" disabled={pending || !identityOk || (s.passcode_locked && s.passcode_shared && !passcode && !initial.jobId)} onClick={saveDetails}>
               {pending ? tw('saving') : t('common.next')}
             </Button>
           </div>
@@ -351,6 +412,13 @@ export function BookingWizard({
             onChange={(uploaded, pendingCount) => setPhotoState({ kinds: uploaded.map((u) => u.kind), pending: pendingCount })}
           />
           <p className="mt-3 text-xs text-muted-foreground">{tw('photosMin', { screen: String(needScreenOn) })}</p>
+          {s.identity_method === 'id' ? (
+            <div className="mt-5">
+              <p className="mb-1 text-sm font-medium">{tw('idPhoto')}</p>
+              <p className="mb-3 text-xs text-muted-foreground">{tw('idPhotoHelp')}</p>
+              <IdPhotoUpload userId={s.userId} hasPhoto={idPhoto} label={tw('idPhotoLabel')} onUploaded={() => setIdPhoto(true)} />
+            </div>
+          ) : null}
           <Button type="button" size="lg" className="mt-4 w-full" disabled={!photosOk} onClick={() => setStep(4)} data-testid="photos-next">
             {t('common.next')}
           </Button>
@@ -419,7 +487,7 @@ export function BookingWizard({
           <div className="mt-4 rounded-xl bg-muted/50 p-3">
             <KV k={tw('feeDelivery')} v={formatKes(fees.deliveryFeeCents)} />
             <KV k={tw('feeConsultation')} v={formatKes(fees.consultationCents)} />
-            {consultationCredited && consultationCents > 0 ? <p className="text-xs text-muted-foreground">{tw('feeConsultationCredit')}</p> : null}
+            {consultationCredited && feeForType > 0 ? <p className="text-xs text-muted-foreground">{tw('feeConsultationCredit')}</p> : null}
             <KV k={tw('feeTotal')} v={formatKes(fees.totalCents)} strong />
           </div>
           <label className="mt-4 flex items-start gap-3 text-sm">

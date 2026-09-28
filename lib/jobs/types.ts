@@ -28,6 +28,7 @@ export type JobRow = {
   accessories: string[];
   passcode_locked: boolean;
   passcode_shared: boolean;
+  identity_method: 'device' | 'id';
   declared_value_cents: number;
   pickup_address: Address | null;
   pickup_window_start: string | null;

@@ -1,4 +1,5 @@
 import { formatKes } from './core/money';
+import { consultationFeeFor } from './core/fees';
 import { MODEL_SUGGESTIONS } from './core/device-models';
 import type { DeviceType } from './core/device-id';
 import { cityOf, DEVICE_LABEL, enabledDevices, type PublicPart } from './public-data';
@@ -10,6 +11,14 @@ import type { Tenant } from './tenant';
  * The same list is rendered visibly on the page and as FAQPage structured data.
  */
 export type Faq = { q: string; a: string };
+
+/** "KES 500" when one fee applies to every device type, otherwise the range the shop actually charges. */
+export function describeConsultationFee(tenant: Tenant): string {
+  const fees = enabledDevices(tenant).map((d) => consultationFeeFor(tenant.settings, d));
+  const min = Math.min(...fees);
+  const max = Math.max(...fees);
+  return min === max ? formatKes(min) : `${formatKes(min)} to ${formatKes(max)} depending on the device`;
+}
 
 function fromPrice(parts: PublicPart[], family: string, match: RegExp): PublicPart | undefined {
   return parts.filter((p) => p.device_family === family && match.test(p.name)).sort((a, b) => a.default_price_cents - b.default_price_cents)[0];
@@ -32,7 +41,7 @@ export function generalFaqs(tenant: Tenant, parts: PublicPart[]): Faq[] {
     },
     {
       q: 'How much does the pickup cost?',
-      a: `The pickup fee is the courier fare for your address plus a ${formatKes(s.consultation_fee_cents)} diagnosis fee, shown before you pay.${s.consultation_fee_credited ? ' If you go ahead with the repair, the diagnosis fee is credited against it.' : ''}`,
+      a: `The pickup fee is the courier fare for your address plus a diagnosis fee of ${describeConsultationFee(tenant)}, shown before you pay.${s.consultation_fee_credited ? ' If you go ahead with the repair, the diagnosis fee is credited against it.' : ''}`,
     },
     ...(screen
       ? [{ q: `How much is an iPhone screen replacement in ${city}?`, a: `iPhone screen replacements at ${shop} start from ${formatKes(screen.default_price_cents)} (${screen.name}), including VAT. You get an itemised quote after diagnosis and nothing is done until you accept it.` }]

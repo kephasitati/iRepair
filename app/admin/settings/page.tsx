@@ -135,6 +135,17 @@ export default async function SettingsPage() {
           <Field label={t('consultationFee')} htmlFor="consultation_fee">
             <Input id="consultation_fee" name="consultation_fee" inputMode="numeric" defaultValue={s.consultation_fee_cents / 100} />
           </Field>
+          <div>
+            <p className="mb-1 text-sm font-medium">Consultation fee per device type</p>
+            <p className="mb-2 text-xs text-muted-foreground">Optional. Leave a type blank to charge the general fee above. Applies to new bookings.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {(s.device_types ?? DEFAULT_DEVICE_TYPES).map((d) => (
+                <Field key={d} label={tDev(d)} htmlFor={`fee_${d}`}>
+                  <Input id={`fee_${d}`} name={`fee_${d}`} inputMode="numeric" placeholder={String(s.consultation_fee_cents / 100)} defaultValue={s.consultation_fees?.[d] != null ? s.consultation_fees[d]! / 100 : ''} />
+                </Field>
+              ))}
+            </div>
+          </div>
           <CheckRow name="consultation_fee_credited" label={t('consultationCredited')} defaultChecked={s.consultation_fee_credited} />
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label={t('deposit')} htmlFor="deposit_kind">
