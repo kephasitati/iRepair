@@ -58,7 +58,7 @@ export function nextStep(status: JobStatus): NextStep {
     case 'final_payment_pending':
       return { who: 'customer', text: 'Customer pays the balance by M-Pesa, including delivery.' };
     case 'dispatch_pending':
-      return { who: 'admin', text: 'Paid in full. Pack the device, then request the TumaBoda rider.' };
+      return { who: 'admin', text: 'Paid. Pack the device, then request the TumaBoda rider.' };
     case 'return_requested':
       return { who: 'courier', text: 'TumaBoda is assigning a rider for the delivery.' };
     case 'rider_en_route_to_shop':

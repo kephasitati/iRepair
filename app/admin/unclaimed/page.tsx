@@ -16,7 +16,7 @@ export default async function UnclaimedPage() {
     select j.id, j.ref, j.status, j.device_brand, j.device_model, u.full_name, u.phone_e164,
       floor(extract(epoch from now() - (select max(e.created_at) from job_events e where e.job_id = j.id and e.event_kind = 'transition')) / 86400)::int as days
     from jobs j join users u on u.id = j.customer_user_id
-    where j.tenant_id = ${tenant.id} and j.status in ('repair_complete', 'final_payment_pending', 'ready_for_collection', 'return_failed', 'return_fee_pending', 'quote_expired')
+    where j.tenant_id = ${tenant.id} and j.status in ('repair_complete', 'final_payment_pending', 'dispatch_pending', 'ready_for_collection', 'return_failed', 'return_fee_pending', 'quote_expired')
     order by days desc`);
   return (
     <div className="mx-auto max-w-3xl space-y-4">

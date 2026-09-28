@@ -271,7 +271,7 @@ export async function settleZeroReturnFee(jobId: string) {
   await withService(async (tx) => {
     const [job] = (await tx`select status, return_fee_cents, dropoff_choice from jobs where id = ${jobId}`) as Pick<JobRow, 'status' | 'return_fee_cents' | 'dropoff_choice'>[];
     if (job?.status === 'return_fee_pending' && Number(job.return_fee_cents) === 0 && job.dropoff_choice && job.dropoff_choice !== 'collect_at_shop') {
-      await tx`select transition_job(${jobId}, 'return_requested', 'system', null, '{}')`;
+      await tx`select transition_job(${jobId}, 'dispatch_pending', 'system', null, '{}')`;
     }
   });
 }

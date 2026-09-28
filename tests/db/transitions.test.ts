@@ -161,7 +161,10 @@ describe('declined path', () => {
     expect(j.outcome).toBe('declined');
     await asService((tx) => tx`update jobs set return_fee_cents = 30000, dropoff_choice = 'pickup_address', dropoff_address = pickup_address where id = ${job}`);
     await paySuccess(job, s.tenantA, 'return_fee', 30000);
-    expect(await status(job)).toBe('return_requested');
+    // 0022: a paid return waits for a shop admin, like a repaired device.
+    expect(await status(job)).toBe('dispatch_pending');
+    await expect(transition(job, 'return_requested', 'technician', s.techA)).rejects.toThrow(/Illegal/);
+    await transition(job, 'return_requested', 'shop_admin', s.adminA);
     await transition(job, 'rider_en_route_to_shop', 'provider');
     await transition(job, 'collected_from_shop', 'technician', s.techA);
     await transition(job, 'delivered', 'provider');

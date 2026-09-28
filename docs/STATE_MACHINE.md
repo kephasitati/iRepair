@@ -70,7 +70,7 @@ stateDiagram-v2
 
     quote_declined --> return_fee_pending: S
 
-    return_fee_pending --> return_requested: S (return fee paid)
+    return_fee_pending --> dispatch_pending: S (return fee paid / zero / waived)
     return_fee_pending --> ready_for_collection: C/A (customer collects in person)
 
     deposit_pending --> in_repair: S (deposit paid)
@@ -84,7 +84,7 @@ stateDiagram-v2
     final_payment_pending --> dispatch_pending: S (balance paid)
     final_payment_pending --> repair_complete: C/A
 
-    dispatch_pending --> return_requested: S
+    dispatch_pending --> return_requested: A (shop admin requests the rider)
     dispatch_pending --> ready_for_collection: S
 
     return_requested --> rider_en_route_to_shop: P/S/T

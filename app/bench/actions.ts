@@ -263,7 +263,7 @@ export async function waiveReturnFeeAction(jobId: string): Promise<ActionResult<
     });
     await withService(async (tx) => {
       const [j] = await tx`select dropoff_choice from jobs where id = ${jobId}`;
-      if (j.dropoff_choice && j.dropoff_choice !== 'collect_at_shop') await tx`select transition_job(${jobId}, 'return_requested', 'system', null, ${tx.json({ reason: 'Return fee waived by shop' })})`;
+      if (j.dropoff_choice && j.dropoff_choice !== 'collect_at_shop') await tx`select transition_job(${jobId}, 'dispatch_pending', 'system', null, ${tx.json({ reason: 'Return fee waived by shop' })})`;
     });
     return null;
   });

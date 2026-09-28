@@ -79,7 +79,7 @@ insert into job_transitions (from_status, to_status, allowed_actors) values
   ('quote_expired', 'quote_sent', array['technician', 'shop_admin', 'platform_admin']::actor_kind[]),
   ('quote_expired', 'quote_declined', array['customer', 'shop_admin', 'platform_admin', 'system']::actor_kind[]),
   ('quote_declined', 'return_fee_pending', array['system']::actor_kind[]),
-  ('return_fee_pending', 'return_requested', array['system']::actor_kind[]),
+  ('return_fee_pending', 'dispatch_pending', array['system']::actor_kind[]),
   ('return_fee_pending', 'ready_for_collection', array['customer', 'shop_admin', 'platform_admin']::actor_kind[]),
   ('deposit_pending', 'in_repair', array['system']::actor_kind[]),
   ('deposit_pending', 'quote_declined', array['customer', 'shop_admin', 'platform_admin']::actor_kind[]),

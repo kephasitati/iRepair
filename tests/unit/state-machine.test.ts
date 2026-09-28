@@ -113,7 +113,14 @@ describe('role inheritance and key business rules', () => {
     expect(allowedActors('pickup_fee_pending', 'pickup_requested')).toEqual(['system']);
     expect(allowedActors('deposit_pending', 'in_repair')).toEqual(['system']);
     expect(allowedActors('final_payment_pending', 'dispatch_pending')).toEqual(['system']);
-    expect(allowedActors('return_fee_pending', 'return_requested')).toEqual(['system']);
+    expect(allowedActors('return_fee_pending', 'dispatch_pending')).toEqual(['system']);
+  });
+
+  it('a courier is only booked for a return after a shop admin releases the device', () => {
+    expect(allowedActors('return_fee_pending', 'return_requested')).toEqual([]);
+    expect(can('dispatch_pending', 'return_requested', 'shop_admin')).toBe(true);
+    expect(can('dispatch_pending', 'return_requested', 'technician')).toBe(false);
+    expect(can('dispatch_pending', 'return_requested', 'customer')).toBe(false);
   });
 
   it('customer can cancel for free only before pickup is requested, and may cancel a booked pickup', () => {

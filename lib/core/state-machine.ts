@@ -67,7 +67,8 @@ export const TRANSITIONS: Record<JobStatus, Partial<Record<JobStatus, EdgeActor[
   quote_negotiating: { quote_sent: [T], deposit_pending: [C, T], quote_declined: [C, A], quote_expired: [S] },
   quote_expired: { quote_sent: [T], quote_declined: [C, S, A] },
   quote_declined: { return_fee_pending: [S] },
-  return_fee_pending: { return_requested: [S], ready_for_collection: [C, A] },
+  // A paid (or zero / waived) return waits in dispatch_pending for a shop admin, like a repaired device.
+  return_fee_pending: { dispatch_pending: [S], ready_for_collection: [C, A] },
   deposit_pending: { in_repair: [S], quote_declined: [C, A] },
   in_repair: { repair_complete: [T], return_fee_pending: [A] },
   repair_complete: { final_payment_pending: [C, A] },

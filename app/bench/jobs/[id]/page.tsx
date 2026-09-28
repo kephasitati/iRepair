@@ -437,11 +437,11 @@ async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; t
           <div className="mt-4">
             {isAdmin ? (
               <>
-                <p className="mb-3 text-xs text-muted-foreground">The customer has paid for the repair and the delivery. Pack the device, then request the rider — TumaBoda assigns one and they come to the shop.</p>
+                <p className="mb-3 text-xs text-muted-foreground">{job.outcome === 'repaired' ? 'The customer has paid for the repair and the delivery.' : 'The return delivery is settled (paid, or the fee was waived).'} Pack the device, then request the rider — TumaBoda assigns one and they come to the shop.</p>
                 <RequestDispatch jobId={job.id} />
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">Paid in full. Waiting for a shop admin to request the TumaBoda rider.</p>
+              <p className="text-sm text-muted-foreground">Paid. Waiting for a shop admin to request the TumaBoda rider.</p>
             )}
           </div>
         </Section>

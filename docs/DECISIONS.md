@@ -290,4 +290,13 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   a profile card (@handle, Follow) whenever the shop has an Instagram link, with any chosen posts below it. Also:
   0020's Place ID check used a regex bound of 300, above Postgres's 255 limit, so saving any Place ID failed —
   0021 replaces the check. Primefix's Google Place ID (verified against its Maps listing) and map pin are set.
+- **D-39 Declined / cancelled returns are gated too.** The user confirmed ("yes, gate declined returns too"). A
+  device going back unrepaired now also waits in `dispatch_pending` once its return fee is paid, zero, or waived by
+  the shop, and a shop admin requests the rider — the same button and screen as D-34. Migration 0022 replaces the
+  `return_fee_pending → return_requested` edge with `return_fee_pending → dispatch_pending`, lets the dispatch guard
+  accept a paid return fee (there is no repair invoice on this path), and makes `confirm_payment` route a paid
+  return fee to `dispatch_pending`. A failed delivery being rebooked (`return_failed → return_requested`) is
+  unchanged: the device was already released once. Devices waiting for dispatch now also appear under Unclaimed so
+  a paid device can't be forgotten. Verified: unit + DB tests (189), and in the browser on the demo shop (waive →
+  Ready to dispatch → Request rider → courier booking queued only after the click).
 
