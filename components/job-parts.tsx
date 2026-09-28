@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { Phone } from 'lucide-react';
+import { MapPin, Phone } from 'lucide-react';
 import { CUSTOMER_STEPS, type JobStatus } from '@/lib/core/state-machine';
 import { formatKes } from '@/lib/core/money';
 import { formatDateTime } from '@/lib/core/time';
@@ -107,7 +107,14 @@ export async function RiderCard({ delivery }: { delivery: DeliveryRow }) {
         </div>
       )}
       {delivery.tracking_url ? (
-        <a href={delivery.tracking_url} target="_blank" className="link-more inline-block text-[15px]">
+        <a
+          href={delivery.tracking_url}
+          target="_blank"
+          rel="noopener"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-mpesa text-[15px] font-medium text-white active:scale-[.98]"
+          data-testid="track-live"
+        >
+          <MapPin className="size-4" />
           {t('trackingOpen')}
         </a>
       ) : null}

@@ -111,7 +111,12 @@ describe('happy path: book -> pay -> pickup -> intake -> quote -> deposit -> rep
     await proforma(job, 1_565_000);
     await transition(job, 'final_payment_pending', 'customer', s.customer1);
     await paySuccess(job, s.tenantA, 'final_balance', 1_565_000 - 830_000);
-    // dispatch_pending is momentary; the job should already be on the return leg.
+    // Paid in full: delivery now waits for a shop admin to request the rider (0020); no courier is booked yet.
+    expect(await status(job)).toBe('dispatch_pending');
+    const booked = await service`select count(*)::int as n from outbox where kind = 'delivery.create' and payload ->> 'job_id' = ${job} and payload ->> 'leg' = 'return'`;
+    expect(booked[0].n).toBe(0);
+    await expect(transition(job, 'return_requested', 'technician', s.techA)).rejects.toThrow(/not allowed|Illegal|actor/i);
+    await transition(job, 'return_requested', 'shop_admin', s.adminA);
     expect(await status(job)).toBe('return_requested');
     const [inv] = await service`select status, number, balance_cents from invoices where job_id = ${job}`;
     expect(inv.status).toBe('issued');

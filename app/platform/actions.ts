@@ -75,8 +75,11 @@ export async function addDomainAction(tenantId: string, fd: FormData) {
   const admin = await requirePlatformAdmin();
   const host = str(fd, 'hostname').toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   if (!/^[a-z0-9.-]+(:\d+)?$/.test(host)) return;
-  await servicePool()`insert into tenant_domains (hostname, tenant_id, kind) values (${host}, ${tenantId}, 'custom') on conflict do nothing`;
-  await platformAudit(admin.user.id, tenantId, 'tenant.domain.add', { host });
+  const landing = ['/', '/shop', '/about'].includes(str(fd, 'landing_path')) ? str(fd, 'landing_path') : '/';
+  await servicePool()`insert into tenant_domains (hostname, tenant_id, kind, landing_path) values (${host}, ${tenantId}, 'custom', ${landing})
+    on conflict (hostname) do update set landing_path = excluded.landing_path where tenant_domains.tenant_id = ${tenantId}`;
+  invalidateTenantCache(host);
+  await platformAudit(admin.user.id, tenantId, 'tenant.domain.add', { host, landing });
   revalidatePath(`/platform/tenants/${tenantId}`);
 }
 

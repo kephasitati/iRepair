@@ -89,12 +89,17 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
           <ul className="mb-3 space-y-1 text-sm">
             {domains.map((d) => (
               <li key={d.hostname}>
-                {d.hostname} <span className="text-xs text-muted-foreground">({d.kind}{d.is_primary ? ', primary' : ''}{d.verified_at ? ', verified' : ', DNS pending'})</span>
+                {d.hostname} <span className="text-xs text-muted-foreground">({d.kind}{d.is_primary ? ', primary' : ''}{d.verified_at ? ', verified' : ', DNS pending'}{d.landing_path && d.landing_path !== '/' ? `, opens ${d.landing_path}` : ''})</span>
               </li>
             ))}
           </ul>
           <form action={addDomainAction.bind(null, id)} className="flex gap-2">
             <Input name="hostname" placeholder="repairs.shopname.co.ke" />
+            <select name="landing_path" defaultValue="/" className="rounded-md border bg-background px-2 text-sm" aria-label="Opens on">
+              <option value="/">Opens home</option>
+              <option value="/shop">Opens Shop</option>
+              <option value="/about">Opens About</option>
+            </select>
             <Button type="submit" variant="outline">
               Add
             </Button>

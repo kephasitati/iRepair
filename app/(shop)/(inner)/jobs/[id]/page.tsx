@@ -337,6 +337,16 @@ async function NextStep({ v, tenant, simulator, phone, t }: { v: JobView; tenant
         </Section>
       );
     case 'dispatch_pending':
+      return (
+        <Section title={t('job.tracking')}>
+          <div className="flex items-start gap-3 rounded-[16px] bg-canvas p-4 text-[15px]" data-testid="awaiting-dispatch">
+            <span className="pulse-green mt-1.5 size-3 shrink-0 rounded-full bg-mpesa" />
+            <span>
+              Payment received — thank you. The shop is packing your device and will book your TumaBoda rider shortly. You&apos;ll get a message with the rider&apos;s details and a live tracking link.
+            </span>
+          </div>
+        </Section>
+      );
     case 'return_requested':
     case 'rider_en_route_to_shop':
       return (

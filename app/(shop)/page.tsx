@@ -7,9 +7,11 @@ import { DeviceIcon } from '@/components/device-icon';
 import { FaqList, JsonLd } from '@/components/seo-bits';
 import { DEFAULT_DEVICE_TYPES } from '@/lib/core/device-id';
 import { generalFaqs } from '@/lib/faq';
-import { getPublishedCatalogue, getRatingSummary, getTenantFaqs, groupByCategory } from '@/lib/public-data';
+import { getPublishedCatalogue, getRatingSummary, getTenantFaqs } from '@/lib/public-data';
+import { PriceGroups } from '@/components/price-groups';
 import { faqJsonLd, localBusinessJsonLd, pageMetadata } from '@/lib/seo';
 import { requireTenant } from '@/lib/tenant';
+import { redirect } from 'next/navigation';
 import { formatKenyanPhone } from '@/lib/core/phone';
 import { formatKes } from '@/lib/core/money';
 import { WEEKDAYS } from '@/lib/core/time';
@@ -27,6 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Apple product-page style landing: dark immersive hero, generous tiles, one primary action. */
 export default async function Landing() {
   const [tenant, session, t] = await Promise.all([requireTenant(), getSession(), getTranslations()]);
+  // A shop's retail domain (e.g. its parts store) opens straight on the Shop page.
+  if (tenant.landingPath !== '/' && (tenant.landingPath !== '/shop' || tenant.settings.shop_page)) redirect(tenant.landingPath);
   const [parts, rating] = await Promise.all([
     tenant.settings.publish_price_list ? getPublishedCatalogue(tenant.id) : Promise.resolve([]),
     getRatingSummary(tenant.id),
@@ -165,19 +169,9 @@ export default async function Landing() {
               {families.map((f) => (
                 <div key={f} className="tile mb-4 break-inside-avoid p-6">
                   <p className="eyebrow">{f === 'iphone' ? 'iPhone' : f === 'macbook' ? 'MacBook' : f === 'ipad' ? 'iPad' : f === 'imac' ? 'iMac' : f === 'apple_watch' ? 'Apple Watch' : f === 'other' ? 'Services' : f.replace('_', ' ')}</p>
-                  {groupByCategory(parts.filter((p) => ((p.device_family as string | null) ?? 'other') === f)).map((g, i, all) => (
-                    <div key={g.category} className={i ? 'mt-4' : ''}>
-                      {all.length > 1 || g.category !== 'Other' ? <p className="mt-3 text-[13px] font-semibold tracking-wide text-ink-3 uppercase">{g.category}</p> : null}
-                      <ul className="incl mt-2 text-[15px]">
-                        {g.items.map((p) => (
-                          <li key={p.name}>
-                            <span>{p.name}</span>
-                            <span className="shrink-0 font-medium tabular-nums">{formatKes(Number(p.default_price_cents))}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                  <div className="mt-2">
+                    <PriceGroups parts={parts.filter((p) => ((p.device_family as string | null) ?? 'other') === f)} />
+                  </div>
                 </div>
               ))}
             </div>

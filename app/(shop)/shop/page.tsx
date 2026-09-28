@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { JsonLd } from '@/components/seo-bits';
 import { formatKes } from '@/lib/core/money';
 import { DEVICE_LABEL, cityOf, getListedProducts, productImageSrc, type PublicProduct } from '@/lib/public-data';
@@ -50,7 +51,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     const s = p.toString();
     return `/shop${s ? `?${s}` : ''}`;
   };
-  const chip = (active: boolean) => `rounded-full px-4 py-1.5 text-[14px] transition-colors ${active ? 'text-white' : 'bg-canvas hover:bg-fill'}`;
+  const chip = (active: boolean) => `shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors ${active ? 'text-white' : 'bg-canvas hover:bg-fill'}`;
   const chipStyle = (active: boolean) => (active ? { background: 'var(--primary)' } : undefined);
 
   return (
@@ -81,13 +82,24 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         </div>
       ) : null}
       {categories.length > 1 ? (
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1 text-ink-2 sm:flex-wrap sm:justify-center">
-          {categories.map((cat) => (
-            <Link key={cat} href={href({ c: c === cat ? undefined : cat, page: '1' })} className={`${chip(c === cat)} text-[13px]`} style={chipStyle(c === cat)}>
-              {cat}
-            </Link>
-          ))}
-        </div>
+        <details className="group mx-auto mt-3 max-w-3xl" data-testid="shop-categories">
+          <summary className="mx-auto flex w-fit cursor-pointer list-none items-center gap-2 rounded-full bg-canvas px-4 py-1.5 text-[14px] hover:bg-fill [&::-webkit-details-marker]:hidden">
+            {c ? <>Category: <span className="font-semibold">{c}</span></> : <>Categories ({categories.length})</>}
+            <ChevronDown className="size-4 transition-transform duration-300 group-open:rotate-180" />
+          </summary>
+          <div className="mt-3 flex flex-wrap justify-center gap-2 text-ink-2">
+            {c ? (
+              <Link href={href({ c: undefined, page: '1' })} className={`${chip(false)} text-[13px]`}>
+                All categories
+              </Link>
+            ) : null}
+            {categories.map((cat) => (
+              <Link key={cat} href={href({ c: c === cat ? undefined : cat, page: '1' })} className={`${chip(c === cat)} text-[13px]`} style={chipStyle(c === cat)}>
+                {cat}
+              </Link>
+            ))}
+          </div>
+        </details>
       ) : null}
 
       {items.length ? (

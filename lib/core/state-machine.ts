@@ -72,7 +72,8 @@ export const TRANSITIONS: Record<JobStatus, Partial<Record<JobStatus, EdgeActor[
   in_repair: { repair_complete: [T], return_fee_pending: [A] },
   repair_complete: { final_payment_pending: [C, A] },
   final_payment_pending: { dispatch_pending: [S], repair_complete: [C, A] },
-  dispatch_pending: { return_requested: [S], ready_for_collection: [S] },
+  // Delivery waits here until a shop admin requests the rider (the device is packed and ready); collection is automatic.
+  dispatch_pending: { return_requested: [S, A], ready_for_collection: [S] },
   // The technician may confirm the rider's arrival at the counter by scanning before the courier reports it.
   return_requested: { rider_en_route_to_shop: [P, S, T], return_failed: [P, S, A] },
   rider_en_route_to_shop: { collected_from_shop: [T], return_failed: [P, S, A] },

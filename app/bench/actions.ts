@@ -233,6 +233,24 @@ export async function cancelJobAction(jobId: string, reason: string): Promise<Ac
   return r;
 }
 
+/**
+ * Shop admin confirms a paid, repaired device is packed and ready: moves it to return_requested, whose outbox
+ * side effect books the TumaBoda rider for the return leg (quoted when the customer chose drop-off).
+ */
+export async function requestDispatchAction(jobId: string): Promise<ActionResult<null>> {
+  const r = await run(async () => {
+    const { ctx, userId } = await staff('shop_admin');
+    await withUser(ctx, async (tx) => {
+      const job = await loadJob(tx, jobId);
+      if (job.status !== 'dispatch_pending') throw new UserError('This device is not waiting for dispatch.');
+      await tx`select transition_job(${jobId}, 'return_requested', 'shop_admin', ${userId}, ${tx.json({ reason: 'Dispatch requested by shop' })})`;
+    });
+    return null;
+  });
+  done(jobId);
+  return r;
+}
+
 /** Shop admin waives the return fee (e.g. the shop cancelled, or a dispute was resolved in the customer's favour). */
 export async function waiveReturnFeeAction(jobId: string): Promise<ActionResult<null>> {
   const r = await run(async () => {

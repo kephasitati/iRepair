@@ -18,6 +18,7 @@ import {
   PasscodeReveal,
   ProgressForm,
   QuoteBuilder,
+  RequestDispatch,
   ShopMessageBox,
   WaiveReturnFee,
   WarrantyEdit,
@@ -30,6 +31,8 @@ import { formatDate, formatDateTime } from '@/lib/core/time';
 import { withUser } from '@/lib/db';
 import { loadJobView, type JobView } from '@/lib/jobs/view';
 import { ID_KIND_LABEL } from '@/lib/core/identity';
+import { nextStep, WHO_LABEL } from '@/lib/core/workflow';
+import { StaffStepper } from '@/components/staff-stepper';
 import { getCustomerIdSummary } from '@/lib/customer-ids';
 import type { Tenant } from '@/lib/tenant';
 
@@ -71,6 +74,20 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
         </div>
         <StatusBadge status={s} />
       </div>
+
+      <StaffStepper status={s} />
+      {(() => {
+        const n = nextStep(s);
+        const mine = n.who === 'shop' || (n.who === 'admin' && isAdmin);
+        return n.who === 'none' ? null : (
+          <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${mine ? 'border-primary/40 bg-primary/5' : 'bg-muted/40'}`} data-testid="next-step">
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${mine ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+              {n.who === 'admin' && !isAdmin ? 'Admin' : WHO_LABEL[n.who]}
+            </span>
+            <span>{n.text}</span>
+          </div>
+        );
+      })()}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-4">
@@ -408,7 +425,28 @@ async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; t
           ) : null}
         </Section>
       );
-    case 'dispatch_pending':
+    case 'dispatch_pending': {
+      const drop = job.dropoff_address ?? job.pickup_address;
+      return (
+        <Section title="Ready to dispatch" className="border-primary/40">
+          <div className="divide-y text-sm">
+            <KV k="Deliver to" v={<span className="text-right">{[drop?.formatted, drop?.building_floor, drop?.landmark].filter(Boolean).join(' · ') || '—'}</span>} />
+            {job.dropoff_window_start ? <KV k="Customer's window" v={`${formatDateTime(job.dropoff_window_start)}${job.dropoff_window_end ? ` – ${formatDateTime(job.dropoff_window_end).split(' ').at(-1)}` : ''}`} /> : null}
+            <KV k="Delivery fee (paid)" v={formatKes(job.return_fee_cents)} />
+          </div>
+          <div className="mt-4">
+            {isAdmin ? (
+              <>
+                <p className="mb-3 text-xs text-muted-foreground">The customer has paid for the repair and the delivery. Pack the device, then request the rider — TumaBoda assigns one and they come to the shop.</p>
+                <RequestDispatch jobId={job.id} />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Paid in full. Waiting for a shop admin to request the TumaBoda rider.</p>
+            )}
+          </div>
+        </Section>
+      );
+    }
     case 'return_requested':
     case 'rider_en_route_to_shop':
       return (

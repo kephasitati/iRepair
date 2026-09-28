@@ -88,7 +88,7 @@ insert into job_transitions (from_status, to_status, allowed_actors) values
   ('repair_complete', 'final_payment_pending', array['customer', 'shop_admin', 'platform_admin']::actor_kind[]),
   ('final_payment_pending', 'dispatch_pending', array['system']::actor_kind[]),
   ('final_payment_pending', 'repair_complete', array['customer', 'shop_admin', 'platform_admin']::actor_kind[]),
-  ('dispatch_pending', 'return_requested', array['system']::actor_kind[]),
+  ('dispatch_pending', 'return_requested', array['shop_admin', 'platform_admin', 'system']::actor_kind[]),
   ('dispatch_pending', 'ready_for_collection', array['system']::actor_kind[]),
   ('ready_for_collection', 'closed', array['technician', 'shop_admin', 'platform_admin']::actor_kind[]),
   ('ready_for_collection', 'declined_returned', array['technician', 'shop_admin', 'platform_admin']::actor_kind[]),

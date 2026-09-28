@@ -326,7 +326,7 @@
     "title": "Repair {ref}",
     "timeline": "Timeline",
     "tracking": "Track the rider",
-    "trackingOpen": "Open live tracking",
+    "trackingOpen": "Track live on TumaBoda",
     "rider": "Rider",
     "scanRider": "Scan rider's QR code",
     "scanRiderHelp": "Ask the rider to show their QR code, then point your camera at it.",

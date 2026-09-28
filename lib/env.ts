@@ -41,6 +41,8 @@ const schema = z.object({
   SMTP_FROM: z.string().default('no-reply@localhost'),
 
   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
+  /** Server-side key with the Places API (New) enabled — shows a shop's Google reviews on its About page. Optional. */
+  GOOGLE_PLACES_API_KEY: z.string().optional(),
   OTP_DEV_CODE: z.string().optional(),
 });
 

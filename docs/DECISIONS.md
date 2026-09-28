@@ -250,4 +250,35 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   own test scripts (a navigation mid-script, a stale error read). Not checkable without a camera or a real
   handover: the QR scanner's camera path and the job page's state transitions — those are covered by the
   Playwright happy path, which drives them through the same server actions.
+- **D-34 Dispatch waits for a shop admin (state-machine change).** Asked for by the user; options put to them before
+  building because it changes a transition. Chosen: *one payment, admin gate* — the customer still picks drop-off
+  and pays repair + delivery in one M-Pesa payment, but the repaired device now stops in `dispatch_pending` instead
+  of booking the courier instantly; a shop admin (or platform support) presses "Request TumaBoda rider" once it is
+  packed, which moves it to `return_requested` and the outbox books the rider as before. Collection at the shop is
+  still automatic. Technicians see the job but can't release it. Migration 0020 updates `job_transitions` and
+  redefines `transition_job` (the only change: `dispatch_pending` is no longer momentary for delivery); 0002 was
+  regenerated from the TS table by `npm run gen:state-machine` as the project's guard test requires, so fresh and
+  migrated databases agree. The declined/cancelled return path (return fee paid → rider booked) is unchanged — say
+  if that should be gated too. Customers see "Payment received — the shop is packing your device"; staff see the
+  delivery address, window and paid delivery fee. Covered by the DB transition test and the Playwright happy path.
+- **D-35 Staff workflow and navigation, phone-first.** Every bench job now shows a stage bar (Pickup → Intake →
+  Diagnose → Quote → Deposit → Repair → Payment → Dispatch → Delivery → Done) and a "next step" banner saying whose
+  move it is (you / admin / customer / TumaBoda) in plain words (`lib/core/workflow.ts`). The phone bottom bar was
+  broken by D-32 (five items in a four-column grid) and never gave admins Products, Staff, Refunds etc. on a phone:
+  it is now Board · Scanner · Customers · Menu, with a Menu page listing every screen, and the current screen is
+  highlighted in both bars.
+- **D-36 Public pages on a phone.** The price list shows each category as a collapsed row ("Screen Replacement ·
+  61 items · from KES 2,500") on the landing and device pages; the Shop's 30-odd category chips sit behind one
+  "Categories" toggle and no longer wrap mid-word. Fixed in passing: price-list rows were keyed by product name, and
+  Primefix has duplicate names, so React could drop rows. Live tracking: the rider card's link is now a full-width
+  "Track live on TumaBoda" button opening the courier's own tracking URL (the mock courier's is local).
+  Swept every public and staff page at 375 px: no horizontal overflow.
+- **D-37 Extra domains with their own landing page; Google reviews.** `tenant_domains.landing_path` lets a domain
+  open a specific page — for Primefix, primefixke.com → home and phoneparts.co.ke → Shop (the user: "leave it
+  Primefix for now", i.e. both are Primefix). Set from the platform console or `scripts/add-domain.ts` (which also
+  registers `www.`); the domains still need DNS pointed at the server and rows in Dokploy, and pointing
+  primefixke.com replaces the current WordPress site. Google reviews on About, after Instagram: shop enters its
+  Google Place ID; with a server `GOOGLE_PLACES_API_KEY` (Places API New) the page shows the rating, count and up to
+  five recent reviews with Google's attribution, refreshed at most every six hours; without a key it still shows
+  "Read all reviews" / "Write a review" links. Primefix's Instagram set to its real profile.
 

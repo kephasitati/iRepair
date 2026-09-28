@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { InstagramEmbeds } from '@/components/instagram-embeds';
+import { GoogleReviews } from '@/components/google-reviews';
 import { JsonLd } from '@/components/seo-bits';
 import { WhatsAppLink } from '@/components/whatsapp';
 import { formatKenyanPhone } from '@/lib/core/phone';
@@ -105,6 +106,15 @@ export default async function AboutPage() {
           <h2 className="display text-[28px] sm:text-[40px]">On Instagram</h2>
           <div className="mt-6">
             <InstagramEmbeds posts={b.instagram_posts} profileUrl={instagram?.url} />
+          </div>
+        </section>
+      ) : null}
+
+      {b.google_place_id ? (
+        <section className="mt-12">
+          <h2 className="display text-[28px] sm:text-[40px]">What customers say</h2>
+          <div className="mt-6">
+            <GoogleReviews placeId={b.google_place_id} shopName={b.display_name} />
           </div>
         </section>
       ) : null}

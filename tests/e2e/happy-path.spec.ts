@@ -4,7 +4,7 @@ import { activeDeliveryId, addPhoto, customerLogin, jobStatus, mock, payWithSimu
 /**
  * The critical customer journey, end to end, on a 360 px phone:
  * book -> pay pickup fee -> hand over at the door (QR) -> received at the bench (QR) -> intake -> quote ->
- * counter-offer -> technician accepts -> deposit -> repair -> complete -> choose drop-off -> final balance ->
+ * counter-offer -> technician accepts -> deposit -> repair -> complete -> choose drop-off -> final balance -> admin requests rider ->
  * dispatch (QR) -> delivered (QR) -> rate -> closed, with the tax invoice issued.
  */
 test.use({ viewport: { width: 360, height: 760 } });
@@ -26,7 +26,7 @@ test('customer happy path from booking to closed', async ({ browser, request }) 
   await c.getByLabel('Model').fill('iPhone 13');
   await c.getByLabel('What is wrong with it?').fill('Cracked screen after a fall, touch works.');
   await c.getByRole('button', { name: 'Next', exact: true }).click();
-  await c.getByLabel('IMEI or serial number').fill('490154203237518');
+  await c.getByLabel('IMEI or serial number', { exact: true }).fill('490154203237518');
   await c.getByRole('button', { name: 'Next', exact: true }).click();
 
   await addPhoto(c, 'Front *');
@@ -121,7 +121,20 @@ test('customer happy path from booking to closed', async ({ browser, request }) 
   const [inv] = await sql`select total_cents, paid_cents, balance_cents from invoices i join jobs j on j.id = i.job_id where j.ref = ${ref} and i.status = 'proforma'`;
   expect(Number(inv.balance_cents)).toBe(Number(inv.total_cents) - Number(inv.paid_cents));
   await payWithSimulator(c);
+  // Paid in full: the device waits for a shop admin to request the TumaBoda rider.
+  await expect.poll(() => jobStatus(ref)).toBe('dispatch_pending');
+  await c.reload();
+  await expect(c.getByTestId('awaiting-dispatch')).toBeVisible();
+  const adminCtx = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 390, height: 844 } });
+  await presetConsent(adminCtx);
+  const admin = await adminCtx.newPage();
+  await staffLogin(admin, 'admin@demo.test');
+  const [{ id: jobId }] = await sql`select id from jobs where ref = ${ref}`;
+  await admin.goto(`/bench/jobs/${jobId}`);
+  await expect(admin.getByTestId('next-step')).toContainText('request the TumaBoda rider');
+  await admin.getByTestId('request-dispatch').click();
   await expect.poll(() => jobStatus(ref)).toBe('return_requested');
+  await adminCtx.close();
   const [issued] = await sql`select number, balance_cents from invoices i join jobs j on j.id = i.job_id where j.ref = ${ref} and i.status = 'issued'`;
   expect(issued.number).toMatch(/^INV-\d{4}-\d{6}$/);
   expect(Number(issued.balance_cents)).toBe(0);

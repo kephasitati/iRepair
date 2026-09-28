@@ -8,7 +8,8 @@ import { FaqList, JsonLd } from '@/components/seo-bits';
 import { DEVICE_TYPES, type DeviceType } from '@/lib/core/device-id';
 import { formatKes } from '@/lib/core/money';
 import { deviceFaqs } from '@/lib/faq';
-import { enabledDevices, getPublishedCatalogue, groupByCategory, DEVICE_LABEL, cityOf } from '@/lib/public-data';
+import { enabledDevices, getPublishedCatalogue, DEVICE_LABEL, cityOf } from '@/lib/public-data';
+import { PriceGroups } from '@/components/price-groups';
 import { breadcrumbJsonLd, deviceServiceJsonLd, faqJsonLd, pageMetadata } from '@/lib/seo';
 import { requireTenant } from '@/lib/tenant';
 
@@ -112,20 +113,8 @@ export default async function DeviceRepairPage({ params }: { params: Promise<Par
           <section className="pt-6">
             <h2 className="display text-center text-[32px] sm:text-[48px]">{label} repair prices</h2>
             <p className="mt-2 text-center text-[17px] text-ink-3">{t('pricesNote')}</p>
-            <div className="mt-8 gap-4 md:columns-2">
-              {groupByCategory(parts).map((g) => (
-                <div key={g.category} className="tile mb-4 break-inside-avoid p-6">
-                  <p className="eyebrow">{g.category}</p>
-                  <ul className="incl mt-3 text-[15px]">
-                    {g.items.map((p) => (
-                      <li key={p.name}>
-                        <span>{p.name}</span>
-                        <span className="shrink-0 font-medium tabular-nums">{formatKes(p.default_price_cents)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+            <div className="tile mt-8 px-6 py-3">
+              <PriceGroups parts={parts} openFirst />
             </div>
           </section>
         ) : null}

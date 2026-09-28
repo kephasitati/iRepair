@@ -19,6 +19,8 @@ export type Tenant = {
   status: 'active' | 'suspended';
   hostname: string;
   baseUrl: string;
+  /** Where this hostname's home page sends visitors ('/' normally; a retail domain can open '/shop'). */
+  landingPath: '/' | '/shop' | '/about';
   branding: {
     display_name: string;
     tagline: string | null;
@@ -31,6 +33,7 @@ export type Tenant = {
     about: string | null;
     social_links: Partial<Record<'instagram' | 'facebook' | 'tiktok' | 'x' | 'youtube' | 'website', string>>;
     instagram_posts: string[];
+    google_place_id: string | null;
   };
   settings: {
     contact_phone: string;
@@ -89,7 +92,7 @@ export async function loadTenantByHost(hostname: string): Promise<Tenant | null>
   if (hit && Date.now() - hit.at < TTL_MS) return hit.value;
   const sql = servicePool();
   const rows = await sql`
-    select t.id, t.slug, t.name, t.status, d.hostname,
+    select t.id, t.slug, t.name, t.status, d.hostname, d.landing_path,
            row_to_json(b.*) as branding, row_to_json(s.*) as settings
     from tenant_domains d
     join tenants t on t.id = d.tenant_id
@@ -107,7 +110,7 @@ export async function loadTenantByHost(hostname: string): Promise<Tenant | null>
     ]);
     settings.quiet_hours_start = String(settings.quiet_hours_start).slice(0, 5);
     settings.quiet_hours_end = String(settings.quiet_hours_end).slice(0, 5);
-    value = { id: r.id, slug: r.slug, name: r.name, status: r.status, hostname, baseUrl: `${scheme}://${hostname}`, branding: r.branding, settings };
+    value = { id: r.id, slug: r.slug, name: r.name, status: r.status, hostname, baseUrl: `${scheme}://${hostname}`, landingPath: r.landing_path ?? '/', branding: r.branding, settings };
   }
   memo.set(hostname, { at: Date.now(), value });
   return value;

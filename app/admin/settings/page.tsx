@@ -84,6 +84,21 @@ export default async function SettingsPage() {
               ))}
             </div>
           </div>
+          <Field
+            label="Google Business Profile — Place ID"
+            htmlFor="google_place_id"
+            hint={
+              <>
+                Shows your Google rating and reviews on the About page. Find it with{' '}
+                <a className="underline" href="https://developers.google.com/maps/documentation/places/web-service/place-id#find-id" target="_blank" rel="noopener">
+                  Google&apos;s Place ID finder
+                </a>{' '}
+                (starts with “ChIJ”).
+              </>
+            }
+          >
+            <Input id="google_place_id" name="google_place_id" defaultValue={b.google_place_id ?? ''} placeholder="ChIJ…" autoComplete="off" />
+          </Field>
           <Field label="Instagram posts to show on the About page" htmlFor="instagram_posts" hint="One post or reel link per line (up to 12). Visitors see them after choosing to load Instagram content.">
             <Textarea id="instagram_posts" name="instagram_posts" rows={4} defaultValue={(b.instagram_posts ?? []).join('\n')} placeholder="https://www.instagram.com/p/…" />
           </Field>

@@ -30,6 +30,7 @@ import {
   setWarrantyAction,
   shopMessageAction,
   waiveReturnFeeAction,
+  requestDispatchAction,
 } from '@/app/bench/actions';
 
 type Res = { ok: boolean; error?: string };
@@ -530,6 +531,18 @@ export function AdminCancel({ jobId }: { jobId: string }) {
           Back
         </Button>
       </div>
+    </div>
+  );
+}
+
+export function RequestDispatch({ jobId }: { jobId: string }) {
+  const { pending, error, act } = useAct();
+  return (
+    <div className="space-y-1">
+      <Button size="lg" className="w-full sm:w-auto" disabled={pending} onClick={() => act(() => requestDispatchAction(jobId), 'Rider requested on TumaBoda')} data-testid="request-dispatch">
+        {pending ? 'Requesting…' : 'Request TumaBoda rider'}
+      </Button>
+      <ErrorText>{error}</ErrorText>
     </div>
   );
 }
