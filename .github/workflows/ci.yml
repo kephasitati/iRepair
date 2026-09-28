@@ -41,11 +41,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      # Non-blocking for now: there's a pre-existing backlog of ~16 lint errors (mostly react-hooks rules in
-      # photo-capture.tsx and qr-scanner.tsx — see HANDOVER-1.md) that predate this workflow. Once that's cleared,
-      # drop `continue-on-error` so lint actually gates merges.
       - run: npm run lint
-        continue-on-error: true
+      - run: npm run format:check
 
   unit-and-db-tests:
     runs-on: ubuntu-latest
