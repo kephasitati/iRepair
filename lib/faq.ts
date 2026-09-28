@@ -33,7 +33,7 @@ export function generalFaqs(tenant: Tenant, parts: PublicPart[]): Faq[] {
   const faqs: Faq[] = [
     {
       q: `Do I have to bring my device to ${shop}?`,
-      a: `No. A TumaBoda rider collects your device from your door${s.service_zones.length ? ` in ${s.service_zones.slice(0, 6).join(", ")}${s.service_zones.length > 6 ? " and more" : ""}` : ` in ${city}`}, and returns it after the repair. You can also collect it from our workshop at ${s.address_formatted}.`,
+      a: `No. A TumaBoda rider collects your device from your door${s.service_zones.length ? ` in ${s.service_zones.slice(0, 6).join(", ")}${s.service_zones.length > 6 ? " and more" : ""}` : ` in ${city}`}, and returns it after the repair. You can also walk in to our workshop at ${s.address_formatted}, or collect it from there.`,
     },
     {
       q: `Which devices does ${shop} repair?`,

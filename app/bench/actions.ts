@@ -1,8 +1,12 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requestCtx, requireStaff } from "@/lib/auth";
-import { run, type ActionResult } from "@/lib/actions";
+import { kesField, run, str, type ActionResult } from "@/lib/actions";
+import { CASH_PURPOSES, type CashPurpose } from "@/lib/core/walk-in";
+import { initiateStkPayment, recordCashPayment, STK_FAILURE_COPY } from "@/lib/jobs/payments";
+import { createWalkIn, resendWalkInLink } from "@/lib/jobs/walk-in";
 import { audit } from "@/lib/audit";
 import { safeEqual } from "@/lib/core/crypto";
 import { withService, withUser } from "@/lib/db";
@@ -25,7 +29,8 @@ import { UserError } from "@/lib/jobs/types";
 async function staff(min: "technician" | "shop_admin" = "technician") {
   const { session, tenant, role } = await requireStaff(min);
   const ctx = await requestCtx();
-  const actor = session.user.is_platform_admin && session.impersonatingTenantId === tenant.id ? "platform_admin" : role;
+  const actor: "technician" | "shop_admin" | "platform_admin" =
+    session.user.is_platform_admin && session.impersonatingTenantId === tenant.id ? "platform_admin" : role;
   return { session, tenant, role, ctx, userId: session.user.id, actor, impersonatedBy: actor === "platform_admin" ? session.user.id : null };
 }
 
@@ -353,6 +358,77 @@ export async function setWarrantyAction(jobId: string, until: string): Promise<A
       });
     });
     return null;
+  });
+  done(jobId);
+  return r;
+}
+
+// ---------------------------------------------------------------------------
+// Walk-ins and payments at the counter (D-42)
+// ---------------------------------------------------------------------------
+export async function createWalkInAction(_prev: unknown, fd: FormData): Promise<ActionResult<{ jobId: string }>> {
+  const r = await run(async () => {
+    const { tenant, userId, actor, impersonatedBy } = await staff();
+    const photo = fd.get("id_photo");
+    const jobId = await createWalkIn(
+      tenant,
+      { userId, actor, impersonatedBy },
+      {
+        phone: str(fd, "phone"),
+        name: str(fd, "name"),
+        device_type: str(fd, "device_type"),
+        device_brand: str(fd, "device_brand"),
+        device_model: str(fd, "device_model"),
+        fault: str(fd, "fault"),
+        identity: str(fd, "identity") === "id" ? "id" : "device",
+        identifier: str(fd, "identifier"),
+        id_kind: str(fd, "id_kind") || undefined,
+        id_number: str(fd, "id_number"),
+        passcode_locked: fd.get("passcode_locked") === "on",
+        passcode: String(fd.get("passcode") ?? ""),
+        declared_value_kes: kesField(fd, "declared_value_kes") / 100,
+      },
+      photo instanceof File ? photo : null,
+    );
+    return { jobId };
+  });
+  if (r.ok) redirect(`/bench/jobs/${r.data.jobId}`);
+  return r;
+}
+
+export async function resendWalkInLinkAction(jobId: string): Promise<ActionResult<null>> {
+  return run(async () => {
+    const { tenant } = await staff();
+    await resendWalkInLink(tenant, jobId);
+    return null;
+  });
+}
+
+function cashPurpose(purpose: string): CashPurpose {
+  if (!(CASH_PURPOSES as readonly string[]).includes(purpose)) throw new UserError("That payment cannot be taken at the counter.");
+  return purpose as CashPurpose;
+}
+
+/** Any staff member may send the customer an M-Pesa prompt for what is due; the phone is the one on the job. */
+export async function sendPaymentPromptAction(jobId: string, purpose: string): Promise<ActionResult<null>> {
+  const r = await run(async () => {
+    const { tenant, ctx } = await staff();
+    const [customer] = await withUser(ctx, (tx) => tx`select u.phone_e164 from jobs j join users u on u.id = j.customer_user_id where j.id = ${jobId}`);
+    if (!customer?.phone_e164) throw new UserError("The customer has no phone number on file.");
+    const sent = await initiateStkPayment(ctx, tenant, jobId, cashPurpose(purpose), customer.phone_e164);
+    if (!sent.ok) throw new UserError(STK_FAILURE_COPY[sent.error]);
+    return null;
+  });
+  done(jobId);
+  return r;
+}
+
+/** Shop admins only: cash in hand, for exactly the amount due. */
+export async function recordCashPaymentAction(jobId: string, purpose: string): Promise<ActionResult<{ amountCents: number }>> {
+  const r = await run(async () => {
+    const { tenant, userId, impersonatedBy } = await staff("shop_admin");
+    const { amountCents } = await recordCashPayment(tenant, { jobId, purpose: cashPurpose(purpose), recordedBy: userId, impersonatedBy });
+    return { amountCents };
   });
   done(jobId);
   return r;

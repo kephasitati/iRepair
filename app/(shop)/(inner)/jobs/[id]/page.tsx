@@ -16,6 +16,7 @@ import {
   QuoteMessageBox,
   RateLater,
   RebookPickup,
+  WalkInConsent,
   WarrantyClaim,
 } from "@/components/customer-job";
 import { requestCtx, requireCustomer } from "@/lib/auth";
@@ -27,6 +28,7 @@ import { loadJobView, type JobView } from "@/lib/jobs/view";
 import { isSimulatedMpesa, mpesaFor } from "@/lib/providers";
 import type { Tenant } from "@/lib/tenant";
 import type { JobStatus } from "@/lib/core/state-machine";
+import { walkInGate } from "@/lib/core/walk-in";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,7 @@ export default async function CustomerJobPage({ params }: { params: Promise<{ id
   const simulator = isSimulatedMpesa(await mpesaFor(tenant));
   const phone = session.user.phone_e164 ?? "";
   const s = job.status;
+  const walkIn = job.origin === "walk_in";
   // The pay panel disappears once the job moves on, so the receipt for a payment in the last 15 minutes stays on top.
   const receiptSince = msAgo(15 * 60_000);
   const recentPayment = v.payments.filter((p) => p.status === "success" && p.confirmed_at && new Date(p.confirmed_at) > receiptSince).at(-1);
@@ -60,7 +63,7 @@ export default async function CustomerJobPage({ params }: { params: Promise<{ id
         </div>
         <StatusBadge status={s} className="mb-1.5" />
       </div>
-      <StepBar status={s} />
+      <StepBar status={s} walkIn={walkIn} />
 
       {recentPayment ? <PaymentReceipt payment={recentPayment} /> : null}
       <NextStep v={v} tenant={tenant} simulator={simulator} phone={phone} t={t} />
@@ -122,9 +125,10 @@ export default async function CustomerJobPage({ params }: { params: Promise<{ id
               .map((p) => (
                 <li key={p.id} className="flex justify-between gap-2 py-2">
                   <span>
-                    {t(`pay.purpose.${p.purpose}`)}
+                    {walkIn && p.purpose === "pickup_fee" ? t("pay.purpose.consultation") : t(`pay.purpose.${p.purpose}`)}
                     <span className="block text-xs text-muted-foreground">
-                      {t("pay.receipt")} {p.mpesa_receipt} · {p.confirmed_at ? formatDateTime(p.confirmed_at) : ""}
+                      {p.method === "cash" ? t("pay.cash") : `${t("pay.receipt")} ${p.mpesa_receipt ?? ""}`} ·{" "}
+                      {p.confirmed_at ? formatDateTime(p.confirmed_at) : ""}
                     </span>
                   </span>
                   <span className="tabular-nums">{formatKes(p.amount_cents)}</span>
@@ -178,9 +182,26 @@ async function NextStep({ v, tenant, simulator, phone, t }: { v: JobView; tenant
   const s: JobStatus = job.status;
   const pickupLeg = v.deliveries.filter((d) => d.leg === "pickup").at(-1);
   const returnLeg = v.deliveries.filter((d) => d.leg === "return").at(-1);
-  const pay = (purpose: "pickup_fee" | "deposit" | "final_balance" | "return_fee", amount: number, quoteId?: string) => (
-    <PayPanel jobId={job.id} purpose={purpose} amountCents={amount} defaultPhone={phone} simulator={simulator} quoteId={quoteId} />
+  const pay = (purpose: "pickup_fee" | "deposit" | "final_balance" | "return_fee", amount: number, quoteId?: string, label?: string) => (
+    <PayPanel jobId={job.id} purpose={purpose} amountCents={amount} defaultPhone={phone} simulator={simulator} quoteId={quoteId} label={label} />
   );
+  const gate = walkInGate(job, v.payments);
+  const device = `${job.device_brand} ${job.device_model}`.trim();
+  if (s === "received_at_shop" && gate && !gate.ready) {
+    // A walk-in: the customer accepts the terms here (the SMS link lands on this page), then pays the consultation fee.
+    return (
+      <Section title={gate.termsAccepted ? t("pay.purpose.consultation") : t("walkIn.consentTitle")} className="border-primary/40">
+        {gate.termsAccepted ? (
+          <>
+            <p className="mb-3 text-sm text-muted-foreground">{t("walkIn.feeBody", { device })}</p>
+            {pay("pickup_fee", gate.feeDueCents, undefined, t("pay.purpose.consultation"))}
+          </>
+        ) : (
+          <WalkInConsent jobId={job.id} device={device} shop={tenant.branding.display_name} />
+        )}
+      </Section>
+    );
+  }
 
   switch (s) {
     case "pickup_fee_pending":
@@ -318,7 +339,7 @@ async function NextStep({ v, tenant, simulator, phone, t }: { v: JobView; tenant
         <Section title={t("job.completion")} className="border-emerald-300">
           <DropoffChooser
             jobId={job.id}
-            pickupAddress={job.pickup_address!}
+            pickupAddress={job.pickup_address}
             zones={tenant.settings.service_zones}
             openingHours={tenant.settings.opening_hours}
             current={{ choice: job.dropoff_choice, address: job.dropoff_address }}
@@ -335,7 +356,7 @@ async function NextStep({ v, tenant, simulator, phone, t }: { v: JobView; tenant
             <div className="mt-3">
               <DropoffChooser
                 jobId={job.id}
-                pickupAddress={job.pickup_address!}
+                pickupAddress={job.pickup_address}
                 zones={tenant.settings.service_zones}
                 openingHours={tenant.settings.opening_hours}
                 current={{ choice: job.dropoff_choice, address: job.dropoff_address }}
@@ -356,7 +377,7 @@ async function NextStep({ v, tenant, simulator, phone, t }: { v: JobView; tenant
                 <div className="mt-3">
                   <DropoffChooser
                     jobId={job.id}
-                    pickupAddress={job.pickup_address!}
+                    pickupAddress={job.pickup_address}
                     zones={tenant.settings.service_zones}
                     openingHours={tenant.settings.opening_hours}
                     current={{ choice: job.dropoff_choice, address: job.dropoff_address }}
@@ -367,7 +388,7 @@ async function NextStep({ v, tenant, simulator, phone, t }: { v: JobView; tenant
           ) : (
             <DropoffChooser
               jobId={job.id}
-              pickupAddress={job.pickup_address!}
+              pickupAddress={job.pickup_address}
               zones={tenant.settings.service_zones}
               openingHours={tenant.settings.opening_hours}
               current={{ choice: job.dropoff_choice, address: job.dropoff_address }}
@@ -381,7 +402,7 @@ async function NextStep({ v, tenant, simulator, phone, t }: { v: JobView; tenant
         <Section title={t("status.return_failed")}>
           <DropoffChooser
             jobId={job.id}
-            pickupAddress={job.pickup_address!}
+            pickupAddress={job.pickup_address}
             zones={tenant.settings.service_zones}
             openingHours={tenant.settings.opening_hours}
             current={{ choice: job.dropoff_choice, address: job.dropoff_address }}

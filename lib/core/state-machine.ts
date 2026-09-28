@@ -52,7 +52,8 @@ const S: EdgeActor = "system";
 const P: EdgeActor = "provider";
 
 export const TRANSITIONS: Record<JobStatus, Partial<Record<JobStatus, EdgeActor[]>>> = {
-  draft: { pickup_fee_pending: [C], cancelled: [C, A] },
+  // A walk-in (D-42) is opened by staff at the counter with the device in hand, so it skips the pickup entirely.
+  draft: { pickup_fee_pending: [C], received_at_shop: [T], cancelled: [C, A] },
   pickup_fee_pending: { pickup_requested: [S], draft: [C], cancelled: [C, A] },
   // The customer may confirm the rider's arrival by scanning before the courier reports "en route".
   pickup_requested: { rider_en_route_to_customer: [P, S, C], pickup_failed: [P, S, A], cancelled: [C, A] },

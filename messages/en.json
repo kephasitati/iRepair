@@ -167,7 +167,8 @@
     "delivered": "Delivered",
     "closed": "Closed",
     "cancelled": "Cancelled",
-    "declined_returned": "Returned (declined)"
+    "declined_returned": "Returned (declined)",
+    "termsAccepted": "Repair terms accepted"
   },
   "steps": {
     "booked": "Booked",
@@ -176,7 +177,8 @@
     "quote": "Quote",
     "repair": "Repair",
     "return": "Return",
-    "done": "Done"
+    "done": "Done",
+    "dropoff": "Drop-off"
   },
   "devices": {
     "iphone": "iPhone",
@@ -320,8 +322,10 @@
       "deposit": "Repair deposit",
       "final_balance": "Final balance",
       "return_fee": "Return delivery fee",
-      "supplementary": "Additional work"
+      "supplementary": "Additional work",
+      "consultation": "Consultation fee"
     },
+    "cash": "Paid in cash at the counter",
     "stkRejected": "M-Pesa did not accept the request: {reason}",
     "rateLimited": "Too many payment prompts. Please wait a minute.",
     "stepUnlock": "Unlock your phone when the M-Pesa prompt appears.",
@@ -592,5 +596,15 @@
   "offline": {
     "title": "You are offline",
     "body": "Reconnect to continue. Anything you saved is kept on this device."
+  },
+  "walkIn": {
+    "consentTitle": "Accept the repair terms",
+    "consentBody": "Your {device} is with {shop}. Read the repair terms, then accept them so the technician can start.",
+    "consentCheck": "I have read and accept the",
+    "termsLink": "Terms of Service",
+    "accept": "Accept and continue",
+    "accepted": "Repair terms accepted. Thank you.",
+    "feeBody": "Pay the consultation fee so the technician can diagnose your {device}. You can also pay at the counter.",
+    "waiting": "The technician will start shortly."
   }
 }

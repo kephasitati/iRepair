@@ -31,7 +31,7 @@ export type InvoiceData = {
   };
   job_ref: string;
   device: string;
-  payments: { receipt: string | null; amount_cents: number; purpose: string; confirmed_at: string }[];
+  payments: { receipt: string | null; method: "mpesa" | "cash"; amount_cents: number; purpose: string; confirmed_at: string }[];
   warranty_until?: string | null;
   etims?: { status: string; cu_invoice_number?: string; qr?: string } | null;
 };
@@ -144,7 +144,8 @@ export function InvoiceDocument({ inv }: { inv: InvoiceData }) {
             <Text style={s.h}>Payments</Text>
             {inv.payments.map((p, i) => (
               <Text key={i}>
-                {formatDate(p.confirmed_at)} · {p.purpose.replace("_", " ")} · {formatKes(p.amount_cents)} · M-Pesa {p.receipt ?? "-"}
+                {formatDate(p.confirmed_at)} · {p.purpose.replace("_", " ")} · {formatKes(p.amount_cents)} ·{" "}
+                {p.method === "cash" ? "Cash" : `M-Pesa ${p.receipt ?? "-"}`}
               </Text>
             ))}
           </View>

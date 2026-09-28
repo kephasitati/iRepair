@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import QRCode from "qrcode";
 import { getTranslations } from "next-intl/server";
 import { ChevronLeft } from "lucide-react";
 import { KV, Section } from "@/components/fields";
@@ -12,6 +13,7 @@ import {
   BenchHandover,
   CompleteRepairForm,
   CounterCollection,
+  CounterPayment,
   CounterResponse,
   DisputeResolve,
   IntakeForm,
@@ -19,6 +21,7 @@ import {
   ProgressForm,
   QuoteBuilder,
   RequestDispatch,
+  ResendWalkInLink,
   ShopMessageBox,
   WaiveReturnFee,
   WarrantyEdit,
@@ -31,7 +34,9 @@ import { formatDate, formatDateTime } from "@/lib/core/time";
 import { withUser } from "@/lib/db";
 import { loadJobView, type JobView } from "@/lib/jobs/view";
 import { ID_KIND_LABEL } from "@/lib/core/identity";
+import { walkInGate, type WalkInGate } from "@/lib/core/walk-in";
 import { nextStep, WHO_LABEL } from "@/lib/core/workflow";
+import { walkInLink } from "@/lib/jobs/walk-in";
 import { StaffStepper } from "@/components/staff-stepper";
 import { getCustomerIdSummary } from "@/lib/customer-ids";
 import type { Tenant } from "@/lib/tenant";
@@ -63,6 +68,7 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
   const { job } = v;
   const identity = job.identity_method === "id" ? await withUser(ctx, (tx) => getCustomerIdSummary(tx, tenant.id, job.customer_user_id)) : null;
   const s = job.status;
+  const gate = walkInGate(job, v.payments);
   const isAdmin = role === "shop_admin";
   const canSeeSecrets = !!v.secret;
 
@@ -77,12 +83,13 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
           <p className="text-xs text-muted-foreground">{job.ref}</p>
           <h1 className="truncate text-lg font-semibold">{`${job.device_brand} ${job.device_model}`.trim()}</h1>
         </div>
+        {gate ? <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">Walk-in</span> : null}
         <StatusBadge status={s} />
       </div>
 
-      <StaffStepper status={s} />
+      <StaffStepper status={s} walkIn={!!gate} />
       {(() => {
-        const n = nextStep(s);
+        const n = nextStep(s, gate);
         const mine = n.who === "shop" || (n.who === "admin" && isAdmin);
         return n.who === "none" ? null : (
           <div
@@ -101,7 +108,7 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
 
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-4">
-          <BenchAction v={v} tenant={tenant} catalogue={catalogue} isAdmin={isAdmin} t={t} />
+          <BenchAction v={v} tenant={tenant} catalogue={catalogue} isAdmin={isAdmin} gate={gate} t={t} />
 
           <Section title={t("bench.declared")}>
             <p className="text-sm whitespace-pre-line">{job.fault_description}</p>
@@ -180,6 +187,7 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
                 {formatKenyanPhone(v.customer.phone_e164)}
               </a>
             ) : null}
+            {gate ? <p className="mt-2 text-xs text-muted-foreground">Walk-in at the counter</p> : null}
             <p className="mt-2 text-xs text-muted-foreground">{job.pickup_address?.formatted}</p>
             {job.pickup_address?.building_floor || job.pickup_address?.landmark ? (
               <p className="text-xs text-muted-foreground">{[job.pickup_address?.building_floor, job.pickup_address?.landmark].filter(Boolean).join(" · ")}</p>
@@ -258,10 +266,10 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
               {v.payments.map((p) => (
                 <li key={p.id} className="flex justify-between gap-2">
                   <span>
-                    {t(`pay.purpose.${p.purpose}`)}{" "}
+                    {gate && p.purpose === "pickup_fee" ? t("pay.purpose.consultation") : t(`pay.purpose.${p.purpose}`)}{" "}
                     <span className="text-xs text-muted-foreground">
                       ({p.status}
-                      {p.mpesa_receipt ? ` · ${p.mpesa_receipt}` : ""})
+                      {p.method === "cash" ? " · cash" : p.mpesa_receipt ? ` · ${p.mpesa_receipt}` : ""})
                     </span>
                   </span>
                   <span className="tabular-nums">{formatKes(p.amount_cents)}</span>
@@ -325,7 +333,21 @@ export default async function BenchJobPage({ params }: { params: Promise<{ id: s
 
 type T = Awaited<ReturnType<typeof getTranslations>>;
 
-async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; tenant: Tenant; catalogue: CataloguePart[]; isAdmin: boolean; t: T }) {
+async function BenchAction({
+  v,
+  tenant,
+  catalogue,
+  isAdmin,
+  gate,
+  t,
+}: {
+  v: JobView;
+  tenant: Tenant;
+  catalogue: CataloguePart[];
+  isAdmin: boolean;
+  gate: WalkInGate | null;
+  t: T;
+}) {
   const { job } = v;
   const s = job.status;
   const tax = { vatRegistered: tenant.settings.vat_registered, vatRateBp: tenant.settings.vat_rate_bp, pricesIncludeVat: tenant.settings.prices_include_vat };
@@ -377,6 +399,7 @@ async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; t
         </Section>
       );
     case "received_at_shop":
+      if (gate && !gate.ready) return <WalkInGatePanel jobId={job.id} tenant={tenant} gate={gate} isAdmin={isAdmin} />;
       return (
         <Section title={t("bench.intake")} className="border-primary/40">
           <IntakeForm
@@ -428,6 +451,9 @@ async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; t
       return (
         <Section title={t("status.deposit_pending")}>
           <p className="text-sm text-muted-foreground">Quote accepted. The repair starts once the deposit is paid.</p>
+          <div className="mt-3">
+            <CounterPayment jobId={job.id} purpose="deposit" label="Deposit" amountCents={v.mainQuote?.current?.deposit_cents ?? 0} isAdmin={isAdmin} />
+          </div>
         </Section>
       );
     case "in_repair": {
@@ -469,6 +495,11 @@ async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; t
               ? "Waiting for the customer to choose delivery or collection."
               : "Waiting for the final payment. Dispatch starts automatically once M-Pesa confirms."}
           </p>
+          {s === "final_payment_pending" && v.invoice ? (
+            <div className="mt-3">
+              <CounterPayment jobId={job.id} purpose="final_balance" label="Balance" amountCents={v.invoice.balance_cents} isAdmin={isAdmin} />
+            </div>
+          ) : null}
         </Section>
       );
     case "return_fee_pending":
@@ -477,6 +508,11 @@ async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; t
           <p className="text-sm text-muted-foreground">
             Waiting for the customer to pay the return fee{job.return_fee_cents ? ` (${formatKes(job.return_fee_cents)})` : ""} or choose collection.
           </p>
+          {job.return_fee_cents > 0 ? (
+            <div className="mt-3">
+              <CounterPayment jobId={job.id} purpose="return_fee" label="Return delivery" amountCents={job.return_fee_cents} isAdmin={isAdmin} />
+            </div>
+          ) : null}
           {isAdmin ? (
             <div className="mt-3">
               <WaiveReturnFee jobId={job.id} />
@@ -554,4 +590,41 @@ async function BenchAction({ v, tenant, catalogue, isAdmin, t }: { v: JobView; t
         </Section>
       );
   }
+}
+
+/** A walk-in before diagnosis (D-42): consent first, then the consultation fee; intake opens once both are done. */
+async function WalkInGatePanel({ jobId, tenant, gate, isAdmin }: { jobId: string; tenant: Tenant; gate: WalkInGate; isAdmin: boolean }) {
+  const qr = gate.termsAccepted ? null : await QRCode.toDataURL(await walkInLink(tenant, jobId), { margin: 1, width: 320 });
+  return (
+    <Section title="Walk-in: before diagnosis" className="border-primary/40">
+      <ol className="space-y-4 text-sm" data-testid="walk-in-gate">
+        <li>
+          <p className="font-medium">{gate.termsAccepted ? "✓ Repair terms accepted" : "1. The customer accepts the repair terms"}</p>
+          {qr ? (
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element -- a generated data: URL, nothing to optimise */}
+              <img src={qr} alt="QR code that opens the customer's job" className="size-40 rounded-lg border bg-white p-1" />
+              <div className="max-w-xs space-y-2 text-muted-foreground">
+                <p>We sent the link by SMS. The customer can also scan this code with their phone camera and sign in with their number.</p>
+                <ResendWalkInLink jobId={jobId} />
+              </div>
+            </div>
+          ) : null}
+        </li>
+        <li>
+          <p className="font-medium">{gate.feeDueCents === 0 ? "✓ Consultation fee paid" : "2. The consultation fee is paid"}</p>
+          {gate.feeDueCents > 0 ? (
+            gate.termsAccepted ? (
+              <div className="mt-2">
+                <CounterPayment jobId={jobId} purpose="pickup_fee" label="Consultation fee" amountCents={gate.feeDueCents} isAdmin={isAdmin} />
+              </div>
+            ) : (
+              <p className="mt-1 text-muted-foreground">Payable once the terms are accepted ({formatKes(gate.feeDueCents)}).</p>
+            )
+          ) : null}
+        </li>
+      </ol>
+      <p className="mt-4 text-xs text-muted-foreground">The intake checklist opens here once both are done.</p>
+    </Section>
+  );
 }

@@ -336,3 +336,24 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   the other forever (Postgres cannot see a wait that passes through the client). `quoteLeg` now writes in the
   caller's transaction when given one, and `bookLeg` returns early when the leg is already booked. Found by the
   end-to-end suite; pinned by `tests/db/worker-claims.test.ts`.
+- **D-42 Walk-ins.** The user asked how walk-ins are handled: they were not. Every job began as the customer's own
+  online booking with a courier pickup. Decided with the user: payment by M-Pesa *and* cash, consent by SMS link,
+  technicians and admins may both open one.
+  - *The job starts at the counter.* Staff enter the customer's phone (found or created; the email is never touched,
+    see D-40), the device, and the same proof of ownership as online: the IMEI/serial, or the customer's ID with a
+    photo. The job is inserted with `origin = 'walk_in'` and moves `draft → received_at_shop` (a new edge, staff
+    only; the guard refuses it for online bookings and without proof of ownership).
+  - *Consent before charge, both before diagnosis.* The move sends the customer an SMS link (`walkin.received`,
+    critical so quiet hours never delay it; `notify_job` swaps it in for the usual "we received your device"). They
+    sign in with their phone and accept the terms on their own device (`accept_walk_in_terms`, which only the job's
+    customer can call, recorded as a `terms.accepted` job event). Only then is the consultation fee payable; it is the
+    walk-in's `pickup_fee`, so the invoice credits it exactly as it credits an online pickup fee. The guard for
+    `diagnosing` / `intake_ack_pending` (`check_walk_in_ready`) refuses a walk-in without both; the bench keeps the
+    intake form closed until then and shows a QR code of the same link for a customer standing at the counter.
+  - *Cash.* A shop admin records cash for exactly the amount due (deposit, balance, return fee or consultation fee;
+    never typed in). The row is a normal payment with `method = 'cash'` and `recorded_by`, confirmed through
+    `confirm_payment`, so the job moves on exactly as for M-Pesa; the job row is locked first, so two clicks cannot
+    record the same money twice. It is audited (`payment.cash`), shows as cash on the invoice, the job page and in
+    Reports. Any staff member can send an M-Pesa prompt to the customer's phone from the bench for the same amounts.
+  - *Return.* A walk-in has no pickup address: the drop-off chooser offers collection (the default) or a new address.
+  Tests: `tests/db/walk-in.test.ts`, `tests/unit/walk-in.test.ts`, `tests/e2e/walk-in.spec.ts`.

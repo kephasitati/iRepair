@@ -27,6 +27,7 @@ import {
   rateJobAction,
   rebookPickupAction,
   rejectIntakeAction,
+  acceptWalkInTermsAction,
 } from "@/app/(shop)/actions";
 import { cn } from "@/lib/utils";
 
@@ -233,7 +234,8 @@ export function DropoffChooser({
   allowCollect = true,
 }: {
   jobId: string;
-  pickupAddress: Address;
+  /** Null for a walk-in: there is no pickup address to send it back to. */
+  pickupAddress: Address | null;
   zones: string[];
   openingHours: OpeningHours;
   current: { choice: "pickup_address" | "other_address" | "collect_at_shop" | null; address: Address | null };
@@ -241,7 +243,7 @@ export function DropoffChooser({
 }) {
   const t = useTranslations();
   const { pending, error, act } = useAct();
-  const [choice, setChoice] = useState(current.choice ?? "pickup_address");
+  const [choice, setChoice] = useState(current.choice ?? (pickupAddress ? "pickup_address" : allowCollect ? "collect_at_shop" : "other_address"));
   const [address, setAddress] = useState<Address>(current.address ?? { formatted: "", lat: null, lng: null, zone: null });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(nairobiToday(), i)), []);
   const [day, setDay] = useState(() => days.find((d) => deliverySlots(d, openingHours).length > 0) ?? days[0]);
@@ -262,13 +264,15 @@ export function DropoffChooser({
   return (
     <div className="space-y-3" data-testid="dropoff-chooser">
       <p className="text-sm font-medium">{t("job.chooseDropoff")}</p>
-      <RadioRow
-        name="dropoff"
-        checked={choice === "pickup_address"}
-        onChange={() => setChoice("pickup_address")}
-        label={t("job.dropoffPickup")}
-        description={pickupAddress.formatted}
-      />
+      {pickupAddress ? (
+        <RadioRow
+          name="dropoff"
+          checked={choice === "pickup_address"}
+          onChange={() => setChoice("pickup_address")}
+          label={t("job.dropoffPickup")}
+          description={pickupAddress.formatted}
+        />
+      ) : null}
       <RadioRow name="dropoff" checked={choice === "other_address"} onChange={() => setChoice("other_address")} label={t("job.dropoffOther")} />
       {choice === "other_address" ? <AddressPicker value={address} onChange={setAddress} zones={zones} /> : null}
       {allowCollect ? (
@@ -462,4 +466,36 @@ export function WarrantyClaim({ jobId }: { jobId: string }) {
 
 export function Money({ cents }: { cents: number }) {
   return <span className="tabular-nums">{formatKes(cents)}</span>;
+}
+
+/** A walk-in customer's consent (D-42): they read the terms and accept them on their own phone, from the SMS link. */
+export function WalkInConsent({ jobId, device, shop }: { jobId: string; device: string; shop: string }) {
+  const t = useTranslations("walkIn");
+  const { pending, error, act } = useAct();
+  const [agreed, setAgreed] = useState(false);
+  return (
+    <div className="space-y-3" data-testid="walk-in-consent">
+      <p className="text-sm">{t("consentBody", { device, shop })}</p>
+      <label className="flex items-start gap-3 text-sm">
+        <input type="checkbox" className="mt-0.5 size-5 shrink-0" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} data-testid="walk-in-agree" />
+        <span>
+          {t("consentCheck")}{" "}
+          <a href="/terms" target="_blank" className="text-link underline">
+            {t("termsLink")}
+          </a>
+          .
+        </span>
+      </label>
+      <Button
+        className="w-full"
+        size="lg"
+        disabled={!agreed || pending}
+        onClick={() => act(() => acceptWalkInTermsAction(jobId), t("accepted"))}
+        data-testid="walk-in-accept"
+      >
+        {t("accept")}
+      </Button>
+      <ErrorText>{error}</ErrorText>
+    </div>
+  );
 }

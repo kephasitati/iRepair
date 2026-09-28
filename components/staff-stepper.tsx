@@ -3,7 +3,8 @@ import { STAFF_STAGES, stageIndex } from "@/lib/core/workflow";
 import { cn } from "@/lib/utils";
 
 /** Where a job is in the workflow, at a glance. Scrolls sideways on a phone; the current stage is kept in view. */
-export function StaffStepper({ status }: { status: JobStatus }) {
+/** `walkIn`: the first stage happened at the counter, not on a pickup (D-42). */
+export function StaffStepper({ status, walkIn = false }: { status: JobStatus; walkIn?: boolean }) {
   const idx = stageIndex(status);
   const offPath = ["quote_declined", "return_fee_pending", "return_failed", "pickup_failed", "cancelled", "declined_returned"].includes(status);
   return (
@@ -27,7 +28,7 @@ export function StaffStepper({ status }: { status: JobStatus }) {
             )}
           >
             <span className="tabular-nums">{done ? "✓" : i + 1}</span>
-            {stage.label}
+            {walkIn && stage.key === "pickup" ? "Counter" : stage.label}
           </li>
         );
       })}

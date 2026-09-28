@@ -59,6 +59,7 @@ export type PaymentView = {
   status: string;
   result_desc: string | null;
   mpesa_receipt: string | null;
+  method: "mpesa" | "cash";
   created_at: string;
   confirmed_at: string | null;
 };
@@ -141,7 +142,7 @@ export async function loadJobView(tx: Tx, jobId: string) {
       >,
       tx`select id, from_status, to_status, event_kind, actor_kind, payload, created_at from job_events where job_id = ${jobId} order by id`,
       tx`select * from deliveries where job_id = ${jobId} and status <> 'quoted' order by created_at` as Promise<DeliveryRow[]>,
-      tx`select id, purpose, amount_cents, status, result_desc, mpesa_receipt, created_at, confirmed_at from payments where job_id = ${jobId} order by created_at`,
+      tx`select id, purpose, amount_cents, status, result_desc, mpesa_receipt, method, created_at, confirmed_at from payments where job_id = ${jobId} order by created_at`,
       tx`select id, number, status, total_cents, paid_cents, balance_cents, vat_cents, subtotal_cents, vat_rate_bp, lines, issued_at, created_at from invoices where job_id = ${jobId} and status <> 'void' order by created_at desc limit 1`,
       tx`select * from intake_checklists where job_id = ${jobId}`,
       tx`select * from discrepancies where job_id = ${jobId} order by created_at`,

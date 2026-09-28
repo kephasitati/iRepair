@@ -46,6 +46,7 @@ create table job_transitions (
 
 insert into job_transitions (from_status, to_status, allowed_actors) values
   ('draft', 'pickup_fee_pending', array['customer']::actor_kind[]),
+  ('draft', 'received_at_shop', array['technician', 'shop_admin', 'platform_admin']::actor_kind[]),
   ('draft', 'cancelled', array['customer', 'shop_admin', 'platform_admin']::actor_kind[]),
   ('pickup_fee_pending', 'pickup_requested', array['system']::actor_kind[]),
   ('pickup_fee_pending', 'draft', array['customer']::actor_kind[]),
