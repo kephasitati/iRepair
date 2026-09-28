@@ -1,3 +1,4 @@
+import type { Sql } from "postgres";
 import { servicePool, withService } from "@/lib/db";
 import { deleteObject, invoiceKey, putObject } from "@/lib/storage";
 import { deliveryProviderFor, emailSender, loadTenantSecrets, smsSender } from "@/lib/providers";
@@ -7,20 +8,29 @@ import { reconcilePayment } from "@/lib/jobs/payments";
 import type { DeliveryRow, JobRow } from "@/lib/jobs/types";
 
 /**
- * Background work (DECISIONS D-3/D-17). Every function here is safe to run concurrently on several instances:
- * rows are claimed with SKIP LOCKED and every action is idempotent.
+ * Background work (DECISIONS D-3/D-17). Every function here is safe to run concurrently on several instances (the
+ * resident worker and /api/internal/tick, say): a claim takes rows with SKIP LOCKED *and* leases them by moving their
+ * due time LEASE_SECONDS ahead, so nobody else picks them up while they run, and a crashed run's rows come back once
+ * the lease lapses. Every action is idempotent as well.
  */
+
+const LEASE_SECONDS = 5 * 60;
 
 const log = (...a: unknown[]) => console.log(new Date().toISOString(), "[worker]", ...a);
 
 // ---------------------------------------------------------------------------
 // Outbox
 // ---------------------------------------------------------------------------
-export async function processOutbox(limit = 20): Promise<number> {
-  const sql = servicePool();
-  const rows = await sql`update outbox set attempts = attempts + 1 where id in (
+/** Claim due outbox rows under a lease. Exported for tests. */
+export async function claimOutbox(sql: Sql, limit: number) {
+  return sql`update outbox set attempts = attempts + 1, next_attempt_at = now() + make_interval(secs => ${LEASE_SECONDS}) where id in (
       select id from outbox where status = 'pending' and next_attempt_at <= now() order by id limit ${limit} for update skip locked
     ) returning *`;
+}
+
+export async function processOutbox(limit = 20): Promise<number> {
+  const sql = servicePool();
+  const rows = await claimOutbox(sql, limit);
   for (const row of rows) {
     try {
       await runOutbox(row.kind, row.payload);
@@ -92,12 +102,17 @@ export async function generateInvoicePdf(invoiceId: string) {
 // ---------------------------------------------------------------------------
 // Notifications (SMS / email); in_app rows need no delivery
 // ---------------------------------------------------------------------------
-export async function sendNotifications(limit = 30): Promise<number> {
-  const sql = servicePool();
-  const rows = await sql`update notifications set attempts = attempts + 1, status = 'queued' where id in (
+/** Claim due SMS / email rows under a lease, so one message is never sent twice by two workers. Exported for tests. */
+export async function claimNotifications(sql: Sql, limit: number) {
+  return sql`update notifications set attempts = attempts + 1, status = 'queued', send_after = now() + make_interval(secs => ${LEASE_SECONDS}) where id in (
       select id from notifications where status in ('queued', 'held_quiet_hours') and channel in ('sms', 'email') and send_after <= now() and attempts < 5
       order by send_after limit ${limit} for update skip locked
     ) returning *`;
+}
+
+export async function sendNotifications(limit = 30): Promise<number> {
+  const sql = servicePool();
+  const rows = await claimNotifications(sql, limit);
   for (const n of rows) {
     try {
       const tenant = await loadTenantById(n.tenant_id);

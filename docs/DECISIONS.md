@@ -327,3 +327,12 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   and stores nothing from an unverified caller; the courier webhook stores nothing for an unknown shop; bodies are
   size-capped; the M-Pesa callback token is compared in constant time. Every response carries a baseline CSP
   (`frame-ancestors`, `base-uri`, `object-src`) and, in production, HSTS. Tests: `tests/db/auth-hardening.test.ts`, `tests/unit/redirect.test.ts`.
+- **D-41 Background work is leased, and a courier booking can no longer hang.** The resident worker and
+  `/api/internal/tick` may run side by side, and the claim queries promised that was safe, but `FOR UPDATE SKIP
+  LOCKED` only held for the claiming statement: a second worker could take the same outbox row or SMS a moment later.
+  Claims now also move the row's due time five minutes ahead (a lease), so nobody else picks it up while it runs and a
+  crashed run's rows come back when the lease lapses. The same race exposed a hang in `bookLeg`: it locked the job
+  row, then asked `quoteLeg` for a quote in a *second* transaction whose insert needed that lock, so each waited on
+  the other forever (Postgres cannot see a wait that passes through the client). `quoteLeg` now writes in the
+  caller's transaction when given one, and `bookLeg` returns early when the leg is already booked. Found by the
+  end-to-end suite; pinned by `tests/db/worker-claims.test.ts`.

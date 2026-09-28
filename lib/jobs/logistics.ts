@@ -29,13 +29,15 @@ export function customerAddressFor(job: JobRow, leg: "pickup" | "return"): Addre
  * Get a courier quote for a leg and store it as a `quoted` deliveries row (superseding earlier quotes for that leg).
  * Returns the fee the customer is charged (cost + markup, whole shillings).
  *
- * Delivery rows are system-owned (customers may read but not write them), so the write runs in its own service
- * transaction. Callers must already have proven access to `job` in their own RLS-scoped transaction.
+ * Delivery rows are system-owned (customers may read but not write them), so the write runs in a service transaction:
+ * the caller's own, when it passes one (it must, if it holds a lock on the job: a second transaction would wait on that
+ * lock forever), or a new one. Callers must already have proven access to `job`.
  */
 export async function quoteLeg(
   tenant: Tenant,
   job: JobRow,
   leg: "pickup" | "return",
+  serviceTx?: Tx,
 ): Promise<{ chargedCents: number; costCents: number; deliveryId: string }> {
   const provider = await deliveryProviderFor(tenant);
   const from = leg === "pickup" ? customerAddressFor(job, "pickup") : shopAddress(tenant);
@@ -49,7 +51,7 @@ export async function quoteLeg(
   });
   const costCents = kesToCents(q.feeKes);
   const { charged } = deliveryCharge(costCents, tenant.settings.delivery_markup_bp);
-  return withService(async (tx) => {
+  const write = async (tx: Tx) => {
     await tx`update deliveries set status = 'cancelled' where job_id = ${job.id} and leg = ${leg} and status = 'quoted'`;
     const [{ attempt }] =
       await tx`select coalesce(max(attempt), 0) + 1 as attempt from deliveries where job_id = ${job.id} and leg = ${leg} and status <> 'quoted'`;
@@ -58,7 +60,8 @@ export async function quoteLeg(
       values (${job.id}, ${tenant.id}, ${leg}, ${attempt}, ${provider.kind}, ${q.quoteRef}, ${costCents}, ${charged}, 'quoted', ${tx.json(from as never)}, ${tx.json(to as never)}, ${scheduledFor})
       returning id`;
     return { chargedCents: charged, costCents, deliveryId: d.id as string };
-  });
+  };
+  return serviceTx ? write(serviceTx) : withService(write);
 }
 
 /** Worker: outbox `delivery.create`. Books the courier for the latest quoted row of the leg (re-quoting if none). */
@@ -68,12 +71,15 @@ export async function bookLeg(jobId: string, leg: "pickup" | "return") {
     if (!job) return;
     const expected: JobStatus[] = leg === "pickup" ? ["pickup_requested"] : ["return_requested"];
     if (!expected.includes(job.status)) return; // job moved on (cancelled etc.) before we got here
+    // Already booked (a retry after success, or a second worker that waited on the lock above): nothing to do.
+    const [booked] = await tx`select id from deliveries where job_id = ${jobId} and leg = ${leg} and status not in ('quoted', 'cancelled', 'failed') limit 1`;
+    if (booked) return;
     const tenant = await loadTenantById(job.tenant_id);
     if (!tenant) throw new Error(`tenant ${job.tenant_id} not found`);
     let [d] =
       (await tx`select * from deliveries where job_id = ${jobId} and leg = ${leg} and status = 'quoted' order by created_at desc limit 1`) as DeliveryRow[];
     if (!d) {
-      const q = await quoteLeg(tenant, job, leg);
+      const q = await quoteLeg(tenant, job, leg, tx);
       [d] = (await tx`select * from deliveries where id = ${q.deliveryId}`) as DeliveryRow[];
     }
     const [customer] = await tx`select phone_e164 from users where id = ${job.customer_user_id}`;
