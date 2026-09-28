@@ -73,6 +73,9 @@ changing an edge, how money flows, or how long data is kept.
 - A server component cannot pass a function to a client component (the page crashes). Pass a flag or a string key
   and resolve it on the client (`ActionForm successKind`, the icon keys in `staff-nav.tsx`).
 - Private photos and ID images are rendered with `<img>`, never `next/image`: the optimiser's cache is shared.
+- Import `@react-pdf/renderer` only with a dynamic `import()` (see `lib/invoice-pdf.tsx`). The worker runs under tsx as
+  CommonJS, where a static import becomes `require()` and fails on react-pdf's ESM-only hyphenation package
+  (`ERR_PACKAGE_PATH_NOT_EXPORTED ... ./en-us`). The symptom: invoice PDFs never generate, while the web app works.
 
 ## Local development
 

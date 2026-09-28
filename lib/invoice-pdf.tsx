@@ -1,5 +1,5 @@
 import "server-only";
-import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import type * as ReactPdf from "@react-pdf/renderer";
 import { formatKes } from "@/lib/core/money";
 import { formatDate } from "@/lib/core/time";
 import type { InvoiceLine } from "@/lib/core/money";
@@ -36,7 +36,7 @@ export type InvoiceData = {
   etims?: { status: string; cu_invoice_number?: string; qr?: string } | null;
 };
 
-const s = StyleSheet.create({
+const s = {
   page: { padding: 36, fontSize: 10, fontFamily: "Helvetica", color: "#111" },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 18 },
   shop: { fontSize: 16, fontFamily: "Helvetica-Bold" },
@@ -54,9 +54,10 @@ const s = StyleSheet.create({
   section: { marginTop: 14 },
   h: { fontFamily: "Helvetica-Bold", marginBottom: 4 },
   footer: { position: "absolute", bottom: 24, left: 36, right: 36, fontSize: 8, color: "#666", textAlign: "center" },
-});
+} as const;
 
-export function InvoiceDocument({ inv }: { inv: InvoiceData }) {
+function InvoiceDocument({ inv, pdf }: { inv: InvoiceData; pdf: typeof ReactPdf }) {
+  const { Document, Page, Text, View } = pdf;
   const t = inv.tenant_snapshot;
   const c = inv.customer_snapshot;
   const isTax = inv.status === "issued" && t.vat_registered;
@@ -166,6 +167,13 @@ export function InvoiceDocument({ inv }: { inv: InvoiceData }) {
   );
 }
 
+/**
+ * react-pdf is loaded here, when a PDF is rendered, and never imported statically. The worker runs under tsx, which
+ * compiles this file as CommonJS: a static import becomes require(), and require() cannot resolve react-pdf's ESM-only
+ * hyphenation package (ERR_PACKAGE_PATH_NOT_EXPORTED for '@react-pdf/hyphenate/en-us'), so every invoice PDF failed.
+ * A dynamic import() stays a native ESM import under tsx and resolves it. The web app's bundler is unaffected either way.
+ */
 export async function renderInvoicePdf(inv: InvoiceData): Promise<Buffer> {
-  return Buffer.from(await renderToBuffer(<InvoiceDocument inv={inv} />));
+  const pdf = await import("@react-pdf/renderer");
+  return Buffer.from(await pdf.renderToBuffer(<InvoiceDocument inv={inv} pdf={pdf} />));
 }

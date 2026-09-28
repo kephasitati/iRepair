@@ -469,6 +469,8 @@ async function main() {
               ${tx.json({ name: "iRepair", kra_pin: "P051234567X", vat_registered: true, address: "Kimathi House, Kimathi Street, Nairobi CBD", phone: "+254700123456", email: "hello@demorepairs.test", primary_hex: "#0f3d3e" } as never)})`;
     await go(j6, "final_payment_pending", "customer", c3);
     await pay(j6, "final_balance", 205000, "+254700000003");
+    // Paid jobs wait at dispatch_pending until a shop admin requests the rider (D-34).
+    await go(j6, "return_requested", "shop_admin", admin);
     await tx`update outbox set status = 'done', done_at = now() where payload ->> 'job_id' = ${j6} and kind = 'delivery.create'`;
     await tx`update deliveries set status = 'cancelled' where job_id = ${j6} and leg = 'return' and status = 'quoted'`;
     await delivery(j6, "return", shop, a3, "delivered", 350);
