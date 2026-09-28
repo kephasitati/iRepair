@@ -68,7 +68,7 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
         for (const u of posts) if (!/^https:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/[\w-]+\/?/.test(u)) throw new UserError(`Not an Instagram post link: ${u}`);
         patch.instagram_posts = posts.map((u) => u.replace(/\?.*$/, '').replace(/\/?$/, '/'));
         const placeId = str(fd, 'google_place_id').trim();
-        if (placeId && !/^[A-Za-z0-9_-]{10,300}$/.test(placeId)) throw new UserError('That does not look like a Google Place ID (it usually starts with ChIJ).');
+        if (placeId && !/^[A-Za-z0-9_-]{10,255}$/.test(placeId)) throw new UserError('That does not look like a Google Place ID (it usually starts with ChIJ).');
         patch.google_place_id = placeId || null;
         for (const [field, name] of [['logo', 'logo_path'], ['icon', 'icon_path']] as const) {
           const file = fd.get(field);

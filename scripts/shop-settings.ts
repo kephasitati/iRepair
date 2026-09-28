@@ -20,7 +20,7 @@ async function main() {
 
   const slug = arg('slug')?.toLowerCase();
   if (!slug) {
-    console.error('Usage: npx tsx scripts/shop-settings.ts --slug shop-slug [--phone] [--whatsapp] [--email] [--address] [--landmark] [--tagline] [--about] [--primary] [--accent] [--devices a,b,c] [--shop-page on|off] [--instagram|--facebook|--tiktok|--x|--youtube|--website URL|none] [--instagram-posts url,url] [--google-place-id ID]');
+    console.error('Usage: npx tsx scripts/shop-settings.ts --slug shop-slug [--phone] [--whatsapp] [--email] [--address] [--landmark] [--lat -1.28 --lng 36.82] [--tagline] [--about] [--primary] [--accent] [--devices a,b,c] [--shop-page on|off] [--instagram|--facebook|--tiktok|--x|--youtube|--website URL|none] [--instagram-posts url,url] [--google-place-id ID]');
     process.exit(1);
   }
 
@@ -46,6 +46,13 @@ async function main() {
   if (arg('email') !== undefined) settings.contact_email = arg('email')!.toLowerCase();
   if (arg('address') !== undefined) settings.address_formatted = arg('address');
   if (arg('landmark') !== undefined) settings.address_landmark = arg('landmark');
+  if (arg('lat') !== undefined || arg('lng') !== undefined) {
+    const lat = Number(arg('lat'));
+    const lng = Number(arg('lng'));
+    if (!(Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lng) && Math.abs(lng) <= 180)) throw new Error('--lat and --lng must both be given as decimal degrees.');
+    settings.address_lat = lat;
+    settings.address_lng = lng;
+  }
   if (arg('devices') !== undefined) {
     const devices = arg('devices')!.split(',').map((d) => d.trim()).filter(Boolean);
     const bad = devices.filter((d) => !(DEVICE_TYPES as readonly string[]).includes(d));
