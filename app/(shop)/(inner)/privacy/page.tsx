@@ -1,11 +1,11 @@
-import { LegalPage } from '@/components/legal-page';
-import { CookieSettingsLink } from '@/components/cookie-banner';
-import { formatKenyanPhone } from '@/lib/core/phone';
-import { formatDate } from '@/lib/core/time';
-import { COOKIE_TABLE, PRIVACY_VERSION } from '@/lib/legal';
-import { requireTenant } from '@/lib/tenant';
+import { LegalPage } from "@/components/legal-page";
+import { CookieSettingsLink } from "@/components/cookie-banner";
+import { formatKenyanPhone } from "@/lib/core/phone";
+import { formatDate } from "@/lib/core/time";
+import { COOKIE_TABLE, PRIVACY_VERSION } from "@/lib/legal";
+import { requireTenant } from "@/lib/tenant";
 
-export const metadata = { title: 'Privacy policy' };
+export const metadata = { title: "Privacy policy" };
 
 /**
  * Per-shop privacy and cookie policy (Kenya Data Protection Act, 2019). The shop is the data controller; the platform,
@@ -19,58 +19,60 @@ export default async function PrivacyPage() {
   const contact = (
     <>
       {formatKenyanPhone(s.contact_phone)}
-      {s.contact_email ? ` or ${s.contact_email}` : ''}
+      {s.contact_email ? ` or ${s.contact_email}` : ""}
     </>
   );
 
   const sections = [
     {
-      id: 'who',
-      title: 'Who we are',
+      id: "who",
+      title: "Who we are",
       body: (
         <p>
           <strong>{shop}</strong> ({s.address_formatted}
-          {s.kra_pin ? `, KRA PIN ${s.kra_pin}` : ''}) is the data controller for personal data collected through this service. Contact us about privacy at {contact}.
+          {s.kra_pin ? `, KRA PIN ${s.kra_pin}` : ""}) is the data controller for personal data collected through this service. Contact us about privacy at{" "}
+          {contact}.
         </p>
       ),
     },
     {
-      id: 'collect',
-      title: 'What we collect and why',
+      id: "collect",
+      title: "What we collect and why",
       body: (
         <ul>
           <li>
-            <strong>Name and phone number</strong>: to create your account, sign you in by SMS code, send updates and take M-Pesa payments. Basis: performing our
-            contract with you.
+            <strong>Name and phone number</strong>: to create your account, sign you in by SMS code, send updates and take M-Pesa payments. Basis: performing
+            our contract with you.
           </li>
           <li>
-            <strong>Addresses, directions and location pins</strong>: so the courier can collect and return your device. Your phone&rsquo;s location is recorded only
-            at the moment you confirm a handover, as evidence of where it happened. Basis: contract.
+            <strong>Addresses, directions and location pins</strong>: so the courier can collect and return your device. Your phone&rsquo;s location is recorded
+            only at the moment you confirm a handover, as evidence of where it happened. Basis: contract.
           </li>
           <li>
-            <strong>Device details, IMEI or serial number and photos</strong>: to identify your device and record its condition at every handover. Basis: contract and
-            our legitimate interest in preventing disputes and fraud.
+            <strong>Device details, IMEI or serial number and photos</strong>: to identify your device and record its condition at every handover. Basis:
+            contract and our legitimate interest in preventing disputes and fraud.
           </li>
           <li>
-            <strong>Device passcode</strong>, only if you choose to share it: to test the repair. Encrypted, shown only to the technician working on your device and
-            deleted when the job closes. Basis: your consent, which you can withdraw by not sharing it.
+            <strong>Device passcode</strong>, only if you choose to share it: to test the repair. Encrypted, shown only to the technician working on your device
+            and deleted when the job closes. Basis: your consent, which you can withdraw by not sharing it.
           </li>
           <li>
-            <strong>Payment records</strong> (amounts, M-Pesa receipt numbers, invoices): to account for payments and meet tax obligations. Basis: legal obligation.
+            <strong>Payment records</strong> (amounts, M-Pesa receipt numbers, invoices): to account for payments and meet tax obligations. Basis: legal
+            obligation.
           </li>
           <li>
             <strong>Messages, quotes, ratings and disputes</strong> you send in the app. Basis: contract.
           </li>
           <li>
-            <strong>Cookie choices and basic technical data</strong> (browser type, a hashed IP address): to keep the service secure and prove your consent choices.
-            Basis: legal obligation and legitimate interest.
+            <strong>Cookie choices and basic technical data</strong> (browser type, a hashed IP address): to keep the service secure and prove your consent
+            choices. Basis: legal obligation and legitimate interest.
           </li>
         </ul>
       ),
     },
     {
-      id: 'share',
-      title: 'Who we share it with',
+      id: "share",
+      title: "Who we share it with",
       body: (
         <ul>
           <li>
@@ -84,16 +86,16 @@ export default async function PrivacyPage() {
             <strong>Our SMS provider (Africa&rsquo;s Talking)</strong>: your phone number and message text, to send codes and updates.
           </li>
           <li>
-            <strong>Our booking-platform supplier and its hosting and storage providers</strong>, which process data on our behalf under a written data processing
-            agreement.
+            <strong>Our booking-platform supplier and its hosting and storage providers</strong>, which process data on our behalf under a written data
+            processing agreement.
           </li>
           <li>Authorities, where the law requires us to.</li>
         </ul>
       ),
     },
     {
-      id: 'transfers',
-      title: 'Where your data is stored',
+      id: "transfers",
+      title: "Where your data is stored",
       body: (
         <p>
           Our database is hosted in a secure data centre. Photos and invoices are kept in private cloud storage that may be located outside Kenya. Where data is
@@ -103,8 +105,8 @@ export default async function PrivacyPage() {
       ),
     },
     {
-      id: 'retention',
-      title: 'How long we keep it',
+      id: "retention",
+      title: "How long we keep it",
       body: (
         <ul>
           <li>Device photos: deleted {s.retention_days} days after your job closes.</li>
@@ -116,31 +118,31 @@ export default async function PrivacyPage() {
       ),
     },
     {
-      id: 'rights',
-      title: 'Your rights',
+      id: "rights",
+      title: "Your rights",
       body: (
         <>
           <p>
-            Under the Data Protection Act you may ask to be informed about, access, correct or delete your personal data, object to or restrict its use, receive a
-            copy in a portable format, and withdraw consent at any time. Contact us at {contact}. We respond within the time the law allows.
+            Under the Data Protection Act you may ask to be informed about, access, correct or delete your personal data, object to or restrict its use, receive
+            a copy in a portable format, and withdraw consent at any time. Contact us at {contact}. We respond within the time the law allows.
           </p>
           <p>If you are not satisfied, you can complain to the Office of the Data Protection Commissioner (www.odpc.go.ke).</p>
         </>
       ),
     },
     {
-      id: 'security',
-      title: 'Security',
+      id: "security",
+      title: "Security",
       body: (
         <p>
-          Access to your data is limited to the staff who need it; every staff action on a job is logged; passcodes and integration credentials are encrypted; and
-          each shop&rsquo;s data is kept separate from every other shop&rsquo;s at the database level.
+          Access to your data is limited to the staff who need it; every staff action on a job is logged; passcodes and integration credentials are encrypted;
+          and each shop&rsquo;s data is kept separate from every other shop&rsquo;s at the database level.
         </p>
       ),
     },
     {
-      id: 'cookies',
-      title: 'Cookies',
+      id: "cookies",
+      title: "Cookies",
       body: (
         <>
           <p>
@@ -170,8 +172,8 @@ export default async function PrivacyPage() {
             </table>
           </div>
           <p>
-            We do not currently set any analytics or marketing cookies. If we add them, they will only run after you opt in. We keep a record of each choice you make
-            (the time, the choice and a hashed IP address) to demonstrate consent, as the Act requires.
+            We do not currently set any analytics or marketing cookies. If we add them, they will only run after you opt in. We keep a record of each choice you
+            make (the time, the choice and a hashed IP address) to demonstrate consent, as the Act requires.
           </p>
           <p>
             <CookieSettingsLink className="text-link hover:underline" />
@@ -180,13 +182,13 @@ export default async function PrivacyPage() {
       ),
     },
     {
-      id: 'children',
-      title: 'Children',
+      id: "children",
+      title: "Children",
       body: <p>The service is intended for adults. If a child&rsquo;s device needs repair, a parent or guardian should make the booking.</p>,
     },
     {
-      id: 'changes',
-      title: 'Changes to this policy',
+      id: "changes",
+      title: "Changes to this policy",
       body: <p>We will post any changes here with a new date, and ask for your consent again where the law requires.</p>,
     },
   ];

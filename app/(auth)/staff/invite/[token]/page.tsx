@@ -1,9 +1,9 @@
-import { notFound } from 'next/navigation';
-import { AuthCard } from '@/components/auth-card';
-import { AcceptInviteForm } from '@/components/auth-forms';
-import { sha256Hex } from '@/lib/core/crypto';
-import { servicePool } from '@/lib/db';
-import { requireTenant } from '@/lib/tenant';
+import { notFound } from "next/navigation";
+import { AuthCard } from "@/components/auth-card";
+import { AcceptInviteForm } from "@/components/auth-forms";
+import { sha256Hex } from "@/lib/core/crypto";
+import { servicePool } from "@/lib/db";
+import { requireTenant } from "@/lib/tenant";
 
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const [{ token }, tenant] = await Promise.all([params, requireTenant()]);
@@ -14,7 +14,9 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     <AuthCard
       brand={tenant.branding.display_name}
       title={`Join ${tenant.branding.display_name}`}
-      subtitle={m.has_password ? 'You already have an account. Enter its password to join this shop.' : 'Set your name and password to activate your staff account.'}
+      subtitle={
+        m.has_password ? "You already have an account. Enter its password to join this shop." : "Set your name and password to activate your staff account."
+      }
     >
       <AcceptInviteForm token={token} email={m.email} existingAccount={m.has_password} />
     </AuthCard>

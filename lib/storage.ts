@@ -1,7 +1,7 @@
-import 'server-only';
-import { CreateBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { env } from './env';
+import "server-only";
+import { CreateBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { env } from "./env";
 
 /**
  * One private bucket. Keys are namespaced by tenant so a listing never crosses shops:
@@ -33,7 +33,7 @@ export async function ensureBucket() {
   }
 }
 
-export function photoKey(tenantId: string, jobId: string, stage: string, id: string, ext = 'jpg') {
+export function photoKey(tenantId: string, jobId: string, stage: string, id: string, ext = "jpg") {
   return `t/${tenantId}/jobs/${jobId}/${stage}/${id}.${ext}`;
 }
 

@@ -1,6 +1,6 @@
-import { hmacSha256, safeEqual } from '@/lib/core/crypto';
-import type { Address, DeliveryProvider, DeliveryStatus, DeliveryEvent, Rider } from './types';
-import { ProviderError } from './types';
+import { hmacSha256, safeEqual } from "@/lib/core/crypto";
+import type { Address, DeliveryProvider, DeliveryStatus, DeliveryEvent, Rider } from "./types";
+import { ProviderError } from "./types";
 
 /**
  * Stateless simulated courier (DECISIONS D-16). A delivery id encodes its creation time, so status is a
@@ -15,9 +15,9 @@ import { ProviderError } from './types';
  */
 
 const RIDERS: Rider[] = [
-  { name: 'Brian Otieno', phone: '+254700111222', plate: 'KMFB 123A' },
-  { name: 'Faith Wambui', phone: '+254700333444', plate: 'KMDC 456B' },
-  { name: 'Kevin Mwangi', phone: '+254700555666', plate: 'KMEE 789C' },
+  { name: "Brian Otieno", phone: "+254700111222", plate: "KMFB 123A" },
+  { name: "Faith Wambui", phone: "+254700333444", plate: "KMDC 456B" },
+  { name: "Kevin Mwangi", phone: "+254700555666", plate: "KMEE 789C" },
 ];
 
 function haversineKm(a: Address, b: Address): number {
@@ -30,7 +30,7 @@ function haversineKm(a: Address, b: Address): number {
 }
 
 export class MockProvider implements DeliveryProvider {
-  readonly kind = 'mock' as const;
+  readonly kind = "mock" as const;
   readonly capabilities = { qr: true, otp: true, scheduling: true, webhooks: false, polling: true };
 
   constructor(
@@ -40,7 +40,7 @@ export class MockProvider implements DeliveryProvider {
   ) {}
 
   private sign(data: string, len = 12) {
-    return hmacSha256(this.secret, data).toString('base64url').slice(0, len);
+    return hmacSha256(this.secret, data).toString("base64url").slice(0, len);
   }
 
   private parseId(deliveryId: string) {
@@ -55,24 +55,30 @@ export class MockProvider implements DeliveryProvider {
   }
 
   qrPayload(deliveryId: string) {
-    return `RDMOCK:${deliveryId}:${this.sign('qr:' + deliveryId)}`;
+    return `RDMOCK:${deliveryId}:${this.sign("qr:" + deliveryId)}`;
   }
 
   otp(deliveryId: string) {
-    const h = hmacSha256(this.secret, 'otp:' + deliveryId);
-    return String(h.readUInt32BE(0) % 1_000_000).padStart(6, '0');
+    const h = hmacSha256(this.secret, "otp:" + deliveryId);
+    return String(h.readUInt32BE(0) % 1_000_000).padStart(6, "0");
   }
 
   async quote(input: { pickup: Address; dropoff: Address; itemValueKes: number }) {
     const km = Math.max(1, haversineKm(input.pickup, input.dropoff));
     // KES 150 base + KES 50/km, rounded to 10 KES. Roughly Nairobi boda pricing.
     const feeKes = Math.round((150 + 50 * km) / 10) * 10;
-    return { feeKes, etaMinutes: Math.round(10 + km * 4), quoteRef: `mq_${this.sign(JSON.stringify([input.pickup.formatted, input.dropoff.formatted, feeKes]), 10)}_${feeKes}` };
+    return {
+      feeKes,
+      etaMinutes: Math.round(10 + km * 4),
+      quoteRef: `mq_${this.sign(JSON.stringify([input.pickup.formatted, input.dropoff.formatted, feeKes]), 10)}_${feeKes}`,
+    };
   }
 
   async create(input: { quoteRef: string; jobRef: string; idempotencyKey: string }) {
-    const leg = /return/.test(input.idempotencyKey) ? 'return' : 'pickup';
-    const deliveryId = `mock_${leg}_${this.now().toString(36)}_${this.sign(input.idempotencyKey, 6).toLowerCase().replace(/[^0-9a-z]/g, 'x')}`;
+    const leg = /return/.test(input.idempotencyKey) ? "return" : "pickup";
+    const deliveryId = `mock_${leg}_${this.now().toString(36)}_${this.sign(input.idempotencyKey, 6)
+      .toLowerCase()
+      .replace(/[^0-9a-z]/g, "x")}`;
     return { deliveryId, trackingUrl: `/track/${deliveryId}` };
   }
 
@@ -82,9 +88,9 @@ export class MockProvider implements DeliveryProvider {
     const { createdAt } = this.parseId(deliveryId);
     const elapsed = (this.now() - createdAt) / 1000;
     const rider = this.rider(deliveryId);
-    if (elapsed < this.delaySeconds) return { status: 'requested', etaMinutes: 15 };
-    if (elapsed < this.delaySeconds * 2) return { status: 'rider_assigned', rider, trackingUrl: `/track/${deliveryId}`, etaMinutes: 12 };
-    return { status: 'rider_en_route', rider, trackingUrl: `/track/${deliveryId}`, etaMinutes: 5 };
+    if (elapsed < this.delaySeconds) return { status: "requested", etaMinutes: 15 };
+    if (elapsed < this.delaySeconds * 2) return { status: "rider_assigned", rider, trackingUrl: `/track/${deliveryId}`, etaMinutes: 12 };
+    return { status: "rider_en_route", rider, trackingUrl: `/track/${deliveryId}`, etaMinutes: 5 };
   }
 
   async verifyRiderQr(deliveryId: string, qrPayload: string) {
@@ -99,6 +105,6 @@ export class MockProvider implements DeliveryProvider {
   }
 
   parseWebhook(): DeliveryEvent {
-    throw new ProviderError('MockProvider does not send webhooks', false);
+    throw new ProviderError("MockProvider does not send webhooks", false);
   }
 }

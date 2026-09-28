@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { COOKIE_POLICY_VERSION, type ConsentChoice } from '@/lib/legal';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { COOKIE_POLICY_VERSION, type ConsentChoice } from "@/lib/legal";
 
 /**
  * Cookie consent (Kenya DPA). Strictly necessary cookies (sign-in, the choice itself) are always on; optional
@@ -22,16 +22,16 @@ export function CookieBanner({ consent }: { consent: ConsentChoice | null }) {
       setCustom(true);
       setOpen(true);
     };
-    window.addEventListener('rd:cookie-settings', reopen);
-    return () => window.removeEventListener('rd:cookie-settings', reopen);
+    window.addEventListener("rd:cookie-settings", reopen);
+    return () => window.removeEventListener("rd:cookie-settings", reopen);
   }, []);
 
   const save = async (choice: { analytics: boolean; marketing: boolean }) => {
     setSaving(true);
-    await fetch('/api/consent', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(choice) }).catch(() => {});
+    await fetch("/api/consent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(choice) }).catch(() => {});
     setSaving(false);
     setOpen(false);
-    window.dispatchEvent(new CustomEvent('rd:consent', { detail: { ...choice, v: COOKIE_POLICY_VERSION } }));
+    window.dispatchEvent(new CustomEvent("rd:consent", { detail: { ...choice, v: COOKIE_POLICY_VERSION } }));
   };
 
   if (!open) return null;
@@ -41,11 +41,11 @@ export function CookieBanner({ consent }: { consent: ConsentChoice | null }) {
         <p className="text-[17px] font-semibold tracking-tight">Your privacy</p>
         <p className="mt-1 text-[14px] leading-snug text-ink-2">
           We use strictly necessary cookies to keep you signed in and remember this choice. With your permission we may also use analytics cookies to improve
-          the service. We never sell your data. See our{' '}
+          the service. We never sell your data. See our{" "}
           <Link href="/privacy#cookies" className="text-link hover:underline">
             cookie policy
-          </Link>{' '}
-          and{' '}
+          </Link>{" "}
+          and{" "}
           <Link href="/terms" className="text-link hover:underline">
             terms
           </Link>
@@ -68,7 +68,13 @@ export function CookieBanner({ consent }: { consent: ConsentChoice | null }) {
               <Button size="sm" disabled={saving} onClick={() => save({ analytics: true, marketing: false })} data-testid="cookie-accept">
                 Accept all
               </Button>
-              <Button size="sm" variant="secondary" disabled={saving} onClick={() => save({ analytics: false, marketing: false })} data-testid="cookie-essential">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={saving}
+                onClick={() => save({ analytics: false, marketing: false })}
+                data-testid="cookie-essential"
+              >
                 Essential only
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setCustom(true)}>
@@ -82,9 +88,21 @@ export function CookieBanner({ consent }: { consent: ConsentChoice | null }) {
   );
 }
 
-function Toggle({ label, description, checked, onChange, disabled }: { label: string; description: string; checked: boolean; onChange?: (v: boolean) => void; disabled?: boolean }) {
+function Toggle({
+  label,
+  description,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange?: (v: boolean) => void;
+  disabled?: boolean;
+}) {
   return (
-    <label className={`flex items-center justify-between gap-4 rounded-[12px] bg-white/70 px-4 py-3 ${disabled ? 'opacity-70' : 'cursor-pointer'}`}>
+    <label className={`flex items-center justify-between gap-4 rounded-[12px] bg-white/70 px-4 py-3 ${disabled ? "opacity-70" : "cursor-pointer"}`}>
       <span>
         <span className="block text-[15px] font-medium">{label}</span>
         <span className="block text-[13px] text-ink-3">{description}</span>
@@ -100,7 +118,7 @@ function Toggle({ label, description, checked, onChange, disabled }: { label: st
 
 export function CookieSettingsLink({ className }: { className?: string }) {
   return (
-    <button type="button" className={className} onClick={() => window.dispatchEvent(new Event('rd:cookie-settings'))}>
+    <button type="button" className={className} onClick={() => window.dispatchEvent(new Event("rd:cookie-settings"))}>
       Cookie settings
     </button>
   );

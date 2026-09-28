@@ -5,7 +5,10 @@
 export function PhoneMock({ shop }: { shop: string }) {
   return (
     <div className="relative mx-auto w-[240px] sm:w-[270px]" aria-hidden>
-      <div className="absolute -inset-10 rounded-full opacity-60 blur-3xl" style={{ background: 'radial-gradient(closest-side, var(--brand-accent), transparent)' }} />
+      <div
+        className="absolute -inset-10 rounded-full opacity-60 blur-3xl"
+        style={{ background: "radial-gradient(closest-side, var(--brand-accent), transparent)" }}
+      />
       <div className="relative aspect-[9/19] rounded-[44px] border border-white/15 bg-[#1d1d1f] p-[10px] shadow-[0_40px_80px_rgba(0,0,0,.55),inset_0_0_0_2px_rgba(255,255,255,.06)]">
         <div className="relative h-full overflow-hidden rounded-[36px] bg-[#f5f5f7] text-ink">
           <div className="absolute top-2 left-1/2 h-6 w-20 -translate-x-1/2 rounded-full bg-black" />
@@ -34,7 +37,7 @@ export function PhoneMock({ shop }: { shop: string }) {
                 </div>
               </div>
               <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-                <span className="rounded-full py-1.5 text-center text-[9px] font-medium text-white" style={{ background: 'var(--brand-primary)' }}>
+                <span className="rounded-full py-1.5 text-center text-[9px] font-medium text-white" style={{ background: "var(--brand-primary)" }}>
                   Accept
                 </span>
                 <span className="rounded-full bg-fill py-1.5 text-center text-[9px] font-medium">Make an offer</span>

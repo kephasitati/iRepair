@@ -1,41 +1,51 @@
-import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
-import { ClipboardList } from 'lucide-react';
-import type { Tenant } from '@/lib/tenant';
-import type { Session } from '@/lib/auth';
-import { signOutAction } from '@/app/(auth)/actions';
-import { exitSupportModeAction } from '@/app/platform/actions';
-import { BottomNav, TopNav, type NavItem } from '@/components/staff-nav';
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { ClipboardList } from "lucide-react";
+import type { Tenant } from "@/lib/tenant";
+import type { Session } from "@/lib/auth";
+import { signOutAction } from "@/app/(auth)/actions";
+import { exitSupportModeAction } from "@/app/platform/actions";
+import { BottomNav, TopNav, type NavItem } from "@/components/staff-nav";
 
 /** Every staff destination for a role: the daily screens first, then shop administration. */
-export async function staffNavItems(role: 'technician' | 'shop_admin'): Promise<{ main: NavItem[]; admin: NavItem[] }> {
-  const t = await getTranslations('nav');
+export async function staffNavItems(role: "technician" | "shop_admin"): Promise<{ main: NavItem[]; admin: NavItem[] }> {
+  const t = await getTranslations("nav");
   const main: NavItem[] = [
-    { key: 'board', href: '/bench', label: t('board') },
-    { key: 'scanner', href: '/bench/scan', label: t('scanner') },
-    { key: 'customers', href: '/bench/customers', label: t('customers') },
+    { key: "board", href: "/bench", label: t("board") },
+    { key: "scanner", href: "/bench/scan", label: t("scanner") },
+    { key: "customers", href: "/bench/customers", label: t("customers") },
   ];
   const admin: NavItem[] =
-    role === 'shop_admin'
+    role === "shop_admin"
       ? [
-          { key: 'parts', href: '/admin/parts', label: t('parts') },
-          { key: 'reports', href: '/admin/reports', label: t('reports') },
-          { key: 'staff', href: '/admin/staff', label: t('staff') },
-          { key: 'refunds', href: '/admin/refunds', label: t('refunds') },
-          { key: 'unclaimed', href: '/admin/unclaimed', label: t('unclaimed') },
-          { key: 'messages', href: '/admin/templates', label: 'Messages' },
-          { key: 'audit', href: '/admin/audit', label: 'Audit' },
-          { key: 'settings', href: '/admin/settings', label: t('settings') },
+          { key: "parts", href: "/admin/parts", label: t("parts") },
+          { key: "reports", href: "/admin/reports", label: t("reports") },
+          { key: "staff", href: "/admin/staff", label: t("staff") },
+          { key: "refunds", href: "/admin/refunds", label: t("refunds") },
+          { key: "unclaimed", href: "/admin/unclaimed", label: t("unclaimed") },
+          { key: "messages", href: "/admin/templates", label: "Messages" },
+          { key: "audit", href: "/admin/audit", label: "Audit" },
+          { key: "settings", href: "/admin/settings", label: t("settings") },
         ]
       : [];
   return { main, admin };
 }
 
 /** Staff chrome: top bar on desktop/tablet, bottom tab bar (with a Menu page for everything else) on phones. */
-export async function StaffShell({ tenant, session, role, children }: { tenant: Tenant; session: Session; role: 'technician' | 'shop_admin'; children: React.ReactNode }) {
+export async function StaffShell({
+  tenant,
+  session,
+  role,
+  children,
+}: {
+  tenant: Tenant;
+  session: Session;
+  role: "technician" | "shop_admin";
+  children: React.ReactNode;
+}) {
   const support = session.user.is_platform_admin && session.impersonatingTenantId === tenant.id;
   const { main, admin } = await staffNavItems(role);
-  const bottom: NavItem[] = [...main, { key: 'menu', href: '/bench/menu', label: 'Menu' }];
+  const bottom: NavItem[] = [...main, { key: "menu", href: "/bench/menu", label: "Menu" }];
   return (
     <div className="min-h-dvh bg-muted/30">
       {support ? (

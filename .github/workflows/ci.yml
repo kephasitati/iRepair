@@ -7,16 +7,16 @@ on:
 
 env:
   # CI-only values — never used against a real M-Pesa/TumaBoda/SMS account or real data.
-  APP_MASTER_KEY: 'Y2ktb25seS1kdW1teS0zMi1ieXRlLWtleSEhISE='
+  APP_MASTER_KEY: "Y2ktb25seS1kdW1teS0zMi1ieXRlLWtleSEhISE="
   INTERNAL_CRON_SECRET: ci-internal-cron-secret
   MOCK_PROVIDER_SECRET: ci-mock-provider-secret
-  MOCK_DELAY_SECONDS: '2'
-  PLATFORM_ROOT_DOMAIN: 'localhost:3100'
+  MOCK_DELAY_SECONDS: "2"
+  PLATFORM_ROOT_DOMAIN: "localhost:3100"
   PUBLIC_SCHEME: http
   MPESA_DRIVER: simulator
   SMS_DRIVER: console
   EMAIL_DRIVER: console
-  OTP_DEV_CODE: '123456'
+  OTP_DEV_CODE: "123456"
   DATABASE_OWNER_URL: postgres://repairdesk_owner:ci_owner_password@localhost:5432/repairdesk
   DATABASE_URL: postgres://repairdesk_app:ci_app_password@localhost:5432/repairdesk
   DATABASE_SERVICE_URL: postgres://repairdesk_service:ci_service_password@localhost:5432/repairdesk
@@ -28,7 +28,7 @@ env:
   S3_BUCKET: repairdesk-private
   S3_ACCESS_KEY: ci_s3_key
   S3_SECRET_KEY: ci_s3_secret
-  S3_FORCE_PATH_STYLE: 'true'
+  S3_FORCE_PATH_STYLE: "true"
 
 jobs:
   typecheck-and-lint:
@@ -53,7 +53,7 @@ jobs:
           POSTGRES_USER: repairdesk_owner
           POSTGRES_PASSWORD: ci_owner_password
           POSTGRES_DB: repairdesk
-        ports: ['5432:5432']
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U repairdesk_owner -d repairdesk"
           --health-interval 5s --health-timeout 5s --health-retries 20
@@ -88,7 +88,7 @@ jobs:
           POSTGRES_USER: repairdesk_owner
           POSTGRES_PASSWORD: ci_owner_password
           POSTGRES_DB: repairdesk
-        ports: ['5432:5432']
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U repairdesk_owner -d repairdesk"
           --health-interval 5s --health-timeout 5s --health-retries 20
@@ -119,7 +119,7 @@ jobs:
       - run: npx tsx scripts/seed.ts
       - run: npx playwright test
         env:
-          E2E_PORT: '3100'
+          E2E_PORT: "3100"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

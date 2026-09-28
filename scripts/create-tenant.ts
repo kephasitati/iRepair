@@ -10,7 +10,7 @@
  *
  * Prints the invite link for the shop's first admin — same 7-day expiring token the UI issues.
  */
-import './shim-server-only';
+import "./shim-server-only";
 
 function arg(name: string, fallback?: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -18,27 +18,27 @@ function arg(name: string, fallback?: string): string | undefined {
 }
 
 async function main() {
-  const { randomToken, sha256Hex, generateDataKey, wrapDataKey, parseKey } = await import('../lib/core/crypto');
-  const { resolveInvitee } = await import('../lib/invites');
-  const { normalizeKenyanPhone } = await import('../lib/core/phone');
-  const { withService } = await import('../lib/db');
-  const { env } = await import('../lib/env');
+  const { randomToken, sha256Hex, generateDataKey, wrapDataKey, parseKey } = await import("../lib/core/crypto");
+  const { resolveInvitee } = await import("../lib/invites");
+  const { normalizeKenyanPhone } = await import("../lib/core/phone");
+  const { withService } = await import("../lib/db");
+  const { env } = await import("../lib/env");
 
-  const name = arg('name');
-  const slug = arg('slug')?.toLowerCase();
-  const phoneRaw = arg('phone');
-  const adminEmail = arg('admin-email')?.toLowerCase();
-  const feePercent = arg('fee-percent'); // e.g. "3" = 3%
+  const name = arg("name");
+  const slug = arg("slug")?.toLowerCase();
+  const phoneRaw = arg("phone");
+  const adminEmail = arg("admin-email")?.toLowerCase();
+  const feePercent = arg("fee-percent"); // e.g. "3" = 3%
 
   if (!name || !slug || !phoneRaw || !adminEmail) {
     console.error('Usage: npx tsx scripts/create-tenant.ts --name "Shop Name" --slug slug --phone +2547... --admin-email you@example.com [--fee-percent 3]');
     process.exit(1);
   }
-  if (!/^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])?$/.test(slug)) throw new Error('Slug: lowercase letters, numbers and dashes, 3-40 characters.');
-  if (['www', 'api', 'admin', 'platform', 'app', 'mail'].includes(slug)) throw new Error('That slug is reserved.');
+  if (!/^[a-z0-9]([a-z0-9-]{1,38}[a-z0-9])?$/.test(slug)) throw new Error("Slug: lowercase letters, numbers and dashes, 3-40 characters.");
+  if (["www", "api", "admin", "platform", "app", "mail"].includes(slug)) throw new Error("That slug is reserved.");
   const phone = normalizeKenyanPhone(phoneRaw);
-  if (!phone) throw new Error('Enter a valid Kenyan phone number for --phone.');
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) throw new Error('Enter a valid --admin-email.');
+  if (!phone) throw new Error("Enter a valid Kenyan phone number for --phone.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) throw new Error("Enter a valid --admin-email.");
 
   const host = `${slug}.${env().PLATFORM_ROOT_DOMAIN}`;
   const token = randomToken(24);
@@ -64,9 +64,13 @@ async function main() {
 
   console.log(`\nCreated "${name}" (slug: ${slug})`);
   console.log(`Tenant id: ${result.tenantId}`);
-  console.log(`Subdomain: ${env().PUBLIC_SCHEME}://${result.host}  (needs a DNS record + it added under the platform's domain, same as the platform host itself)`);
+  console.log(
+    `Subdomain: ${env().PUBLIC_SCHEME}://${result.host}  (needs a DNS record + it added under the platform's domain, same as the platform host itself)`,
+  );
   console.log(`Admin invite (${adminEmail}, valid 7 days): ${env().PUBLIC_SCHEME}://${result.host}/staff/invite/${token}`);
-  console.log(`\nDevice types, colours, logo, fees, address/hours and credentials all default and are set by the shop admin in Settings — nothing else is pre-filled.`);
+  console.log(
+    `\nDevice types, colours, logo, fees, address/hours and credentials all default and are set by the shop admin in Settings — nothing else is pre-filled.`,
+  );
   process.exit(0);
 }
 

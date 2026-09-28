@@ -9,14 +9,14 @@
  * they aren't required to appear together.
  */
 
-const BLUE = '#0071e3';
-const INK = '#16233f';
+const BLUE = "#0071e3";
+const INK = "#16233f";
 const WORDMARK_FONT = "'SF Pro Rounded', 'SF Pro Display', Poppins, Inter, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif";
 
 /** Hex-drive head, flat sides left/right, centred at (50, 29) in a 100×100 box. */
-const HEX = '61.26,35.5 50,42 38.74,35.5 38.74,22.5 50,16 61.26,22.5';
+const HEX = "61.26,35.5 50,42 38.74,35.5 38.74,22.5 50,16 61.26,22.5";
 /** Shaft tapering to a point, directly below the hex head. */
-const SHAFT = 'M44,45 H56 V71 L50,85 L44,71 Z';
+const SHAFT = "M44,45 H56 V71 L50,85 L44,71 Z";
 
 /** The screwdriver-bit glyph (hex head + tapering shaft), for reuse at any size/position/colour. */
 function Bit({ fill }: { fill: string }) {
@@ -54,7 +54,17 @@ export function IRepairLogo({ className }: { className?: string }) {
       <circle cx="84" cy="20" r="5.5" fill={BLUE} />
       <rect x="80.5" y="26" width="7" height="21" rx="3.5" fill={INK} />
 
-      <text x="92" y="47" fontFamily={WORDMARK_FONT} fontWeight="800" fontSize="42" letterSpacing="-0.5" fill={INK} textLength="115" lengthAdjust="spacingAndGlyphs">
+      <text
+        x="92"
+        y="47"
+        fontFamily={WORDMARK_FONT}
+        fontWeight="800"
+        fontSize="42"
+        letterSpacing="-0.5"
+        fill={INK}
+        textLength="115"
+        lengthAdjust="spacingAndGlyphs"
+      >
         Repa
       </text>
 
@@ -63,7 +73,17 @@ export function IRepairLogo({ className }: { className?: string }) {
         <Bit fill={BLUE} />
       </g>
 
-      <text x="223" y="47" fontFamily={WORDMARK_FONT} fontWeight="800" fontSize="42" letterSpacing="-0.5" fill={INK} textLength="20" lengthAdjust="spacingAndGlyphs">
+      <text
+        x="223"
+        y="47"
+        fontFamily={WORDMARK_FONT}
+        fontWeight="800"
+        fontSize="42"
+        letterSpacing="-0.5"
+        fill={INK}
+        textLength="20"
+        lengthAdjust="spacingAndGlyphs"
+      >
         r
       </text>
     </svg>

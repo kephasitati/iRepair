@@ -1,7 +1,13 @@
-import nodemailer, { type Transporter } from 'nodemailer';
+import nodemailer, { type Transporter } from "nodemailer";
 
 export interface EmailSender {
-  send(input: { to: string; subject: string; text: string; html?: string; fromName?: string | null }): Promise<{ ok: boolean; messageId?: string; error?: string }>;
+  send(input: {
+    to: string;
+    subject: string;
+    text: string;
+    html?: string;
+    fromName?: string | null;
+  }): Promise<{ ok: boolean; messageId?: string; error?: string }>;
 }
 
 export class SmtpEmail implements EmailSender {
@@ -15,7 +21,7 @@ export class SmtpEmail implements EmailSender {
   async send(input: { to: string; subject: string; text: string; html?: string; fromName?: string | null }) {
     try {
       const info = await this.transport.sendMail({
-        from: input.fromName ? `"${input.fromName.replace(/"/g, '')}" <${this.from}>` : this.from,
+        from: input.fromName ? `"${input.fromName.replace(/"/g, "")}" <${this.from}>` : this.from,
         to: input.to,
         subject: input.subject,
         text: input.text,
@@ -40,6 +46,6 @@ export class ConsoleEmail implements EmailSender {
 export class UnconfiguredEmail implements EmailSender {
   async send(input: { subject: string }) {
     console.error(`[email] no SMTP configured; "${input.subject.slice(0, 40)}" not sent`);
-    return { ok: false, error: 'not_configured' };
+    return { ok: false, error: "not_configured" };
   }
 }

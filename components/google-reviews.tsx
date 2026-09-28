@@ -1,11 +1,11 @@
-import { Star } from 'lucide-react';
-import { getGoogleReviews, googleReviewLinks } from '@/lib/google-reviews';
+import { Star } from "lucide-react";
+import { getGoogleReviews, googleReviewLinks } from "@/lib/google-reviews";
 
 function Stars({ value }: { value: number }) {
   return (
     <span className="inline-flex" aria-label={`${value} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} className={`size-4 ${i <= Math.round(value) ? 'fill-amber-400 text-amber-400' : 'text-ink-3/40'}`} />
+        <Star key={i} className={`size-4 ${i <= Math.round(value) ? "fill-amber-400 text-amber-400" : "text-ink-3/40"}`} />
       ))}
     </span>
   );
@@ -34,7 +34,13 @@ export async function GoogleReviews({ placeId, shopName }: { placeId: string; sh
           <a href={data?.mapsUrl ?? links.read} target="_blank" rel="noopener" className="rounded-full bg-canvas px-4 py-2 text-[14px] hover:bg-fill">
             Read all reviews
           </a>
-          <a href={links.write} target="_blank" rel="noopener" className="rounded-full px-4 py-2 text-[14px]" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>
+          <a
+            href={links.write}
+            target="_blank"
+            rel="noopener"
+            className="rounded-full px-4 py-2 text-[14px]"
+            style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+          >
             Write a review
           </a>
         </div>

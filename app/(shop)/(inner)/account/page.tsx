@@ -1,54 +1,55 @@
-import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
-import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Field, Section } from '@/components/fields';
-import { requestCtx, requireCustomer } from '@/lib/auth';
-import { formatKes } from '@/lib/core/money';
-import { formatKenyanPhone } from '@/lib/core/phone';
-import { formatDate } from '@/lib/core/time';
-import { withUser } from '@/lib/db';
-import { deleteAddressAction, deleteDeviceAction, deleteIdAction, updateNameAction } from '@/app/(shop)/actions';
-import { ID_KIND_LABEL } from '@/lib/core/identity';
-import { getCustomerIdSummary } from '@/lib/customer-ids';
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, Section } from "@/components/fields";
+import { requestCtx, requireCustomer } from "@/lib/auth";
+import { formatKes } from "@/lib/core/money";
+import { formatKenyanPhone } from "@/lib/core/phone";
+import { formatDate } from "@/lib/core/time";
+import { withUser } from "@/lib/db";
+import { deleteAddressAction, deleteDeviceAction, deleteIdAction, updateNameAction } from "@/app/(shop)/actions";
+import { ID_KIND_LABEL } from "@/lib/core/identity";
+import { getCustomerIdSummary } from "@/lib/customer-ids";
 
-export const metadata = { title: 'Account' };
+export const metadata = { title: "Account" };
 
 export default async function AccountPage() {
-  const { session, tenant } = await requireCustomer('/account');
+  const { session, tenant } = await requireCustomer("/account");
   const [ctx, t] = await Promise.all([requestCtx(), getTranslations()]);
   const { addresses, devices, invoices, identity, staffLogin } = await withUser(ctx, async (tx) => ({
     addresses: await tx`select * from addresses where user_id = ${ctx.userId} order by created_at desc`,
     devices: await tx`select * from devices where user_id = ${ctx.userId} order by created_at desc`,
-    invoices: await tx`select i.id, i.number, i.total_cents, i.issued_at, j.ref from invoices i join jobs j on j.id = i.job_id where j.customer_user_id = ${ctx.userId} and i.status = 'issued' order by i.issued_at desc`,
+    invoices:
+      await tx`select i.id, i.number, i.total_cents, i.issued_at, j.ref from invoices i join jobs j on j.id = i.job_id where j.customer_user_id = ${ctx.userId} and i.status = 'issued' order by i.issued_at desc`,
     identity: await getCustomerIdSummary(tx, tenant.id, ctx.userId!),
     // An account with a password signs in to a shop's bench with this email; it is not edited from here (D-40).
     staffLogin: ((await tx`select password_set_at is not null as v from users where id = ${ctx.userId}`)[0]?.v ?? false) as boolean,
   }));
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{t('nav.account')}</h1>
-      <Section title={t('common.name')}>
+      <h1 className="text-xl font-semibold">{t("nav.account")}</h1>
+      <Section title={t("common.name")}>
         <form action={updateNameAction} className="space-y-3">
           <p className="text-sm text-muted-foreground">{session.user.phone_e164 ? formatKenyanPhone(session.user.phone_e164) : null}</p>
-          <Field label={t('common.name')} htmlFor="name">
+          <Field label={t("common.name")} htmlFor="name">
             <Input id="name" name="name" defaultValue={session.user.full_name} />
           </Field>
           {staffLogin ? (
-            <Field label={t('common.email')} htmlFor="email" hint="This is your staff sign-in email. Ask your shop admin to change it.">
-              <Input id="email" type="email" defaultValue={session.user.email ?? ''} readOnly />
+            <Field label={t("common.email")} htmlFor="email" hint="This is your staff sign-in email. Ask your shop admin to change it.">
+              <Input id="email" type="email" defaultValue={session.user.email ?? ""} readOnly />
             </Field>
           ) : (
-            <Field label={t('common.email')} htmlFor="email" hint={t('common.optional')}>
-              <Input id="email" name="email" type="email" defaultValue={session.user.email ?? ''} />
+            <Field label={t("common.email")} htmlFor="email" hint={t("common.optional")}>
+              <Input id="email" name="email" type="email" defaultValue={session.user.email ?? ""} />
             </Field>
           )}
-          <Button type="submit">{t('common.save')}</Button>
+          <Button type="submit">{t("common.save")}</Button>
         </form>
       </Section>
 
-      <Section title={t('nav.invoices')}>
+      <Section title={t("nav.invoices")}>
         {invoices.length ? (
           <ul className="divide-y text-sm">
             {invoices.map((i) => (
@@ -64,21 +65,21 @@ export default async function AccountPage() {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('common.noResults')}</p>
+          <p className="text-sm text-muted-foreground">{t("common.noResults")}</p>
         )}
       </Section>
 
-      <Section title={t('nav.addresses')}>
+      <Section title={t("nav.addresses")}>
         {addresses.length ? (
           <ul className="divide-y text-sm">
             {addresses.map((a) => (
               <li key={a.id} className="flex items-start justify-between gap-2 py-2">
                 <span>
                   <span className="font-medium">{a.label || a.formatted}</span>
-                  <span className="block text-muted-foreground">{[a.formatted, a.building_floor, a.landmark].filter(Boolean).join(' · ')}</span>
+                  <span className="block text-muted-foreground">{[a.formatted, a.building_floor, a.landmark].filter(Boolean).join(" · ")}</span>
                 </span>
                 <form action={deleteAddressAction.bind(null, a.id)}>
-                  <Button type="submit" variant="ghost" size="icon" aria-label={t('common.delete')}>
+                  <Button type="submit" variant="ghost" size="icon" aria-label={t("common.delete")}>
                     <Trash2 className="size-4" />
                   </Button>
                 </form>
@@ -86,11 +87,11 @@ export default async function AccountPage() {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('common.noResults')}</p>
+          <p className="text-sm text-muted-foreground">{t("common.noResults")}</p>
         )}
       </Section>
 
-      <Section title={t('nav.devices')}>
+      <Section title={t("nav.devices")}>
         {devices.length ? (
           <ul className="divide-y text-sm">
             {devices.map((d) => (
@@ -100,7 +101,7 @@ export default async function AccountPage() {
                   <span className="block text-muted-foreground">{d.identifier}</span>
                 </span>
                 <form action={deleteDeviceAction.bind(null, d.id)}>
-                  <Button type="submit" variant="ghost" size="icon" aria-label={t('common.delete')}>
+                  <Button type="submit" variant="ghost" size="icon" aria-label={t("common.delete")}>
                     <Trash2 className="size-4" />
                   </Button>
                 </form>
@@ -108,7 +109,7 @@ export default async function AccountPage() {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('common.noResults')}</p>
+          <p className="text-sm text-muted-foreground">{t("common.noResults")}</p>
         )}
       </Section>
       <Section title="Identity document">
@@ -124,13 +125,14 @@ export default async function AccountPage() {
                     Photo on file
                   </a>
                 ) : (
-                  'No photo yet — you will be asked for one on your next booking'
+                  "No photo yet — you will be asked for one on your next booking"
                 )}
-                {' · '}used instead of an IMEI/serial when you book with {tenant.branding.display_name}. Stored encrypted; only staff handling your repair can see it, and every view is logged.
+                {" · "}used instead of an IMEI/serial when you book with {tenant.branding.display_name}. Stored encrypted; only staff handling your repair can
+                see it, and every view is logged.
               </span>
             </span>
             <form action={deleteIdAction}>
-              <Button type="submit" variant="ghost" size="icon" aria-label={t('common.delete')}>
+              <Button type="submit" variant="ghost" size="icon" aria-label={t("common.delete")}>
                 <Trash2 className="size-4" />
               </Button>
             </form>
@@ -141,7 +143,7 @@ export default async function AccountPage() {
       </Section>
       <p className="text-center text-xs">
         <Link href="/privacy" className="underline">
-          {t('landing.privacy')}
+          {t("landing.privacy")}
         </Link>
       </p>
     </div>

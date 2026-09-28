@@ -1,32 +1,32 @@
-'use server';
+"use server";
 
-import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
-import { requestCtx, requireStaff } from '@/lib/auth';
-import { kesField, run, str, type ActionResult } from '@/lib/actions';
-import { audit } from '@/lib/audit';
-import { isValidHex } from '@/lib/branding';
-import { randomToken, sha256Hex } from '@/lib/core/crypto';
-import { normalizeKenyanPhone } from '@/lib/core/phone';
-import { validateTemplate } from '@/lib/core/templates';
-import { DEVICE_TYPES } from '@/lib/core/device-id';
-import { withUser } from '@/lib/db';
-import { EMAIL_PATTERN, resolveInvitee } from '@/lib/invites';
-import { UserError } from '@/lib/jobs/types';
-import { brandingKey, productKey, putObject } from '@/lib/storage';
-import { parseFaqText } from '@/lib/core/faq-text';
-import { invalidateTenantCache } from '@/lib/tenant';
-import { encryptJson } from '@/lib/tenant-crypto';
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { requestCtx, requireStaff } from "@/lib/auth";
+import { kesField, run, str, type ActionResult } from "@/lib/actions";
+import { audit } from "@/lib/audit";
+import { isValidHex } from "@/lib/branding";
+import { randomToken, sha256Hex } from "@/lib/core/crypto";
+import { normalizeKenyanPhone } from "@/lib/core/phone";
+import { validateTemplate } from "@/lib/core/templates";
+import { DEVICE_TYPES } from "@/lib/core/device-id";
+import { withUser } from "@/lib/db";
+import { EMAIL_PATTERN, resolveInvitee } from "@/lib/invites";
+import { UserError } from "@/lib/jobs/types";
+import { brandingKey, productKey, putObject } from "@/lib/storage";
+import { parseFaqText } from "@/lib/core/faq-text";
+import { invalidateTenantCache } from "@/lib/tenant";
+import { encryptJson } from "@/lib/tenant-crypto";
 
 async function admin() {
-  const { session, tenant } = await requireStaff('shop_admin');
+  const { session, tenant } = await requireStaff("shop_admin");
   const ctx = await requestCtx();
   const impersonatedBy = session.user.is_platform_admin && session.impersonatingTenantId === tenant.id ? session.user.id : null;
   return { session, tenant, ctx, userId: session.user.id, impersonatedBy };
 }
 
 function bool(fd: FormData, k: string) {
-  return fd.get(k) === 'on' || fd.get(k) === 'true';
+  return fd.get(k) === "on" || fd.get(k) === "true";
 }
 
 function int(fd: FormData, k: string, min: number, max: number, label: string) {
@@ -41,140 +41,194 @@ function int(fd: FormData, k: string, min: number, max: number, label: string) {
 export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await admin();
-    const section = str(fd, 'section');
+    const section = str(fd, "section");
     await withUser(ctx, async (tx) => {
-      if (section === 'branding') {
-        const primary = str(fd, 'primary_hex');
-        const accent = str(fd, 'accent_hex');
-        if (!isValidHex(primary) || !isValidHex(accent)) throw new UserError('Colours must be hex like #0f3d3e.');
+      if (section === "branding") {
+        const primary = str(fd, "primary_hex");
+        const accent = str(fd, "accent_hex");
+        if (!isValidHex(primary) || !isValidHex(accent)) throw new UserError("Colours must be hex like #0f3d3e.");
         const patch: Record<string, unknown> = {
-          display_name: str(fd, 'display_name') || tenant.name,
-          tagline: str(fd, 'tagline') || null,
-          about: str(fd, 'about').slice(0, 500) || null,
+          display_name: str(fd, "display_name") || tenant.name,
+          tagline: str(fd, "tagline") || null,
+          about: str(fd, "about").slice(0, 500) || null,
           primary_hex: primary,
           accent_hex: accent,
-          sms_sender_id: str(fd, 'sms_sender_id') || null,
-          email_from_name: str(fd, 'email_from_name') || null,
+          sms_sender_id: str(fd, "sms_sender_id") || null,
+          email_from_name: str(fd, "email_from_name") || null,
         };
         const socials: Record<string, string> = {};
-        for (const k of ['instagram', 'facebook', 'tiktok', 'x', 'youtube', 'website']) {
+        for (const k of ["instagram", "facebook", "tiktok", "x", "youtube", "website"]) {
           const v = str(fd, `social_${k}`);
           if (!v) continue;
-          if (!/^https:\/\/[^\s]+$/.test(v)) throw new UserError(`The ${k === 'x' ? 'X' : k} link must start with https://`);
+          if (!/^https:\/\/[^\s]+$/.test(v)) throw new UserError(`The ${k === "x" ? "X" : k} link must start with https://`);
           socials[k] = v;
         }
         patch.social_links = tx.json(socials);
-        const posts = str(fd, 'instagram_posts').split(/\r?\n|,/).map((u) => u.trim()).filter(Boolean);
-        if (posts.length > 12) throw new UserError('Choose up to 12 Instagram posts.');
-        for (const u of posts) if (!/^https:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/[\w-]+\/?/.test(u)) throw new UserError(`Not an Instagram post link: ${u}`);
-        patch.instagram_posts = posts.map((u) => u.replace(/\?.*$/, '').replace(/\/?$/, '/'));
-        const placeId = str(fd, 'google_place_id').trim();
-        if (placeId && !/^[A-Za-z0-9_-]{10,255}$/.test(placeId)) throw new UserError('That does not look like a Google Place ID (it usually starts with ChIJ).');
+        const posts = str(fd, "instagram_posts")
+          .split(/\r?\n|,/)
+          .map((u) => u.trim())
+          .filter(Boolean);
+        if (posts.length > 12) throw new UserError("Choose up to 12 Instagram posts.");
+        for (const u of posts)
+          if (!/^https:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/[\w-]+\/?/.test(u)) throw new UserError(`Not an Instagram post link: ${u}`);
+        patch.instagram_posts = posts.map((u) => u.replace(/\?.*$/, "").replace(/\/?$/, "/"));
+        const placeId = str(fd, "google_place_id").trim();
+        if (placeId && !/^[A-Za-z0-9_-]{10,255}$/.test(placeId))
+          throw new UserError("That does not look like a Google Place ID (it usually starts with ChIJ).");
         patch.google_place_id = placeId || null;
-        for (const [field, name] of [['logo', 'logo_path'], ['icon', 'icon_path']] as const) {
+        for (const [field, name] of [
+          ["logo", "logo_path"],
+          ["icon", "icon_path"],
+        ] as const) {
           const file = fd.get(field);
           if (file instanceof File && file.size > 0) {
-            if (file.size > 1024 * 1024) throw new UserError('Images must be under 1 MB.');
-            const ext = file.type === 'image/png' ? 'png' : file.type === 'image/svg+xml' ? 'svg' : file.type === 'image/webp' ? 'webp' : file.type === 'image/jpeg' ? 'jpg' : null;
-            if (!ext) throw new UserError('Use a PNG, JPG, WebP or SVG image.');
+            if (file.size > 1024 * 1024) throw new UserError("Images must be under 1 MB.");
+            const ext =
+              file.type === "image/png"
+                ? "png"
+                : file.type === "image/svg+xml"
+                  ? "svg"
+                  : file.type === "image/webp"
+                    ? "webp"
+                    : file.type === "image/jpeg"
+                      ? "jpg"
+                      : null;
+            if (!ext) throw new UserError("Use a PNG, JPG, WebP or SVG image.");
             const key = brandingKey(tenant.id, `${field}-${Date.now()}`, ext);
             await putObject(key, Buffer.from(await file.arrayBuffer()), file.type);
             patch[name] = key;
           }
         }
         await tx`update tenant_branding set ${tx(patch)} where tenant_id = ${tenant.id}`;
-        await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'settings.branding', entity: 'tenant', entityId: tenant.id, diff: patch });
-      } else if (section === 'contact') {
-        const phone = normalizeKenyanPhone(str(fd, 'contact_phone'));
-        if (!phone) throw new UserError('Enter a valid shop phone number.');
-        const whatsappRaw = str(fd, 'whatsapp_phone');
+        await audit(tx, {
+          tenantId: tenant.id,
+          actorUserId: userId,
+          impersonatedBy,
+          action: "settings.branding",
+          entity: "tenant",
+          entityId: tenant.id,
+          diff: patch,
+        });
+      } else if (section === "contact") {
+        const phone = normalizeKenyanPhone(str(fd, "contact_phone"));
+        if (!phone) throw new UserError("Enter a valid shop phone number.");
+        const whatsappRaw = str(fd, "whatsapp_phone");
         const whatsapp = whatsappRaw ? normalizeKenyanPhone(whatsappRaw) : null;
-        if (whatsappRaw && !whatsapp) throw new UserError('Enter a valid WhatsApp number.');
-        const lat = str(fd, 'address_lat') ? Number(str(fd, 'address_lat')) : null;
-        const lng = str(fd, 'address_lng') ? Number(str(fd, 'address_lng')) : null;
-        if (lat !== null && !(Number.isFinite(lat) && Math.abs(lat) <= 90)) throw new UserError('Latitude must be a number between -90 and 90 (e.g. -1.2864).');
-        if (lng !== null && !(Number.isFinite(lng) && Math.abs(lng) <= 180)) throw new UserError('Longitude must be a number between -180 and 180 (e.g. 36.8172).');
-        if ((lat === null) !== (lng === null)) throw new UserError('Enter both latitude and longitude, or neither.');
-        if (!str(fd, 'address_formatted')) throw new UserError('Enter the shop address.');
+        if (whatsappRaw && !whatsapp) throw new UserError("Enter a valid WhatsApp number.");
+        const lat = str(fd, "address_lat") ? Number(str(fd, "address_lat")) : null;
+        const lng = str(fd, "address_lng") ? Number(str(fd, "address_lng")) : null;
+        if (lat !== null && !(Number.isFinite(lat) && Math.abs(lat) <= 90)) throw new UserError("Latitude must be a number between -90 and 90 (e.g. -1.2864).");
+        if (lng !== null && !(Number.isFinite(lng) && Math.abs(lng) <= 180))
+          throw new UserError("Longitude must be a number between -180 and 180 (e.g. 36.8172).");
+        if ((lat === null) !== (lng === null)) throw new UserError("Enter both latitude and longitude, or neither.");
+        if (!str(fd, "address_formatted")) throw new UserError("Enter the shop address.");
         const hours: Record<string, { open: string; close: string } | null> = {};
-        for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) {
+        for (const d of ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]) {
           if (!bool(fd, `${d}_on`)) {
             hours[d] = null;
             continue;
           }
           const open = str(fd, `${d}_open`);
           const close = str(fd, `${d}_close`);
-          if (!/^\d{2}:\d{2}$/.test(open) || !/^\d{2}:\d{2}$/.test(close)) throw new UserError(`Enter opening and closing times for ${d.charAt(0).toUpperCase() + d.slice(1)}.`);
+          if (!/^\d{2}:\d{2}$/.test(open) || !/^\d{2}:\d{2}$/.test(close))
+            throw new UserError(`Enter opening and closing times for ${d.charAt(0).toUpperCase() + d.slice(1)}.`);
           if (open >= close) throw new UserError(`${d.charAt(0).toUpperCase() + d.slice(1)}: closing time must be after opening time.`);
           hours[d] = { open, close };
         }
-        const zones = str(fd, 'service_zones').split(/\r?\n|,/).map((z) => z.trim()).filter(Boolean);
+        const zones = str(fd, "service_zones")
+          .split(/\r?\n|,/)
+          .map((z) => z.trim())
+          .filter(Boolean);
         const patch = {
           contact_phone: phone,
-          contact_email: str(fd, 'contact_email') || null,
+          contact_email: str(fd, "contact_email") || null,
           whatsapp_phone: whatsapp,
-          address_formatted: str(fd, 'address_formatted'),
-          address_landmark: str(fd, 'address_landmark') || null,
+          address_formatted: str(fd, "address_formatted"),
+          address_landmark: str(fd, "address_landmark") || null,
           address_lat: lat,
           address_lng: lng,
           opening_hours: tx.json(hours),
           service_zones: zones,
         };
         await tx`update tenant_settings set ${tx(patch)} where tenant_id = ${tenant.id}`;
-        await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'settings.contact', entity: 'tenant', entityId: tenant.id, diff: { ...patch, opening_hours: hours } });
-      } else if (section === 'fees') {
-        const depositKind = str(fd, 'deposit_kind') === 'fixed' ? 'fixed' : 'percent';
-        const depositValue = depositKind === 'fixed' ? kesField(fd, 'deposit_fixed') : int(fd, 'deposit_percent', 0, 100, 'Deposit percentage') * 100;
-        const vatRate = Number(str(fd, 'vat_rate'));
-        if (!(vatRate >= 0 && vatRate <= 50)) throw new UserError('VAT rate must be between 0 and 50%.');
-        const kra = str(fd, 'kra_pin').toUpperCase();
-        if (kra && !/^[AP]\d{9}[A-Z]$/.test(kra)) throw new UserError('KRA PIN looks wrong (e.g. P051234567X).');
-        if (bool(fd, 'vat_registered') && !kra) throw new UserError('A VAT-registered shop needs a KRA PIN on its invoices.');
+        await audit(tx, {
+          tenantId: tenant.id,
+          actorUserId: userId,
+          impersonatedBy,
+          action: "settings.contact",
+          entity: "tenant",
+          entityId: tenant.id,
+          diff: { ...patch, opening_hours: hours },
+        });
+      } else if (section === "fees") {
+        const depositKind = str(fd, "deposit_kind") === "fixed" ? "fixed" : "percent";
+        const depositValue = depositKind === "fixed" ? kesField(fd, "deposit_fixed") : int(fd, "deposit_percent", 0, 100, "Deposit percentage") * 100;
+        const vatRate = Number(str(fd, "vat_rate"));
+        if (!(vatRate >= 0 && vatRate <= 50)) throw new UserError("VAT rate must be between 0 and 50%.");
+        const kra = str(fd, "kra_pin").toUpperCase();
+        if (kra && !/^[AP]\d{9}[A-Z]$/.test(kra)) throw new UserError("KRA PIN looks wrong (e.g. P051234567X).");
+        if (bool(fd, "vat_registered") && !kra) throw new UserError("A VAT-registered shop needs a KRA PIN on its invoices.");
         const perType: Record<string, number> = {};
         for (const d of DEVICE_TYPES) if (str(fd, `fee_${d}`)) perType[d] = kesField(fd, `fee_${d}`);
         const patch = {
-          consultation_fee_cents: kesField(fd, 'consultation_fee'),
+          consultation_fee_cents: kesField(fd, "consultation_fee"),
           consultation_fees: tx.json(perType),
-          consultation_fee_credited: bool(fd, 'consultation_fee_credited'),
+          consultation_fee_credited: bool(fd, "consultation_fee_credited"),
           deposit_rule: tx.json({ kind: depositKind, value: depositValue }),
-          deposit_min_quote_cents: kesField(fd, 'deposit_min'),
-          vat_registered: bool(fd, 'vat_registered'),
+          deposit_min_quote_cents: kesField(fd, "deposit_min"),
+          vat_registered: bool(fd, "vat_registered"),
           vat_rate_bp: Math.round(vatRate * 100),
-          prices_include_vat: bool(fd, 'prices_include_vat'),
+          prices_include_vat: bool(fd, "prices_include_vat"),
           kra_pin: kra || null,
-          delivery_markup_bp: int(fd, 'markup', 0, 100, 'Markup') * 100,
-          collect_supplementary_upfront: bool(fd, 'collect_supplementary_upfront'),
+          delivery_markup_bp: int(fd, "markup", 0, 100, "Markup") * 100,
+          collect_supplementary_upfront: bool(fd, "collect_supplementary_upfront"),
         };
         await tx`update tenant_settings set ${tx(patch)} where tenant_id = ${tenant.id}`;
-        await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'settings.fees', entity: 'tenant', entityId: tenant.id, diff: { ...patch, deposit_rule: { kind: depositKind, value: depositValue } } });
-      } else if (section === 'operations') {
+        await audit(tx, {
+          tenantId: tenant.id,
+          actorUserId: userId,
+          impersonatedBy,
+          action: "settings.fees",
+          entity: "tenant",
+          entityId: tenant.id,
+          diff: { ...patch, deposit_rule: { kind: depositKind, value: depositValue } },
+        });
+      } else if (section === "operations") {
         const patch = {
-          max_negotiation_rounds: int(fd, 'max_negotiation_rounds', 0, 10, 'Negotiation rounds'),
-          quote_expiry_hours: int(fd, 'quote_expiry_hours', 1, 720, 'Quote expiry'),
-          expired_quote_autodecline_days: int(fd, 'expired_quote_autodecline_days', 1, 60, 'Auto-decline'),
-          retention_days: int(fd, 'retention_days', 7, 3650, 'Retention'),
-          warranty_days: int(fd, 'warranty_days', 0, 365, 'Warranty'),
-          auto_close_hours: int(fd, 'auto_close_hours', 1, 720, 'Auto-close'),
-          unclaimed_after_days: int(fd, 'unclaimed_after_days', 1, 60, 'Unclaimed alert'),
-          quiet_hours_start: str(fd, 'quiet_hours_start') || '21:00',
-          quiet_hours_end: str(fd, 'quiet_hours_end') || '07:00',
-          delivery_provider: str(fd, 'delivery_provider') === 'tumaboda' ? 'tumaboda' : 'mock',
-          publish_price_list: bool(fd, 'publish_price_list'),
-          shop_page: bool(fd, 'shop_page'),
-          require_admin_mfa: bool(fd, 'require_admin_mfa'),
+          max_negotiation_rounds: int(fd, "max_negotiation_rounds", 0, 10, "Negotiation rounds"),
+          quote_expiry_hours: int(fd, "quote_expiry_hours", 1, 720, "Quote expiry"),
+          expired_quote_autodecline_days: int(fd, "expired_quote_autodecline_days", 1, 60, "Auto-decline"),
+          retention_days: int(fd, "retention_days", 7, 3650, "Retention"),
+          warranty_days: int(fd, "warranty_days", 0, 365, "Warranty"),
+          auto_close_hours: int(fd, "auto_close_hours", 1, 720, "Auto-close"),
+          unclaimed_after_days: int(fd, "unclaimed_after_days", 1, 60, "Unclaimed alert"),
+          quiet_hours_start: str(fd, "quiet_hours_start") || "21:00",
+          quiet_hours_end: str(fd, "quiet_hours_end") || "07:00",
+          delivery_provider: str(fd, "delivery_provider") === "tumaboda" ? "tumaboda" : "mock",
+          publish_price_list: bool(fd, "publish_price_list"),
+          shop_page: bool(fd, "shop_page"),
+          require_admin_mfa: bool(fd, "require_admin_mfa"),
           device_types: DEVICE_TYPES.filter((d) => bool(fd, `device_${d}`)),
         };
-        if (!patch.device_types.length) throw new UserError('Choose at least one device type you accept.');
+        if (!patch.device_types.length) throw new UserError("Choose at least one device type you accept.");
         await tx`update tenant_settings set ${tx(patch)} where tenant_id = ${tenant.id}`;
-        await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'settings.operations', entity: 'tenant', entityId: tenant.id, diff: patch });
+        await audit(tx, {
+          tenantId: tenant.id,
+          actorUserId: userId,
+          impersonatedBy,
+          action: "settings.operations",
+          entity: "tenant",
+          entityId: tenant.id,
+          diff: patch,
+        });
       } else {
-        throw new UserError('Unknown section.');
+        throw new UserError("Unknown section.");
       }
     });
     invalidateTenantCache(tenant.hostname);
     return null;
   });
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return r;
 }
 
@@ -182,44 +236,53 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
 export async function saveCredentialsAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await admin();
-    const kind = str(fd, 'kind') as 'daraja' | 'courier' | 'sms';
-    const clear = str(fd, 'clear') === '1';
+    const kind = str(fd, "kind") as "daraja" | "courier" | "sms";
+    const clear = str(fd, "clear") === "1";
     let value: unknown = null;
     if (!clear) {
-      if (kind === 'daraja') {
-        const type = str(fd, 'type') === 'till' ? 'till' : 'paybill';
+      if (kind === "daraja") {
+        const type = str(fd, "type") === "till" ? "till" : "paybill";
         value = {
-          env: str(fd, 'env') === 'production' ? 'production' : 'sandbox',
-          consumerKey: str(fd, 'consumerKey'),
-          consumerSecret: str(fd, 'consumerSecret'),
-          shortcode: str(fd, 'shortcode'),
-          passkey: str(fd, 'passkey'),
+          env: str(fd, "env") === "production" ? "production" : "sandbox",
+          consumerKey: str(fd, "consumerKey"),
+          consumerSecret: str(fd, "consumerSecret"),
+          shortcode: str(fd, "shortcode"),
+          passkey: str(fd, "passkey"),
           type,
-          tillNumber: type === 'till' ? str(fd, 'tillNumber') : undefined,
+          tillNumber: type === "till" ? str(fd, "tillNumber") : undefined,
         };
         const v = value as Record<string, string>;
-        if (!v.consumerKey || !v.consumerSecret || !/^\d{5,7}$/.test(v.shortcode) || !v.passkey) throw new UserError('Fill in all Daraja fields (shortcode is 5-7 digits).');
-        if (type === 'till' && !/^\d{5,7}$/.test(v.tillNumber ?? '')) throw new UserError('Enter the till number.');
-      } else if (kind === 'courier') {
-        value = { baseUrl: str(fd, 'baseUrl'), apiKey: str(fd, 'apiKey'), webhookSecret: str(fd, 'webhookSecret') };
+        if (!v.consumerKey || !v.consumerSecret || !/^\d{5,7}$/.test(v.shortcode) || !v.passkey)
+          throw new UserError("Fill in all Daraja fields (shortcode is 5-7 digits).");
+        if (type === "till" && !/^\d{5,7}$/.test(v.tillNumber ?? "")) throw new UserError("Enter the till number.");
+      } else if (kind === "courier") {
+        value = { baseUrl: str(fd, "baseUrl"), apiKey: str(fd, "apiKey"), webhookSecret: str(fd, "webhookSecret") };
         const v = value as Record<string, string>;
-        if (!/^https:\/\//.test(v.baseUrl) || !v.apiKey || !v.webhookSecret) throw new UserError('Fill in the TumaBoda base URL (https), API key and webhook secret.');
-      } else if (kind === 'sms') {
-        value = { username: str(fd, 'username'), apiKey: str(fd, 'apiKey'), senderId: str(fd, 'senderId') || null };
+        if (!/^https:\/\//.test(v.baseUrl) || !v.apiKey || !v.webhookSecret)
+          throw new UserError("Fill in the TumaBoda base URL (https), API key and webhook secret.");
+      } else if (kind === "sms") {
+        value = { username: str(fd, "username"), apiKey: str(fd, "apiKey"), senderId: str(fd, "senderId") || null };
         const v = value as Record<string, string>;
         if (!v.username || !v.apiKey) throw new UserError("Fill in the Africa's Talking username and API key.");
-      } else throw new UserError('Unknown integration.');
+      } else throw new UserError("Unknown integration.");
     }
     await withUser(ctx, async (tx) => {
       const enc = value ? await encryptJson(tenant.id, value, `tenant-secrets:${tenant.id}:${kind}`) : null;
-      const col = kind === 'daraja' ? 'daraja_enc' : kind === 'courier' ? 'courier_enc' : 'sms_enc';
+      const col = kind === "daraja" ? "daraja_enc" : kind === "courier" ? "courier_enc" : "sms_enc";
       await tx`insert into tenant_secrets (tenant_id) values (${tenant.id}) on conflict (tenant_id) do nothing`;
       await tx`update tenant_secrets set ${tx({ [col]: enc })} where tenant_id = ${tenant.id}`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: `credentials.${kind}.${clear ? 'clear' : 'set'}`, entity: 'tenant', entityId: tenant.id });
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        impersonatedBy,
+        action: `credentials.${kind}.${clear ? "clear" : "set"}`,
+        entity: "tenant",
+        entityId: tenant.id,
+      });
     });
     return null;
   });
-  revalidatePath('/admin/settings');
+  revalidatePath("/admin/settings");
   return r;
 }
 
@@ -229,30 +292,43 @@ export async function saveCredentialsAction(_prev: unknown, fd: FormData): Promi
 export async function inviteStaffAction(_prev: unknown, fd: FormData): Promise<ActionResult<{ url: string }>> {
   return run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await admin();
-    const email = str(fd, 'email').toLowerCase();
-    const role = str(fd, 'role') === 'shop_admin' ? 'shop_admin' : 'technician';
-    const phone = str(fd, 'phone') ? normalizeKenyanPhone(str(fd, 'phone')) : null;
-    if (str(fd, 'phone') && !phone) throw new UserError('Enter a valid Kenyan phone number, or leave it blank.');
-    if (!EMAIL_PATTERN.test(email)) throw new UserError('Enter a valid email.');
-    if (email === (await admin()).session.user.email?.toLowerCase()) throw new UserError('That is your own account.');
+    const email = str(fd, "email").toLowerCase();
+    const role = str(fd, "role") === "shop_admin" ? "shop_admin" : "technician";
+    const phone = str(fd, "phone") ? normalizeKenyanPhone(str(fd, "phone")) : null;
+    if (str(fd, "phone") && !phone) throw new UserError("Enter a valid Kenyan phone number, or leave it blank.");
+    if (!EMAIL_PATTERN.test(email)) throw new UserError("Enter a valid email.");
+    if (email === (await admin()).session.user.email?.toLowerCase()) throw new UserError("That is your own account.");
     const token = randomToken(24);
-    const { withService } = await import('@/lib/db');
+    const { withService } = await import("@/lib/db");
     await withService(async (tx) => {
-      const invitee = await resolveInvitee(tx, { email, phone, fullName: str(fd, 'name') });
+      const invitee = await resolveInvitee(tx, { email, phone, fullName: str(fd, "name") });
       await tx`insert into tenant_memberships (tenant_id, user_id, role, active, invited_by, invite_token_hash, invite_expires_at)
         values (${tenant.id}, ${invitee.userId}, ${role}, false, ${userId}, ${sha256Hex(token)}, now() + interval '48 hours')
         on conflict (tenant_id, user_id) do update set role = excluded.role, invite_token_hash = excluded.invite_token_hash, invite_expires_at = excluded.invite_expires_at`;
       if (invitee.releasedFromUserId) {
-        await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'user.email_released', entity: 'user', entityId: invitee.releasedFromUserId });
+        await audit(tx, {
+          tenantId: tenant.id,
+          actorUserId: userId,
+          impersonatedBy,
+          action: "user.email_released",
+          entity: "user",
+          entityId: invitee.releasedFromUserId,
+        });
       }
     });
-    await withUser(ctx, (tx) => audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'staff.invite', entity: 'user', entityId: email, diff: { role } }));
-    revalidatePath('/admin/staff');
+    await withUser(ctx, (tx) =>
+      audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: "staff.invite", entity: "user", entityId: email, diff: { role } }),
+    );
+    revalidatePath("/admin/staff");
     return { url: `${tenant.baseUrl}/staff/invite/${token}` };
   });
 }
 
-const MemberPatch = z.strictObject({ role: z.enum(['technician', 'shop_admin']).optional(), active: z.boolean().optional(), revoke: z.literal(true).optional() });
+const MemberPatch = z.strictObject({
+  role: z.enum(["technician", "shop_admin"]).optional(),
+  active: z.boolean().optional(),
+  revoke: z.literal(true).optional(),
+});
 
 export async function updateMemberAction(memberId: string, input: z.input<typeof MemberPatch>) {
   const { tenant, ctx, userId, impersonatedBy } = await admin();
@@ -260,7 +336,7 @@ export async function updateMemberAction(memberId: string, input: z.input<typeof
   const parsed = MemberPatch.safeParse(input);
   if (!parsed.success || !z.uuid().safeParse(memberId).success) return;
   const patch = parsed.data;
-  if (memberId === userId && (patch.active === false || patch.role === 'technician')) return; // cannot lock yourself out
+  if (memberId === userId && (patch.active === false || patch.role === "technician")) return; // cannot lock yourself out
   await withUser(ctx, async (tx) => {
     if (patch.revoke) {
       // A pending invite is just a hashed token on an inactive membership; clearing it leaves nothing usable behind.
@@ -271,9 +347,9 @@ export async function updateMemberAction(memberId: string, input: z.input<typeof
       await tx`update tenant_memberships set role = coalesce(${role ?? null}::membership_role, role), active = coalesce(${active ?? null}::boolean, active)
         where tenant_id = ${tenant.id} and user_id = ${memberId}`;
     }
-    await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'staff.update', entity: 'user', entityId: memberId, diff: patch });
+    await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: "staff.update", entity: "user", entityId: memberId, diff: patch });
   });
-  revalidatePath('/admin/staff');
+  revalidatePath("/admin/staff");
 }
 
 // ---------------------------------------------------------------------------
@@ -282,38 +358,46 @@ export async function updateMemberAction(memberId: string, input: z.input<typeof
 export async function savePartAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await admin();
-    const id = str(fd, 'id') || null;
-    const name = str(fd, 'name');
-    if (!name) throw new UserError('Enter a name.');
+    const id = str(fd, "id") || null;
+    const name = str(fd, "name");
+    if (!name) throw new UserError("Enter a name.");
     const row: Record<string, unknown> = {
       name,
-      sku: str(fd, 'sku') || null,
-      device_family: str(fd, 'device_family') || null,
-      kind: ['part', 'labour', 'service'].includes(str(fd, 'kind')) ? str(fd, 'kind') : 'part',
-      default_price_cents: kesField(fd, 'price'),
-      published: bool(fd, 'published'),
-      listed: bool(fd, 'listed'),
-      category: str(fd, 'category') || null,
-      description: str(fd, 'description').slice(0, 4000) || null,
-      active: id ? bool(fd, 'active') : true,
+      sku: str(fd, "sku") || null,
+      device_family: str(fd, "device_family") || null,
+      kind: ["part", "labour", "service"].includes(str(fd, "kind")) ? str(fd, "kind") : "part",
+      default_price_cents: kesField(fd, "price"),
+      published: bool(fd, "published"),
+      listed: bool(fd, "listed"),
+      category: str(fd, "category") || null,
+      description: str(fd, "description").slice(0, 4000) || null,
+      active: id ? bool(fd, "active") : true,
     };
-    const image = fd.get('image');
+    const image = fd.get("image");
     if (image instanceof File && image.size > 0) {
-      if (image.size > 2 * 1024 * 1024) throw new UserError('Product photos must be under 2 MB.');
-      const ext = image.type === 'image/png' ? 'png' : image.type === 'image/webp' ? 'webp' : image.type === 'image/jpeg' ? 'jpg' : null;
-      if (!ext) throw new UserError('Use a PNG, JPG or WebP photo.');
-      const key = productKey(tenant.id, `${id ?? 'new'}-${Date.now()}`, ext);
+      if (image.size > 2 * 1024 * 1024) throw new UserError("Product photos must be under 2 MB.");
+      const ext = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : image.type === "image/jpeg" ? "jpg" : null;
+      if (!ext) throw new UserError("Use a PNG, JPG or WebP photo.");
+      const key = productKey(tenant.id, `${id ?? "new"}-${Date.now()}`, ext);
       await putObject(key, Buffer.from(await image.arrayBuffer()), image.type);
       row.image_path = key;
     }
     await withUser(ctx, async (tx) => {
       if (id) await tx`update parts_catalogue set ${tx(row)} where id = ${id} and tenant_id = ${tenant.id}`;
       else await tx`insert into parts_catalogue ${tx({ ...row, tenant_id: tenant.id })}`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: id ? 'part.update' : 'part.create', entity: 'part', entityId: id, diff: row });
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        impersonatedBy,
+        action: id ? "part.update" : "part.create",
+        entity: "part",
+        entityId: id,
+        diff: row,
+      });
     });
     return null;
   });
-  revalidatePath('/admin/parts');
+  revalidatePath("/admin/parts");
   return r;
 }
 
@@ -321,18 +405,27 @@ export async function savePartAction(_prev: unknown, fd: FormData): Promise<Acti
 export async function saveFaqsAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await admin();
-    const text = str(fd, 'faqs');
+    const text = str(fd, "faqs");
     const faqs = parseFaqText(text);
     if (text.trim() && !faqs.length) throw new UserError('No "Q: … / A: …" blocks found — check the format.');
-    if (faqs.length > 50) throw new UserError('Keep it to 50 questions or fewer.');
+    if (faqs.length > 50) throw new UserError("Keep it to 50 questions or fewer.");
     await withUser(ctx, async (tx) => {
       await tx`delete from tenant_faqs where tenant_id = ${tenant.id}`;
-      for (const [i, f] of faqs.entries()) await tx`insert into tenant_faqs (tenant_id, position, question, answer) values (${tenant.id}, ${i}, ${f.q}, ${f.a})`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'settings.faqs', entity: 'tenant', entityId: tenant.id, diff: { count: faqs.length } });
+      for (const [i, f] of faqs.entries())
+        await tx`insert into tenant_faqs (tenant_id, position, question, answer) values (${tenant.id}, ${i}, ${f.q}, ${f.a})`;
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        impersonatedBy,
+        action: "settings.faqs",
+        entity: "tenant",
+        entityId: tenant.id,
+        diff: { count: faqs.length },
+      });
     });
     return null;
   });
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return r;
 }
 
@@ -348,23 +441,23 @@ async function staff() {
 
 async function assertCustomer(tx: Parameters<typeof audit>[0], tenantId: string, userId: string) {
   const [j] = await tx`select 1 from jobs where tenant_id = ${tenantId} and customer_user_id = ${userId} limit 1`;
-  if (!j) throw new UserError('That person is not a customer of this shop.');
+  if (!j) throw new UserError("That person is not a customer of this shop.");
 }
 
 export async function addCustomerNoteAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await staff();
-    const customerId = str(fd, 'user_id');
-    const body = str(fd, 'body').trim().slice(0, 2000);
-    if (!body) throw new UserError('Write the note first.');
+    const customerId = str(fd, "user_id");
+    const body = str(fd, "body").trim().slice(0, 2000);
+    if (!body) throw new UserError("Write the note first.");
     await withUser(ctx, async (tx) => {
       await assertCustomer(tx, tenant.id, customerId);
       await tx`insert into customer_notes (tenant_id, user_id, author_id, body) values (${tenant.id}, ${customerId}, ${userId}, ${body})`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'customer.note', entity: 'user', entityId: customerId });
+      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: "customer.note", entity: "user", entityId: customerId });
     });
     return null;
   });
-  revalidatePath('/bench/customers');
+  revalidatePath("/bench/customers");
   return r;
 }
 
@@ -377,16 +470,16 @@ export async function deleteCustomerNoteAction(noteId: string, customerId: strin
 export async function addCustomerTagAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
-    const customerId = str(fd, 'user_id');
-    const tag = str(fd, 'tag').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 30);
-    if (!tag) throw new UserError('Enter a tag.');
+    const customerId = str(fd, "user_id");
+    const tag = str(fd, "tag").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 30);
+    if (!tag) throw new UserError("Enter a tag.");
     await withUser(ctx, async (tx) => {
       await assertCustomer(tx, tenant.id, customerId);
       await tx`insert into customer_tags (tenant_id, user_id, tag, created_by) values (${tenant.id}, ${customerId}, ${tag}, ${userId}) on conflict do nothing`;
     });
     return null;
   });
-  revalidatePath('/bench/customers');
+  revalidatePath("/bench/customers");
   return r;
 }
 
@@ -399,28 +492,31 @@ export async function removeCustomerTagAction(customerId: string, tag: string) {
 export async function addFollowupAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
-    const customerId = str(fd, 'user_id');
-    const due = str(fd, 'due_on');
-    const reason = str(fd, 'reason').trim().slice(0, 200);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || Number.isNaN(Date.parse(due))) throw new UserError('Pick a date.');
-    if (due < new Date().toISOString().slice(0, 10)) throw new UserError('The follow-up date is in the past.');
-    if (!reason) throw new UserError('Say what the follow-up is for.');
+    const customerId = str(fd, "user_id");
+    const due = str(fd, "due_on");
+    const reason = str(fd, "reason").trim().slice(0, 200);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || Number.isNaN(Date.parse(due))) throw new UserError("Pick a date.");
+    if (due < new Date().toISOString().slice(0, 10)) throw new UserError("The follow-up date is in the past.");
+    if (!reason) throw new UserError("Say what the follow-up is for.");
     await withUser(ctx, async (tx) => {
       await assertCustomer(tx, tenant.id, customerId);
       await tx`insert into customer_followups (tenant_id, user_id, due_on, reason, created_by) values (${tenant.id}, ${customerId}, ${due}, ${reason}, ${userId})`;
     });
     return null;
   });
-  revalidatePath('/bench/customers');
-  revalidatePath('/bench');
+  revalidatePath("/bench/customers");
+  revalidatePath("/bench");
   return r;
 }
 
 export async function completeFollowupAction(followupId: string, customerId: string) {
   const { tenant, ctx, userId } = await staff();
-  await withUser(ctx, (tx) => tx`update customer_followups set done_at = now(), done_by = ${userId} where id = ${followupId} and tenant_id = ${tenant.id} and done_at is null`);
+  await withUser(
+    ctx,
+    (tx) => tx`update customer_followups set done_at = now(), done_by = ${userId} where id = ${followupId} and tenant_id = ${tenant.id} and done_at is null`,
+  );
   revalidatePath(`/bench/customers/${customerId}`);
-  revalidatePath('/bench');
+  revalidatePath("/bench");
 }
 
 // ---------------------------------------------------------------------------
@@ -429,24 +525,32 @@ export async function completeFollowupAction(followupId: string, customerId: str
 export async function recordRefundAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await admin();
-    const ref = str(fd, 'job_ref').toUpperCase();
-    const amount = kesField(fd, 'amount');
-    const reason = str(fd, 'reason');
-    const method = ['mpesa_manual', 'cash', 'bank', 'other'].includes(str(fd, 'method')) ? str(fd, 'method') : 'mpesa_manual';
-    if (amount <= 0) throw new UserError('Enter the amount refunded.');
-    if (!reason) throw new UserError('Give a reason.');
+    const ref = str(fd, "job_ref").toUpperCase();
+    const amount = kesField(fd, "amount");
+    const reason = str(fd, "reason");
+    const method = ["mpesa_manual", "cash", "bank", "other"].includes(str(fd, "method")) ? str(fd, "method") : "mpesa_manual";
+    if (amount <= 0) throw new UserError("Enter the amount refunded.");
+    if (!reason) throw new UserError("Give a reason.");
     await withUser(ctx, async (tx) => {
       const [job] = await tx`select id from jobs where tenant_id = ${tenant.id} and ref = ${ref}`;
       if (!job) throw new UserError(`No job ${ref}.`);
       const [{ paid }] = await tx`select paid_cents(${job.id}) as paid`;
       const [{ refunded }] = await tx`select coalesce(sum(amount_cents), 0) as refunded from refunds where job_id = ${job.id}`;
-      if (amount > Number(paid) - Number(refunded)) throw new UserError('Refund is more than the customer has paid for this job.');
-      await tx`insert into refunds (tenant_id, job_id, amount_cents, reason, method, reference, recorded_by) values (${tenant.id}, ${job.id}, ${amount}, ${reason}, ${method}, ${str(fd, 'reference') || null}, ${userId})`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'refund.record', entity: 'job', entityId: job.id, diff: { amount, method, reason } });
+      if (amount > Number(paid) - Number(refunded)) throw new UserError("Refund is more than the customer has paid for this job.");
+      await tx`insert into refunds (tenant_id, job_id, amount_cents, reason, method, reference, recorded_by) values (${tenant.id}, ${job.id}, ${amount}, ${reason}, ${method}, ${str(fd, "reference") || null}, ${userId})`;
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        impersonatedBy,
+        action: "refund.record",
+        entity: "job",
+        entityId: job.id,
+        diff: { amount, method, reason },
+      });
     });
     return null;
   });
-  revalidatePath('/admin/refunds');
+  revalidatePath("/admin/refunds");
   return r;
 }
 
@@ -456,21 +560,28 @@ export async function recordRefundAction(_prev: unknown, fd: FormData): Promise<
 export async function saveTemplateAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId, impersonatedBy } = await admin();
-    const body = str(fd, 'body');
+    const body = str(fd, "body");
     const check = validateTemplate(body);
-    if (!check.ok) throw new UserError(`Unknown or forbidden variables: ${[...check.unknown, ...check.forbidden].map((v) => `{${v}}`).join(', ')}`);
-    const key = { event_key: str(fd, 'event_key'), audience: str(fd, 'audience'), channel: str(fd, 'channel') };
-    const reset = str(fd, 'reset') === '1';
+    if (!check.ok) throw new UserError(`Unknown or forbidden variables: ${[...check.unknown, ...check.forbidden].map((v) => `{${v}}`).join(", ")}`);
+    const key = { event_key: str(fd, "event_key"), audience: str(fd, "audience"), channel: str(fd, "channel") };
+    const reset = str(fd, "reset") === "1";
     await withUser(ctx, async (tx) => {
       await tx`delete from notification_templates where tenant_id = ${tenant.id} and event_key = ${key.event_key} and audience = ${key.audience}::notification_audience and channel = ${key.channel}::notification_channel`;
       if (!reset) {
         await tx`insert into notification_templates (tenant_id, event_key, audience, channel, title, body, critical, enabled)
-          values (${tenant.id}, ${key.event_key}, ${key.audience}::notification_audience, ${key.channel}::notification_channel, ${str(fd, 'title') || null}, ${body}, ${bool(fd, 'critical')}, ${bool(fd, 'enabled')})`;
+          values (${tenant.id}, ${key.event_key}, ${key.audience}::notification_audience, ${key.channel}::notification_channel, ${str(fd, "title") || null}, ${body}, ${bool(fd, "critical")}, ${bool(fd, "enabled")})`;
       }
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: reset ? 'template.reset' : 'template.save', entity: 'template', entityId: `${key.event_key}/${key.audience}/${key.channel}` });
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        impersonatedBy,
+        action: reset ? "template.reset" : "template.save",
+        entity: "template",
+        entityId: `${key.event_key}/${key.audience}/${key.channel}`,
+      });
     });
     return null;
   });
-  revalidatePath('/admin/templates');
+  revalidatePath("/admin/templates");
   return r;
 }

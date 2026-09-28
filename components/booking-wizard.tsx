@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import { useMemo, useState, useTransition } from 'react';
-import { useTranslations } from 'next-intl';
-import { ChevronLeft } from 'lucide-react';
-import { DeviceIcon } from '@/components/device-icon';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { CheckRow, ErrorText, Field, KV, NativeSelect, RadioRow, Section } from '@/components/fields';
-import { PhotoCapture, type ExistingPhoto } from '@/components/photo-capture';
-import { IdPhotoUpload } from '@/components/id-photo-upload';
-import { AddressPicker } from '@/components/address-picker';
-import { APPLE_TYPES, checkDeviceIdentifier, type DeviceType } from '@/lib/core/device-id';
-import { IDENTIFIER_HELP, MODEL_SUGGESTIONS } from '@/lib/core/device-models';
-import { checkIdNumber, ID_KIND_LABEL, ID_KINDS, type IdKind } from '@/lib/core/identity';
-import { formatKes } from '@/lib/core/money';
-import { addDays, deliverySlots, formatDate, nairobiToday, type OpeningHours } from '@/lib/core/time';
-import type { Address } from '@/lib/providers/delivery/types';
-import { saveDraftAction, setPickupAction, submitDraftAction } from '@/app/(shop)/actions';
-import { cn } from '@/lib/utils';
+import { useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { ChevronLeft } from "lucide-react";
+import { DeviceIcon } from "@/components/device-icon";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckRow, ErrorText, Field, KV, NativeSelect, RadioRow, Section } from "@/components/fields";
+import { PhotoCapture, type ExistingPhoto } from "@/components/photo-capture";
+import { IdPhotoUpload } from "@/components/id-photo-upload";
+import { AddressPicker } from "@/components/address-picker";
+import { APPLE_TYPES, checkDeviceIdentifier, type DeviceType } from "@/lib/core/device-id";
+import { IDENTIFIER_HELP, MODEL_SUGGESTIONS } from "@/lib/core/device-models";
+import { checkIdNumber, ID_KIND_LABEL, ID_KINDS, type IdKind } from "@/lib/core/identity";
+import { formatKes } from "@/lib/core/money";
+import { addDays, deliverySlots, formatDate, nairobiToday, type OpeningHours } from "@/lib/core/time";
+import type { Address } from "@/lib/providers/delivery/types";
+import { saveDraftAction, setPickupAction, submitDraftAction } from "@/app/(shop)/actions";
+import { cn } from "@/lib/utils";
 
 export type WizardInitial = {
   jobId: string | null;
@@ -35,7 +35,7 @@ export type WizardInitial = {
   /** A passcode is already saved (encrypted) for this draft; it is never sent back, so a blank field keeps it. */
   passcodeStored: boolean;
   identifier: string;
-  identity_method: 'device' | 'id';
+  identity_method: "device" | "id";
   id_kind: IdKind;
   /** The customer's ID already on file for this shop, if any (never the number itself). */
   existingId: { kind: IdKind; last4: string; hasPhoto: boolean } | null;
@@ -53,7 +53,19 @@ const APPLE: DeviceType[] = APPLE_TYPES;
  * instead of anchored under the field. This in-page combobox reuses the same glass-card styling as the rest of the
  * app so positioning is always correct and it never breaks the Apple-style look, on any device.
  */
-function ModelField({ id, value, onChange, suggestions, placeholder }: { id: string; value: string; onChange: (v: string) => void; suggestions: string[]; placeholder?: string }) {
+function ModelField({
+  id,
+  value,
+  onChange,
+  suggestions,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  suggestions: string[];
+  placeholder?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const filtered = useMemo(() => {
@@ -76,17 +88,17 @@ function ModelField({ id, value, onChange, suggestions, placeholder }: { id: str
         onBlur={() => setTimeout(() => setOpen(false), 120)}
         onKeyDown={(e) => {
           if (!open || !filtered.length) return;
-          if (e.key === 'ArrowDown') {
+          if (e.key === "ArrowDown") {
             e.preventDefault();
             setHighlight((h) => Math.min(h + 1, filtered.length - 1));
-          } else if (e.key === 'ArrowUp') {
+          } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setHighlight((h) => Math.max(h - 1, 0));
-          } else if (e.key === 'Enter' && open) {
+          } else if (e.key === "Enter" && open) {
             e.preventDefault();
             onChange(filtered[highlight]);
             setOpen(false);
-          } else if (e.key === 'Escape') {
+          } else if (e.key === "Escape") {
             setOpen(false);
           }
         }}
@@ -109,7 +121,7 @@ function ModelField({ id, value, onChange, suggestions, placeholder }: { id: str
                   onChange(m);
                   setOpen(false);
                 }}
-                className={cn('block w-full rounded-[8px] px-3 py-2 text-left text-[15px]', i === highlight ? 'bg-fill' : 'hover:bg-fill')}
+                className={cn("block w-full rounded-[8px] px-3 py-2 text-left text-[15px]", i === highlight ? "bg-fill" : "hover:bg-fill")}
               >
                 {m}
               </button>
@@ -141,22 +153,22 @@ export function BookingWizard({
   consultationCredited: boolean;
 }) {
   const t = useTranslations();
-  const tw = useTranslations('wizard');
+  const tw = useTranslations("wizard");
   const [step, setStep] = useState(initial.jobId ? 3 : 1);
   const [s, setS] = useState(initial);
-  const [passcode, setPasscode] = useState('');
+  const [passcode, setPasscode] = useState("");
   const [saveDevice, setSaveDevice] = useState(false);
-  const [idNumber, setIdNumber] = useState('');
+  const [idNumber, setIdNumber] = useState("");
   const [useExistingId, setUseExistingId] = useState(!!initial.existingId);
   const [idPhoto, setIdPhoto] = useState(!!initial.existingId?.hasPhoto);
   const feeForType = consultationFees[s.device_type] ?? consultationCents;
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [photoState, setPhotoState] = useState<{ kinds: string[]; pending: number }>({ kinds: initial.photos.map((p) => p.kind), pending: 0 });
-  const [addressChoice, setAddressChoice] = useState<string>(savedAddresses[0]?.id ?? 'new');
+  const [addressChoice, setAddressChoice] = useState<string>(savedAddresses[0]?.id ?? "new");
   const [newAddress, setNewAddress] = useState<Address>(initial.address);
   const [saveAddress, setSaveAddress] = useState(true);
-  const [addressLabel, setAddressLabel] = useState('');
+  const [addressLabel, setAddressLabel] = useState("");
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(nairobiToday(), i)), []);
   const [day, setDay] = useState(() => days.find((d) => deliverySlots(d, openingHours).length > 0) ?? days[0]);
   const slots = useMemo(() => deliverySlots(day, openingHours), [day, openingHours]);
@@ -170,20 +182,24 @@ export function BookingWizard({
   const idError = idCheck && !idCheck.ok ? tw(`identifierErrors.${idCheck.error}`) : null;
   const idNumCheck = idNumber ? checkIdNumber(s.id_kind, idNumber) : null;
   const idNumError = idNumCheck && !idNumCheck.ok ? tw(`idErrors.${idNumCheck.error}`) : null;
-  const identityOk = s.identity_method === 'device' ? !!idCheck?.ok : (useExistingId && !!s.existingId) || !!idNumCheck?.ok;
+  const identityOk = s.identity_method === "device" ? !!idCheck?.ok : (useExistingId && !!s.existingId) || !!idNumCheck?.ok;
   const passcodeMissing = s.passcode_locked && s.passcode_shared && !passcode && !s.passcodeStored;
   const step2Missing = [
-    ...(identityOk ? [] : [s.identity_method === 'device' ? tw('needIdentifier') : tw('needIdNumber')]),
-    ...(passcodeMissing ? [tw('needPasscode')] : []),
+    ...(identityOk ? [] : [s.identity_method === "device" ? tw("needIdentifier") : tw("needIdNumber")]),
+    ...(passcodeMissing ? [tw("needPasscode")] : []),
   ];
   const needScreenOn = s.condition.powers_on;
   const photosOk =
-    photoState.kinds.includes('front') && photoState.kinds.includes('back') && (!needScreenOn || photoState.kinds.includes('screen_on')) && photoState.pending === 0 && (s.identity_method !== 'id' || idPhoto);
+    photoState.kinds.includes("front") &&
+    photoState.kinds.includes("back") &&
+    (!needScreenOn || photoState.kinds.includes("screen_on")) &&
+    photoState.pending === 0 &&
+    (s.identity_method !== "id" || idPhoto);
 
   const translateError = (e: string) => {
-    if (e.startsWith('identifier:')) return tw(`identifierErrors.${e.slice('identifier:'.length)}`);
-    if (e.startsWith('id:')) return tw(`idErrors.${e.slice('id:'.length)}`);
-    if (e.startsWith('zone:')) return tw('outsideZone', { zones: e.slice(5) });
+    if (e.startsWith("identifier:")) return tw(`identifierErrors.${e.slice("identifier:".length)}`);
+    if (e.startsWith("id:")) return tw(`idErrors.${e.slice("id:".length)}`);
+    if (e.startsWith("zone:")) return tw("outsideZone", { zones: e.slice(5) });
     return e;
   };
 
@@ -202,25 +218,25 @@ export function BookingWizard({
         passcode_locked: s.passcode_locked,
         passcode_shared: s.passcode_shared,
         passcode: passcode || null,
-        identifier: s.identity_method === 'device' ? s.identifier : '',
+        identifier: s.identity_method === "device" ? s.identifier : "",
         identity_method: s.identity_method,
         id_kind: s.id_kind,
         id_number: idNumber,
-        use_existing_id: s.identity_method === 'id' && useExistingId && !!s.existingId,
+        use_existing_id: s.identity_method === "id" && useExistingId && !!s.existingId,
         declared_value_cents: Math.round(Number(s.declared_value_kes || 0)) * 100,
-        save_device: saveDevice && s.identity_method === 'device',
+        save_device: saveDevice && s.identity_method === "device",
       });
       if (!r.ok) return setError(translateError(r.error));
-      if (s.identity_method === 'id' && !(useExistingId && s.existingId)) {
+      if (s.identity_method === "id" && !(useExistingId && s.existingId)) {
         // A new number was saved: the shop needs a photo of that document, whatever was on file before.
-        const kept = s.existingId && s.existingId.kind === s.id_kind && s.existingId.last4 === idNumber.replace(/[\s-]+/g, '').slice(-4);
-        set({ existingId: { kind: s.id_kind, last4: idNumber.replace(/[\s-]+/g, '').slice(-4), hasPhoto: !!kept && s.existingId!.hasPhoto } });
+        const kept = s.existingId && s.existingId.kind === s.id_kind && s.existingId.last4 === idNumber.replace(/[\s-]+/g, "").slice(-4);
+        set({ existingId: { kind: s.id_kind, last4: idNumber.replace(/[\s-]+/g, "").slice(-4), hasPhoto: !!kept && s.existingId!.hasPhoto } });
         setUseExistingId(true);
         setIdPhoto(!!kept && !!s.existingId?.hasPhoto);
       }
       set({ jobId: r.data.jobId, passcodeStored: s.passcode_locked && s.passcode_shared && (!!passcode || s.passcodeStored) });
-      setPasscode('');
-      window.history.replaceState(null, '', `/book?job=${r.data.jobId}`);
+      setPasscode("");
+      window.history.replaceState(null, "", `/book?job=${r.data.jobId}`);
       setStep(3);
     });
 
@@ -228,10 +244,26 @@ export function BookingWizard({
     start(async () => {
       setError(null);
       const slot = slots[slotIdx];
-      if (!slot) return setError(tw('noSlots'));
+      if (!slot) return setError(tw("noSlots"));
       const saved = savedAddresses.find((a) => a.id === addressChoice);
-      const address: Address = saved ? { formatted: saved.formatted, lat: saved.lat, lng: saved.lng, landmark: saved.landmark, building_floor: saved.building_floor, zone: saved.zone, place_id: saved.place_id } : newAddress;
-      const r = await setPickupAction(s.jobId!, { address, saveAddress: !saved && saveAddress, label: addressLabel, windowStart: slot.start.toISOString(), windowEnd: slot.end.toISOString() });
+      const address: Address = saved
+        ? {
+            formatted: saved.formatted,
+            lat: saved.lat,
+            lng: saved.lng,
+            landmark: saved.landmark,
+            building_floor: saved.building_floor,
+            zone: saved.zone,
+            place_id: saved.place_id,
+          }
+        : newAddress;
+      const r = await setPickupAction(s.jobId!, {
+        address,
+        saveAddress: !saved && saveAddress,
+        label: addressLabel,
+        windowStart: slot.start.toISOString(),
+        windowEnd: slot.end.toISOString(),
+      });
       if (!r.ok) return setError(translateError(r.error));
       setFees(r.data);
       setStep(5);
@@ -248,31 +280,31 @@ export function BookingWizard({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         {step > 1 ? (
-          <Button type="button" variant="ghost" size="icon" onClick={() => setStep(step - 1)} aria-label={t('common.back')}>
+          <Button type="button" variant="ghost" size="icon" onClick={() => setStep(step - 1)} aria-label={t("common.back")}>
             <ChevronLeft className="size-5" />
           </Button>
         ) : null}
         <div className="flex-1">
-          <p className="text-[13px] text-ink-3">{tw('stepOf', { n: step, total: TOTAL })}</p>
+          <p className="text-[13px] text-ink-3">{tw("stepOf", { n: step, total: TOTAL })}</p>
           <div className="mt-1.5 flex gap-1.5">
             {Array.from({ length: TOTAL }, (_, i) => (
-              <span key={i} className={cn('h-1 flex-1 rounded-full transition-colors duration-500', i < step ? 'bg-primary' : 'bg-fill')} />
+              <span key={i} className={cn("h-1 flex-1 rounded-full transition-colors duration-500", i < step ? "bg-primary" : "bg-fill")} />
             ))}
           </div>
         </div>
       </div>
 
       {step === 1 ? (
-        <Section title={tw('device')}>
+        <Section title={tw("device")}>
           <div className="space-y-4">
             <div>
-              <p className="mb-3 text-[15px] font-medium">{tw('deviceType')}</p>
+              <p className="mb-3 text-[15px] font-medium">{tw("deviceType")}</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {deviceTypes.map((d) => (
                   <button
                     type="button"
                     key={d}
-                    onClick={() => set({ device_type: d, device_brand: APPLE.includes(d) ? 'Apple' : s.device_brand === 'Apple' ? '' : s.device_brand })}
+                    onClick={() => set({ device_type: d, device_brand: APPLE.includes(d) ? "Apple" : s.device_brand === "Apple" ? "" : s.device_brand })}
                     data-on={s.device_type === d}
                     className="opt flex min-h-28 flex-col items-center justify-center gap-2 p-3 text-center text-[15px] font-medium"
                     data-testid={`device-${d}`}
@@ -284,75 +316,111 @@ export function BookingWizard({
               </div>
             </div>
             {!APPLE.includes(s.device_type) ? (
-              <Field label={tw('brand')} htmlFor="brand">
-                <Input id="brand" value={s.device_brand} onChange={(e) => set({ device_brand: e.target.value })} placeholder={tw('brandPlaceholder')} />
+              <Field label={tw("brand")} htmlFor="brand">
+                <Input id="brand" value={s.device_brand} onChange={(e) => set({ device_brand: e.target.value })} placeholder={tw("brandPlaceholder")} />
               </Field>
             ) : null}
-            <Field label={tw('model')} htmlFor="model">
-              <ModelField id="model" value={s.device_model} onChange={(v) => set({ device_model: v })} suggestions={MODEL_SUGGESTIONS[s.device_type] ?? []} placeholder={tw('modelPlaceholder')} />
+            <Field label={tw("model")} htmlFor="model">
+              <ModelField
+                id="model"
+                value={s.device_model}
+                onChange={(v) => set({ device_model: v })}
+                suggestions={MODEL_SUGGESTIONS[s.device_type] ?? []}
+                placeholder={tw("modelPlaceholder")}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label={tw('colour')} htmlFor="colour">
+              <Field label={tw("colour")} htmlFor="colour">
                 <Input id="colour" value={s.device_colour} onChange={(e) => set({ device_colour: e.target.value })} />
               </Field>
-              <Field label={tw('storage')} htmlFor="storage">
+              <Field label={tw("storage")} htmlFor="storage">
                 <Input id="storage" value={s.device_storage} onChange={(e) => set({ device_storage: e.target.value })} placeholder="128 GB" />
               </Field>
             </div>
-            <Field label={tw('fault')} htmlFor="fault">
-              <Textarea id="fault" value={s.fault_description} onChange={(e) => set({ fault_description: e.target.value })} placeholder={tw('faultPlaceholder')} rows={4} required />
+            <Field label={tw("fault")} htmlFor="fault">
+              <Textarea
+                id="fault"
+                value={s.fault_description}
+                onChange={(e) => set({ fault_description: e.target.value })}
+                placeholder={tw("faultPlaceholder")}
+                rows={4}
+                required
+              />
             </Field>
             <div className="space-y-2">
-              <p className="text-sm font-medium">{tw('condition')}</p>
-              {(['powers_on', 'screen_cracked', 'back_cracked', 'water_damage'] as const).map((k) => (
+              <p className="text-sm font-medium">{tw("condition")}</p>
+              {(["powers_on", "screen_cracked", "back_cracked", "water_damage"] as const).map((k) => (
                 <CheckRow
                   key={k}
-                  label={tw(k === 'powers_on' ? 'powersOn' : k === 'screen_cracked' ? 'screenCracked' : k === 'back_cracked' ? 'backCracked' : 'waterDamage')}
+                  label={tw(k === "powers_on" ? "powersOn" : k === "screen_cracked" ? "screenCracked" : k === "back_cracked" ? "backCracked" : "waterDamage")}
                   checked={s.condition[k]}
                   onChange={(e) => set({ condition: { ...s.condition, [k]: e.target.checked } })}
                 />
               ))}
-              <Input value={s.condition.notes} onChange={(e) => set({ condition: { ...s.condition, notes: e.target.value } })} placeholder={tw('conditionNotes')} />
+              <Input
+                value={s.condition.notes}
+                onChange={(e) => set({ condition: { ...s.condition, notes: e.target.value } })}
+                placeholder={tw("conditionNotes")}
+              />
             </div>
-            <Button type="button" size="lg" className="w-full" disabled={!s.device_model.trim() || s.fault_description.trim().length < 5} onClick={() => setStep(2)}>
-              {t('common.next')}
+            <Button
+              type="button"
+              size="lg"
+              className="w-full"
+              disabled={!s.device_model.trim() || s.fault_description.trim().length < 5}
+              onClick={() => setStep(2)}
+            >
+              {t("common.next")}
             </Button>
           </div>
         </Section>
       ) : null}
 
       {step === 2 ? (
-        <Section title={tw('identifier')}>
+        <Section title={tw("identifier")}>
           <div className="space-y-4">
             <div className="space-y-2">
-              <p className="text-sm font-medium">{tw('identityMethod')}</p>
-              <RadioRow name="identity" checked={s.identity_method === 'device'} onChange={() => set({ identity_method: 'device' })} label={tw('identityDevice')} description={IDENTIFIER_HELP[s.device_type] ?? tw('identifierHelp')} />
-              <RadioRow name="identity" checked={s.identity_method === 'id'} onChange={() => set({ identity_method: 'id' })} label={tw('identityId')} description={tw('identityIdHelp')} data-testid="identity-id" />
+              <p className="text-sm font-medium">{tw("identityMethod")}</p>
+              <RadioRow
+                name="identity"
+                checked={s.identity_method === "device"}
+                onChange={() => set({ identity_method: "device" })}
+                label={tw("identityDevice")}
+                description={IDENTIFIER_HELP[s.device_type] ?? tw("identifierHelp")}
+              />
+              <RadioRow
+                name="identity"
+                checked={s.identity_method === "id"}
+                onChange={() => set({ identity_method: "id" })}
+                label={tw("identityId")}
+                description={tw("identityIdHelp")}
+                data-testid="identity-id"
+              />
             </div>
-            {s.identity_method === 'device' ? (
-              <Field label={tw('identifier')} htmlFor="identifier" error={idError}>
+            {s.identity_method === "device" ? (
+              <Field label={tw("identifier")} htmlFor="identifier" error={idError}>
                 <Input
                   id="identifier"
                   value={s.identifier}
                   onChange={(e) => set({ identifier: e.target.value })}
                   autoCapitalize="characters"
-                  inputMode={s.device_type === 'iphone' || s.device_type === 'android' ? 'numeric' : 'text'}
+                  inputMode={s.device_type === "iphone" || s.device_type === "android" ? "numeric" : "text"}
                   required
                 />
               </Field>
             ) : useExistingId && s.existingId ? (
               <div className="opt flex items-center justify-between gap-3 px-4 py-3 text-[15px]" data-on>
                 <span>
-                  {tw('idOnFile', { kind: ID_KIND_LABEL[s.existingId.kind], last4: s.existingId.last4 })}
-                  <span className="block text-[13px] text-ink-3">{s.existingId.hasPhoto ? tw('idPhotoOnFile') : tw('idPhotoMissing')}</span>
+                  {tw("idOnFile", { kind: ID_KIND_LABEL[s.existingId.kind], last4: s.existingId.last4 })}
+                  <span className="block text-[13px] text-ink-3">{s.existingId.hasPhoto ? tw("idPhotoOnFile") : tw("idPhotoMissing")}</span>
                 </span>
                 <button type="button" className="shrink-0 text-[14px] text-link hover:underline" onClick={() => setUseExistingId(false)}>
-                  {tw('idUseDifferent')}
+                  {tw("idUseDifferent")}
                 </button>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-[1fr_2fr]">
-                <Field label={tw('idKind')} htmlFor="id_kind">
+                <Field label={tw("idKind")} htmlFor="id_kind">
                   <NativeSelect id="id_kind" value={s.id_kind} onChange={(e) => set({ id_kind: e.target.value as IdKind })}>
                     {ID_KINDS.map((k) => (
                       <option key={k} value={k}>
@@ -361,18 +429,26 @@ export function BookingWizard({
                     ))}
                   </NativeSelect>
                 </Field>
-                <Field label={tw('idNumber')} htmlFor="id_number" error={idNumError} hint={tw('idConsent')}>
-                  <Input id="id_number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} autoCapitalize="characters" inputMode={s.id_kind === 'passport' ? 'text' : 'numeric'} autoComplete="off" data-testid="id-number" />
+                <Field label={tw("idNumber")} htmlFor="id_number" error={idNumError} hint={tw("idConsent")}>
+                  <Input
+                    id="id_number"
+                    value={idNumber}
+                    onChange={(e) => setIdNumber(e.target.value)}
+                    autoCapitalize="characters"
+                    inputMode={s.id_kind === "passport" ? "text" : "numeric"}
+                    autoComplete="off"
+                    data-testid="id-number"
+                  />
                 </Field>
               </div>
             )}
             <div className="space-y-2">
-              <p className="text-sm font-medium">{tw('accessories')}</p>
+              <p className="text-sm font-medium">{tw("accessories")}</p>
               <div className="grid grid-cols-2 gap-2">
-                {(['charger', 'case', 'sim', 'sd_card'] as const).map((a) => (
+                {(["charger", "case", "sim", "sd_card"] as const).map((a) => (
                   <CheckRow
                     key={a}
-                    label={tw(a === 'charger' ? 'accessoryCharger' : a === 'case' ? 'accessoryCase' : a === 'sim' ? 'accessorySim' : 'accessorySd')}
+                    label={tw(a === "charger" ? "accessoryCharger" : a === "case" ? "accessoryCase" : a === "sim" ? "accessorySim" : "accessorySd")}
                     checked={s.accessories.includes(a)}
                     onChange={(e) => set({ accessories: e.target.checked ? [...s.accessories, a] : s.accessories.filter((x) => x !== a) })}
                   />
@@ -380,20 +456,29 @@ export function BookingWizard({
               </div>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">{tw('passcode')}</p>
-              <CheckRow label={tw('passcodeLocked')} checked={s.passcode_locked} onChange={(e) => set({ passcode_locked: e.target.checked, passcode_shared: e.target.checked && s.passcode_shared })} />
+              <p className="text-sm font-medium">{tw("passcode")}</p>
+              <CheckRow
+                label={tw("passcodeLocked")}
+                checked={s.passcode_locked}
+                onChange={(e) => set({ passcode_locked: e.target.checked, passcode_shared: e.target.checked && s.passcode_shared })}
+              />
               {s.passcode_locked ? (
                 <>
-                  <CheckRow label={tw('passcodeShare')} description={tw('passcodeHelp')} checked={s.passcode_shared} onChange={(e) => set({ passcode_shared: e.target.checked })} />
+                  <CheckRow
+                    label={tw("passcodeShare")}
+                    description={tw("passcodeHelp")}
+                    checked={s.passcode_shared}
+                    onChange={(e) => set({ passcode_shared: e.target.checked })}
+                  />
                   {s.passcode_shared ? (
-                    <Field label={tw('passcodeValue')} htmlFor="passcode" hint={s.passcodeStored ? tw('passcodeStored') : undefined}>
+                    <Field label={tw("passcodeValue")} htmlFor="passcode" hint={s.passcodeStored ? tw("passcodeStored") : undefined}>
                       <Input
                         id="passcode"
                         type="password"
                         autoComplete="off"
                         value={passcode}
                         onChange={(e) => setPasscode(e.target.value)}
-                        placeholder={s.passcodeStored ? '••••••' : undefined}
+                        placeholder={s.passcodeStored ? "••••••" : undefined}
                         data-testid="passcode"
                       />
                     </Field>
@@ -401,120 +486,154 @@ export function BookingWizard({
                 </>
               ) : null}
             </div>
-            <Field label={tw('declaredValue')} hint={tw('declaredValueHelp')} htmlFor="value">
-              <Input id="value" inputMode="numeric" value={s.declared_value_kes} onChange={(e) => set({ declared_value_kes: e.target.value.replace(/\D/g, '') })} placeholder="KES" />
+            <Field label={tw("declaredValue")} hint={tw("declaredValueHelp")} htmlFor="value">
+              <Input
+                id="value"
+                inputMode="numeric"
+                value={s.declared_value_kes}
+                onChange={(e) => set({ declared_value_kes: e.target.value.replace(/\D/g, "") })}
+                placeholder="KES"
+              />
             </Field>
-            {s.identity_method === 'device' ? <CheckRow label={tw('saveDevice')} checked={saveDevice} onChange={(e) => setSaveDevice(e.target.checked)} /> : null}
+            {s.identity_method === "device" ? (
+              <CheckRow label={tw("saveDevice")} checked={saveDevice} onChange={(e) => setSaveDevice(e.target.checked)} />
+            ) : null}
             <ErrorText>{error}</ErrorText>
             {step2Missing.length ? (
               <p className="text-[13px] text-ink-3" data-testid="step2-missing">
-                {tw('stillNeeded')} {step2Missing.join(' · ')}
+                {tw("stillNeeded")} {step2Missing.join(" · ")}
               </p>
             ) : null}
             <Button type="button" size="lg" className="w-full" disabled={pending || step2Missing.length > 0} onClick={saveDetails}>
-              {pending ? tw('saving') : t('common.next')}
+              {pending ? tw("saving") : t("common.next")}
             </Button>
           </div>
         </Section>
       ) : null}
 
       {step === 3 && s.jobId ? (
-        <Section title={tw('photos')}>
-          <p className="mb-3 text-sm text-muted-foreground">{tw('photosHelp')}</p>
+        <Section title={tw("photos")}>
+          <p className="mb-3 text-sm text-muted-foreground">{tw("photosHelp")}</p>
           <PhotoCapture
             jobId={s.jobId}
             stage="customer_declared"
             existing={initial.photos}
             slots={[
-              { kind: 'front', label: tw('photoFront'), required: true },
-              { kind: 'back', label: tw('photoBack'), required: true },
-              ...(needScreenOn ? [{ kind: 'screen_on', label: tw('photoScreenOn'), required: true }] : []),
+              { kind: "front", label: tw("photoFront"), required: true },
+              { kind: "back", label: tw("photoBack"), required: true },
+              ...(needScreenOn ? [{ kind: "screen_on", label: tw("photoScreenOn"), required: true }] : []),
             ]}
             onChange={(uploaded, pendingCount) => setPhotoState({ kinds: uploaded.map((u) => u.kind), pending: pendingCount })}
           />
-          <p className="mt-3 text-xs text-muted-foreground">{tw('photosMin', { screen: String(needScreenOn) })}</p>
-          {s.identity_method === 'id' ? (
+          <p className="mt-3 text-xs text-muted-foreground">{tw("photosMin", { screen: String(needScreenOn) })}</p>
+          {s.identity_method === "id" ? (
             <div className="mt-5">
-              <p className="mb-1 text-sm font-medium">{tw('idPhoto')}</p>
-              <p className="mb-3 text-xs text-muted-foreground">{tw('idPhotoHelp')}</p>
-              <IdPhotoUpload userId={s.userId} hasPhoto={idPhoto} label={tw('idPhotoLabel')} onUploaded={() => setIdPhoto(true)} />
+              <p className="mb-1 text-sm font-medium">{tw("idPhoto")}</p>
+              <p className="mb-3 text-xs text-muted-foreground">{tw("idPhotoHelp")}</p>
+              <IdPhotoUpload userId={s.userId} hasPhoto={idPhoto} label={tw("idPhotoLabel")} onUploaded={() => setIdPhoto(true)} />
             </div>
           ) : null}
           <Button type="button" size="lg" className="mt-4 w-full" disabled={!photosOk} onClick={() => setStep(4)} data-testid="photos-next">
-            {t('common.next')}
+            {t("common.next")}
           </Button>
         </Section>
       ) : null}
 
       {step === 4 ? (
-        <Section title={tw('pickup')}>
+        <Section title={tw("pickup")}>
           <div className="space-y-4">
             {savedAddresses.length ? (
               <div className="space-y-2">
-                <p className="text-sm font-medium">{tw('savedAddresses')}</p>
+                <p className="text-sm font-medium">{tw("savedAddresses")}</p>
                 {savedAddresses.map((a) => (
-                  <RadioRow key={a.id} name="addr" checked={addressChoice === a.id} onChange={() => setAddressChoice(a.id)} label={a.label || a.formatted} description={[a.formatted, a.building_floor, a.landmark].filter(Boolean).join(' · ')} />
+                  <RadioRow
+                    key={a.id}
+                    name="addr"
+                    checked={addressChoice === a.id}
+                    onChange={() => setAddressChoice(a.id)}
+                    label={a.label || a.formatted}
+                    description={[a.formatted, a.building_floor, a.landmark].filter(Boolean).join(" · ")}
+                  />
                 ))}
-                <RadioRow name="addr" checked={addressChoice === 'new'} onChange={() => setAddressChoice('new')} label={tw('newAddress')} />
+                <RadioRow name="addr" checked={addressChoice === "new"} onChange={() => setAddressChoice("new")} label={tw("newAddress")} />
               </div>
             ) : null}
-            {addressChoice === 'new' || !savedAddresses.length ? (
+            {addressChoice === "new" || !savedAddresses.length ? (
               <>
                 <AddressPicker value={newAddress} onChange={setNewAddress} zones={zones} />
-                <CheckRow label={tw('saveAddress')} checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />
-                {saveAddress ? <Input value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} placeholder={tw('addressLabel')} /> : null}
+                <CheckRow label={tw("saveAddress")} checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />
+                {saveAddress ? <Input value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} placeholder={tw("addressLabel")} /> : null}
               </>
             ) : null}
             <div className="grid grid-cols-2 gap-3">
-              <Field label={tw('pickDate')} htmlFor="day">
+              <Field label={tw("pickDate")} htmlFor="day">
                 <NativeSelect id="day" value={day} onChange={(e) => (setDay(e.target.value), setSlotIdx(0))}>
                   {days.map((d, i) => (
                     <option key={d} value={d}>
-                      {i === 0 ? t('common.today') : formatDate(`${d}T12:00:00+03:00`)}
+                      {i === 0 ? t("common.today") : formatDate(`${d}T12:00:00+03:00`)}
                     </option>
                   ))}
                 </NativeSelect>
               </Field>
-              <Field label={tw('pickSlot')} htmlFor="slot">
+              <Field label={tw("pickSlot")} htmlFor="slot">
                 <NativeSelect id="slot" value={slotIdx} onChange={(e) => setSlotIdx(Number(e.target.value))} disabled={!slots.length}>
-                  {slots.length ? slots.map((sl, i) => <option key={sl.label} value={i}>{sl.label}</option>) : <option>{tw('noSlots')}</option>}
+                  {slots.length ? (
+                    slots.map((sl, i) => (
+                      <option key={sl.label} value={i}>
+                        {sl.label}
+                      </option>
+                    ))
+                  ) : (
+                    <option>{tw("noSlots")}</option>
+                  )}
                 </NativeSelect>
               </Field>
             </div>
-            <p className="text-xs text-muted-foreground">{tw('windowHelp')}</p>
+            <p className="text-xs text-muted-foreground">{tw("windowHelp")}</p>
             <ErrorText>{error}</ErrorText>
             <Button
               type="button"
               size="lg"
               className="w-full"
-              disabled={pending || !slots.length || (addressChoice === 'new' && !newAddress.formatted.trim()) || (zones.length > 0 && addressChoice === 'new' && !newAddress.zone)}
+              disabled={
+                pending ||
+                !slots.length ||
+                (addressChoice === "new" && !newAddress.formatted.trim()) ||
+                (zones.length > 0 && addressChoice === "new" && !newAddress.zone)
+              }
               onClick={savePickup}
             >
-              {pending ? tw('saving') : t('common.next')}
+              {pending ? tw("saving") : t("common.next")}
             </Button>
           </div>
         </Section>
       ) : null}
 
       {step === 5 && fees ? (
-        <Section title={tw('review')}>
-          <p className="mb-3 text-sm text-muted-foreground">{tw('reviewHelp')}</p>
+        <Section title={tw("review")}>
+          <p className="mb-3 text-sm text-muted-foreground">{tw("reviewHelp")}</p>
           <div className="divide-y">
-            <KV k={tw('deviceSummary')} v={`${s.device_brand} ${s.device_model}`.trim()} />
-            <KV k={tw('faultSummary')} v={<span className="line-clamp-2">{s.fault_description}</span>} />
-            <KV k={tw('pickupSummary')} v={`${formatDate(slots[slotIdx]?.start ?? new Date())} ${slots[slotIdx]?.label ?? ''}`} />
-            <KV k={t('common.photos')} v={tw('photoCount', { n: photoState.kinds.length })} />
+            <KV k={tw("deviceSummary")} v={`${s.device_brand} ${s.device_model}`.trim()} />
+            <KV k={tw("faultSummary")} v={<span className="line-clamp-2">{s.fault_description}</span>} />
+            <KV k={tw("pickupSummary")} v={`${formatDate(slots[slotIdx]?.start ?? new Date())} ${slots[slotIdx]?.label ?? ""}`} />
+            <KV k={t("common.photos")} v={tw("photoCount", { n: photoState.kinds.length })} />
           </div>
           <div className="mt-4 rounded-xl bg-muted/50 p-3">
-            <KV k={tw('feeDelivery')} v={formatKes(fees.deliveryFeeCents)} />
-            <KV k={tw('feeConsultation')} v={formatKes(fees.consultationCents)} />
-            {consultationCredited && feeForType > 0 ? <p className="text-xs text-muted-foreground">{tw('feeConsultationCredit')}</p> : null}
-            <KV k={tw('feeTotal')} v={formatKes(fees.totalCents)} strong />
+            <KV k={tw("feeDelivery")} v={formatKes(fees.deliveryFeeCents)} />
+            <KV k={tw("feeConsultation")} v={formatKes(fees.consultationCents)} />
+            {consultationCredited && feeForType > 0 ? <p className="text-xs text-muted-foreground">{tw("feeConsultationCredit")}</p> : null}
+            <KV k={tw("feeTotal")} v={formatKes(fees.totalCents)} strong />
           </div>
           <label className="mt-4 flex items-start gap-3 text-sm">
-            <input type="checkbox" className="mt-0.5 size-5 accent-(--primary)" checked={agree} onChange={(e) => setAgree(e.target.checked)} data-testid="agree" />
+            <input
+              type="checkbox"
+              className="mt-0.5 size-5 accent-(--primary)"
+              checked={agree}
+              onChange={(e) => setAgree(e.target.checked)}
+              data-testid="agree"
+            />
             <span>
-              {tw.rich('agree', {
+              {tw.rich("agree", {
                 terms: (chunks) => (
                   <a href="/terms" target="_blank" className="text-link hover:underline">
                     {chunks}
@@ -530,7 +649,7 @@ export function BookingWizard({
           </label>
           <ErrorText>{error}</ErrorText>
           <Button type="button" size="lg" className="mt-4 w-full" disabled={!agree || pending} onClick={submit} data-testid="submit-booking">
-            {tw('payAndBook', { amount: formatKes(fees.totalCents) })}
+            {tw("payAndBook", { amount: formatKes(fees.totalCents) })}
           </Button>
         </Section>
       ) : null}

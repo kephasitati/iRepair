@@ -1,18 +1,18 @@
 /** Africa/Nairobi is UTC+3 all year (no DST), which keeps these helpers dependency-free (DECISIONS D-12). */
 
-export const TZ = 'Africa/Nairobi';
+export const TZ = "Africa/Nairobi";
 const OFFSET_MS = 3 * 60 * 60 * 1000;
 
 export function formatDateTime(d: Date | string, opts: Intl.DateTimeFormatOptions = {}): string {
-  return new Intl.DateTimeFormat('en-KE', { timeZone: TZ, dateStyle: 'medium', timeStyle: 'short', ...opts }).format(new Date(d));
+  return new Intl.DateTimeFormat("en-KE", { timeZone: TZ, dateStyle: "medium", timeStyle: "short", ...opts }).format(new Date(d));
 }
 
 export function formatDate(d: Date | string): string {
-  return new Intl.DateTimeFormat('en-KE', { timeZone: TZ, dateStyle: 'medium' }).format(new Date(d));
+  return new Intl.DateTimeFormat("en-KE", { timeZone: TZ, dateStyle: "medium" }).format(new Date(d));
 }
 
 export function formatTime(d: Date | string): string {
-  return new Intl.DateTimeFormat('en-KE', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(d));
+  return new Intl.DateTimeFormat("en-KE", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(d));
 }
 
 /** The instant `ms` milliseconds before now. Pages call this rather than reading the clock mid-render. */
@@ -33,7 +33,7 @@ export function parseHHMM(s: string): number {
 }
 
 export function hhmm(minutes: number): string {
-  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
 /** True if `d` falls inside a quiet window like 21:00-07:00 (may wrap midnight). */
@@ -69,7 +69,7 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+export const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
 export type OpeningHours = Partial<Record<Weekday, { open: string; close: string } | null>>;
 

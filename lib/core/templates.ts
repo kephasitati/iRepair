@@ -5,21 +5,21 @@
  */
 
 export const TEMPLATE_VARIABLES = [
-  'customer_name',
-  'job_ref',
-  'amount',
-  'tracking_url',
-  'shop_name',
-  'shop_phone',
-  'job_link',
-  'rider_name',
-  'rider_phone',
-  'plate',
-  'receipt',
-  'device',
-  'status',
-  'expires_at',
-  'reason',
+  "customer_name",
+  "job_ref",
+  "amount",
+  "tracking_url",
+  "shop_name",
+  "shop_phone",
+  "job_link",
+  "rider_name",
+  "rider_phone",
+  "plate",
+  "receipt",
+  "device",
+  "status",
+  "expires_at",
+  "reason",
 ] as const;
 export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number];
 
@@ -40,7 +40,7 @@ export function renderTemplate(body: string, vars: Partial<Record<TemplateVariab
   return body.replace(/\{([a-z_]+)\}/g, (whole, name: string) => {
     if (!(TEMPLATE_VARIABLES as readonly string[]).includes(name)) return whole;
     const v = vars[name as TemplateVariable];
-    return v == null ? '' : String(v);
+    return v == null ? "" : String(v);
   });
 }
 

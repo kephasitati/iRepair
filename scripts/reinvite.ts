@@ -6,7 +6,7 @@
  *
  * Without --email it targets the shop's shop_admin membership(s); with it, that one member.
  */
-import './shim-server-only';
+import "./shim-server-only";
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -14,14 +14,14 @@ function arg(name: string): string | undefined {
 }
 
 async function main() {
-  const { randomToken, sha256Hex } = await import('../lib/core/crypto');
-  const { withService } = await import('../lib/db');
-  const { env } = await import('../lib/env');
+  const { randomToken, sha256Hex } = await import("../lib/core/crypto");
+  const { withService } = await import("../lib/db");
+  const { env } = await import("../lib/env");
 
-  const slug = arg('slug')?.toLowerCase();
-  const email = arg('email')?.toLowerCase();
+  const slug = arg("slug")?.toLowerCase();
+  const email = arg("email")?.toLowerCase();
   if (!slug) {
-    console.error('Usage: npx tsx scripts/reinvite.ts --slug shop-slug [--email who@example.com]');
+    console.error("Usage: npx tsx scripts/reinvite.ts --slug shop-slug [--email who@example.com]");
     process.exit(1);
   }
 
@@ -39,7 +39,7 @@ async function main() {
     return { name: t.name as string, host: d.hostname as string, emails: rows.map((r) => r.email as string) };
   });
 
-  console.log(`\nNew invite for "${result.name}" (${result.emails.join(', ')}), valid 7 days:`);
+  console.log(`\nNew invite for "${result.name}" (${result.emails.join(", ")}), valid 7 days:`);
   console.log(`${env().PUBLIC_SCHEME}://${result.host}/staff/invite/${token}`);
   process.exit(0);
 }

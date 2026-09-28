@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useEffectEvent, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useEffectEvent, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 export type LiveEvent = { t: string; job_id?: string; payment_id?: string };
 
@@ -22,11 +22,11 @@ export function LiveRefresh({ jobId, onEvent }: { jobId?: string; onEvent?: (e: 
       timer.current = setTimeout(() => router.refresh(), 300);
     };
     const connect = () => {
-      es = new EventSource('/api/events');
+      es = new EventSource("/api/events");
       es.onmessage = (m) => {
         try {
           const e = JSON.parse(m.data) as LiveEvent;
-          if (e.t === 'hello') return;
+          if (e.t === "hello") return;
           notify(e);
           if (!jobId || e.job_id === jobId) refresh();
         } catch {}
@@ -40,12 +40,12 @@ export function LiveRefresh({ jobId, onEvent }: { jobId?: string; onEvent?: (e: 
       };
     };
     connect();
-    const onVisible = () => document.visibilityState === 'visible' && refresh();
-    document.addEventListener('visibilitychange', onVisible);
+    const onVisible = () => document.visibilityState === "visible" && refresh();
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       es?.close();
       if (poll) clearInterval(poll);
-      document.removeEventListener('visibilitychange', onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [jobId, router]);
   return null;

@@ -1,7 +1,7 @@
-import { notFound, redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
-import { servicePool } from '@/lib/db';
-import { requireTenant } from '@/lib/tenant';
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { servicePool } from "@/lib/db";
+import { requireTenant } from "@/lib/tenant";
 
 /**
  * SMS deep link. Opens the exact job; if signed out, sends the customer to the OTP screen (DECISIONS Q-7: no

@@ -1,17 +1,17 @@
-import Link from 'next/link';
-import type { Metadata } from 'next';
-import { InstagramEmbeds } from '@/components/instagram-embeds';
-import { GoogleReviews } from '@/components/google-reviews';
-import { JsonLd } from '@/components/seo-bits';
-import { WhatsAppLink } from '@/components/whatsapp';
-import { formatKenyanPhone } from '@/lib/core/phone';
-import { WEEKDAYS } from '@/lib/core/time';
-import { DEVICE_LABEL, cityOf, enabledDevices, socialLinks, whatsappLink } from '@/lib/public-data';
-import { breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
-import { requireTenant } from '@/lib/tenant';
+import Link from "next/link";
+import type { Metadata } from "next";
+import { InstagramEmbeds } from "@/components/instagram-embeds";
+import { GoogleReviews } from "@/components/google-reviews";
+import { JsonLd } from "@/components/seo-bits";
+import { WhatsAppLink } from "@/components/whatsapp";
+import { formatKenyanPhone } from "@/lib/core/phone";
+import { WEEKDAYS } from "@/lib/core/time";
+import { DEVICE_LABEL, cityOf, enabledDevices, socialLinks, whatsappLink } from "@/lib/public-data";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { requireTenant } from "@/lib/tenant";
 
 function instagramHandle(url: string): string {
-  return url.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').split(/[/?#]/)[0] || 'instagram';
+  return url.replace(/^https?:\/\/(www\.)?instagram\.com\//, "").split(/[/?#]/)[0] || "instagram";
 }
 
 function InstagramGlyph({ className }: { className?: string }) {
@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata(tenant, {
     title: `About ${name} — ${cityOf(tenant)} device repair`,
     description: tenant.branding.about ?? `${name}: who we are, where to find us, opening hours and how to reach us.`,
-    path: '/about',
+    path: "/about",
   });
 }
 
@@ -40,12 +40,17 @@ export default async function AboutPage() {
   const s = tenant.settings;
   const b = tenant.branding;
   const socials = socialLinks(tenant);
-  const instagram = socials.find((l) => l.key === 'instagram');
+  const instagram = socials.find((l) => l.key === "instagram");
   const hours = WEEKDAYS.map((d) => ({ day: d, h: s.opening_hours[d] }));
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
-      <JsonLd data={breadcrumbJsonLd(tenant, [{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }])} />
+      <JsonLd
+        data={breadcrumbJsonLd(tenant, [
+          { name: "Home", path: "/" },
+          { name: "About", path: "/about" },
+        ])}
+      />
       <p className="eyebrow">About</p>
       <h1 className="display mt-2 text-[36px] sm:text-[56px]">{b.display_name}</h1>
       {b.tagline ? <p className="mt-2 text-[19px] text-ink-2">{b.tagline}</p> : null}
@@ -57,7 +62,12 @@ export default async function AboutPage() {
           <p className="mt-3 text-[15px]">{s.address_formatted}</p>
           {s.address_landmark ? <p className="text-[14px] text-ink-3">{s.address_landmark}</p> : null}
           {s.address_lat != null && s.address_lng != null ? (
-            <a href={`https://www.google.com/maps?q=${s.address_lat},${s.address_lng}`} target="_blank" rel="noopener" className="mt-2 inline-block text-[14px] text-link hover:underline">
+            <a
+              href={`https://www.google.com/maps?q=${s.address_lat},${s.address_lng}`}
+              target="_blank"
+              rel="noopener"
+              className="mt-2 inline-block text-[14px] text-link hover:underline"
+            >
               Open in Google Maps
             </a>
           ) : null}
@@ -68,7 +78,7 @@ export default async function AboutPage() {
             {hours.map(({ day, h }) => (
               <li key={day} className="flex justify-between gap-3">
                 <span className="capitalize">{day}</span>
-                <span className="tabular-nums text-ink-2">{h ? `${h.open} – ${h.close}` : 'Closed'}</span>
+                <span className="tabular-nums text-ink-2">{h ? `${h.open} – ${h.close}` : "Closed"}</span>
               </li>
             ))}
           </ul>
@@ -120,14 +130,17 @@ export default async function AboutPage() {
           <h2 className="display text-[28px] sm:text-[40px]">On Instagram</h2>
           {instagram ? (
             <a href={instagram.url} target="_blank" rel="noopener me" className="tile mt-6 flex items-center gap-4 p-5 hover:bg-fill/40">
-              <span className="grid size-14 shrink-0 place-items-center rounded-2xl text-white" style={{ background: 'linear-gradient(45deg,#f58529,#dd2a7b 50%,#8134af 80%,#515bd4)' }}>
+              <span
+                className="grid size-14 shrink-0 place-items-center rounded-2xl text-white"
+                style={{ background: "linear-gradient(45deg,#f58529,#dd2a7b 50%,#8134af 80%,#515bd4)" }}
+              >
                 <InstagramGlyph className="size-7" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[17px] font-semibold">@{instagramHandle(instagram.url)}</span>
                 <span className="block text-[14px] text-ink-3">Latest repairs, stock and offers from {b.display_name}</span>
               </span>
-              <span className="shrink-0 rounded-full px-4 py-2 text-[14px]" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>
+              <span className="shrink-0 rounded-full px-4 py-2 text-[14px]" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                 Follow
               </span>
             </a>
@@ -151,7 +164,11 @@ export default async function AboutPage() {
 
       <div className="tile mt-12 flex flex-col items-center gap-4 px-6 py-12 text-center">
         <h2 className="display text-[28px] sm:text-[40px]">Need a repair?</h2>
-        <Link href="/book" className="inline-flex h-12 items-center rounded-full px-7 text-[17px]" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>
+        <Link
+          href="/book"
+          className="inline-flex h-12 items-center rounded-full px-7 text-[17px]"
+          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+        >
           Book a repair pickup
         </Link>
       </div>

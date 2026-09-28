@@ -1,8 +1,8 @@
-import 'server-only';
-import { randomToken } from './core/crypto';
-import { hashPassword } from './core/password';
-import type { Tx } from './db';
-import { UserError } from './jobs/types';
+import "server-only";
+import { randomToken } from "./core/crypto";
+import { hashPassword } from "./core/password";
+import type { Tx } from "./db";
+import { UserError } from "./jobs/types";
 
 export const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -29,9 +29,9 @@ export async function resolveInvitee(tx: Tx, input: { email: string; phone?: str
   if (existing) await tx`update users set email = null where id = ${existing.id}`;
   if (input.phone) {
     const [taken] = await tx`select 1 from users where phone_e164 = ${input.phone}`;
-    if (taken) throw new UserError('That phone number already belongs to another account. Invite them by that account’s email, or leave the phone blank.');
+    if (taken) throw new UserError("That phone number already belongs to another account. Invite them by that account’s email, or leave the phone blank.");
   }
   const [created] = await tx`insert into users (email, phone_e164, full_name, password_hash)
-    values (${input.email}, ${input.phone ?? null}, ${input.fullName ?? ''}, ${await hashPassword(randomToken(24))}) returning id`;
+    values (${input.email}, ${input.phone ?? null}, ${input.fullName ?? ""}, ${await hashPassword(randomToken(24))}) returning id`;
   return { userId: created.id, releasedFromUserId: existing?.id ?? null };
 }

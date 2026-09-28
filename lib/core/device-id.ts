@@ -1,11 +1,11 @@
-export type DeviceType = 'iphone' | 'macbook' | 'ipad' | 'imac' | 'apple_watch' | 'android' | 'windows_laptop' | 'other';
+export type DeviceType = "iphone" | "macbook" | "ipad" | "imac" | "apple_watch" | "android" | "windows_laptop" | "other";
 
-export const DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'apple_watch', 'android', 'windows_laptop', 'other'];
+export const DEVICE_TYPES: DeviceType[] = ["iphone", "macbook", "ipad", "imac", "apple_watch", "android", "windows_laptop", "other"];
 
 /** The launch line-up (default for every new shop): the Apple family first, then Android and Windows laptops. */
-export const DEFAULT_DEVICE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'apple_watch', 'android', 'windows_laptop'];
+export const DEFAULT_DEVICE_TYPES: DeviceType[] = ["iphone", "macbook", "ipad", "imac", "apple_watch", "android", "windows_laptop"];
 
-export const APPLE_TYPES: DeviceType[] = ['iphone', 'macbook', 'ipad', 'imac', 'apple_watch'];
+export const APPLE_TYPES: DeviceType[] = ["iphone", "macbook", "ipad", "imac", "apple_watch"];
 
 export function luhnValid(digits: string): boolean {
   if (!/^\d+$/.test(digits)) return false;
@@ -38,27 +38,26 @@ export function looksLikeGenericSerial(value: string): boolean {
 }
 
 export type IdentifierCheck =
-  | { ok: true; kind: 'imei' | 'serial'; normalized: string }
-  | { ok: false; error: 'required' | 'imei_checksum' | 'imei_length' | 'serial_format' };
+  { ok: true; kind: "imei" | "serial"; normalized: string } | { ok: false; error: "required" | "imei_checksum" | "imei_length" | "serial_format" };
 
 /**
  * Validate the IMEI or serial a customer declares. Phones and cellular iPads usually give an IMEI
  * (15 digits, Luhn); Apple devices may give a serial instead; laptops give a serial.
  */
 export function checkDeviceIdentifier(type: DeviceType, raw: string): IdentifierCheck {
-  const value = raw.replace(/\s+/g, '').toUpperCase();
-  if (!value) return { ok: false, error: 'required' };
+  const value = raw.replace(/\s+/g, "").toUpperCase();
+  if (!value) return { ok: false, error: "required" };
   if (/^\d+$/.test(value)) {
-    if (value.length === 15) return isValidImei(value) ? { ok: true, kind: 'imei', normalized: value } : { ok: false, error: 'imei_checksum' };
-    if (type === 'iphone' || type === 'android') return { ok: false, error: 'imei_length' };
+    if (value.length === 15) return isValidImei(value) ? { ok: true, kind: "imei", normalized: value } : { ok: false, error: "imei_checksum" };
+    if (type === "iphone" || type === "android") return { ok: false, error: "imei_length" };
   }
   const apple = APPLE_TYPES.includes(type);
   const ok = apple ? looksLikeAppleSerial(value) : looksLikeGenericSerial(value);
-  return ok ? { ok: true, kind: 'serial', normalized: value } : { ok: false, error: 'serial_format' };
+  return ok ? { ok: true, kind: "serial", normalized: value } : { ok: false, error: "serial_format" };
 }
 
 /** Compare the declared identifier to the one read at the bench (case/space insensitive). */
 export function identifiersMatch(a: string | null | undefined, b: string | null | undefined): boolean {
-  const n = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, '').toUpperCase();
-  return n(a) !== '' && n(a) === n(b);
+  const n = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, "").toUpperCase();
+  return n(a) !== "" && n(a) === n(b);
 }

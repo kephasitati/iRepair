@@ -1,13 +1,13 @@
-import Link from 'next/link';
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
-import { JsonLd } from '@/components/seo-bits';
-import { formatKes } from '@/lib/core/money';
-import { DEVICE_LABEL, cityOf, getListedProducts, productImageSrc, type PublicProduct } from '@/lib/public-data';
-import { breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
-import { requireTenant } from '@/lib/tenant';
-import type { DeviceType } from '@/lib/core/device-id';
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { ChevronDown } from "lucide-react";
+import { JsonLd } from "@/components/seo-bits";
+import { formatKes } from "@/lib/core/money";
+import { DEVICE_LABEL, cityOf, getListedProducts, productImageSrc, type PublicProduct } from "@/lib/public-data";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { requireTenant } from "@/lib/tenant";
+import type { DeviceType } from "@/lib/core/device-id";
 
 const PAGE_SIZE = 48;
 
@@ -19,12 +19,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata(tenant, {
     title: `Shop — parts, devices and accessories | ${name}`,
     description: `Genuine parts, devices and accessories from ${name} in ${cityOf(tenant)}. Prices in KES, ask on WhatsApp or book a repair.`,
-    path: '/shop',
+    path: "/shop",
   });
 }
 
 function familyLabel(f: string | null): string {
-  return f && f !== 'other' && f in DEVICE_LABEL ? DEVICE_LABEL[f as DeviceType] : 'Accessories';
+  return f && f !== "other" && f in DEVICE_LABEL ? DEVICE_LABEL[f as DeviceType] : "Accessories";
 }
 
 /** Browsable product catalogue: the shop's listed items with photo, price and category. */
@@ -34,8 +34,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const { c, d, page: pageRaw } = await searchParams;
   const all = await getListedProducts(tenant.id);
 
-  const families = [...new Set(all.map((p) => p.device_family ?? 'other'))];
-  const inFamily = d ? all.filter((p) => (p.device_family ?? 'other') === d) : all;
+  const families = [...new Set(all.map((p) => p.device_family ?? "other"))];
+  const inFamily = d ? all.filter((p) => (p.device_family ?? "other") === d) : all;
   const categories = [...new Set(inFamily.map((p) => p.category).filter((x): x is string => !!x))].sort();
   const filtered = c ? inFamily.filter((p) => p.category === c) : inFamily;
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -45,25 +45,36 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const href = (q: Partial<Search>) => {
     const p = new URLSearchParams();
     const merged = { c, d, ...q };
-    if (merged.d) p.set('d', merged.d);
-    if (merged.c) p.set('c', merged.c);
-    if (merged.page && merged.page !== '1') p.set('page', merged.page);
+    if (merged.d) p.set("d", merged.d);
+    if (merged.c) p.set("c", merged.c);
+    if (merged.page && merged.page !== "1") p.set("page", merged.page);
     const s = p.toString();
-    return `/shop${s ? `?${s}` : ''}`;
+    return `/shop${s ? `?${s}` : ""}`;
   };
-  const chip = (active: boolean) => `shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors ${active ? 'text-white' : 'bg-canvas hover:bg-fill'}`;
-  const chipStyle = (active: boolean) => (active ? { background: 'var(--primary)' } : undefined);
+  const chip = (active: boolean) =>
+    `shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors ${active ? "text-white" : "bg-canvas hover:bg-fill"}`;
+  const chipStyle = (active: boolean) => (active ? { background: "var(--primary)" } : undefined);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
-      <JsonLd data={breadcrumbJsonLd(tenant, [{ name: 'Home', path: '/' }, { name: 'Shop', path: '/shop' }])} />
+      <JsonLd
+        data={breadcrumbJsonLd(tenant, [
+          { name: "Home", path: "/" },
+          { name: "Shop", path: "/shop" },
+        ])}
+      />
       <JsonLd
         data={{
-          '@context': 'https://schema.org',
-          '@type': 'ItemList',
+          "@context": "https://schema.org",
+          "@type": "ItemList",
           name: `${tenant.branding.display_name} shop`,
           numberOfItems: filtered.length,
-          itemListElement: items.map((p, i) => ({ '@type': 'ListItem', position: (page - 1) * PAGE_SIZE + i + 1, url: `${tenant.baseUrl}/shop/${p.id}`, name: p.name })),
+          itemListElement: items.map((p, i) => ({
+            "@type": "ListItem",
+            position: (page - 1) * PAGE_SIZE + i + 1,
+            url: `${tenant.baseUrl}/shop/${p.id}`,
+            name: p.name,
+          })),
         }}
       />
       <h1 className="display text-center text-[36px] sm:text-[56px]">Shop</h1>
@@ -71,11 +82,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
       {families.length > 1 ? (
         <div className="no-scrollbar mt-8 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center">
-          <Link href={href({ d: undefined, c: undefined, page: '1' })} className={chip(!d)} style={chipStyle(!d)}>
+          <Link href={href({ d: undefined, c: undefined, page: "1" })} className={chip(!d)} style={chipStyle(!d)}>
             All
           </Link>
           {families.map((f) => (
-            <Link key={f} href={href({ d: f, c: undefined, page: '1' })} className={chip(d === f)} style={chipStyle(d === f)}>
+            <Link key={f} href={href({ d: f, c: undefined, page: "1" })} className={chip(d === f)} style={chipStyle(d === f)}>
               {familyLabel(f)}
             </Link>
           ))}
@@ -84,17 +95,28 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       {categories.length > 1 ? (
         <details className="group mx-auto mt-3 max-w-3xl" data-testid="shop-categories">
           <summary className="mx-auto flex w-fit cursor-pointer list-none items-center gap-2 rounded-full bg-canvas px-4 py-1.5 text-[14px] hover:bg-fill [&::-webkit-details-marker]:hidden">
-            {c ? <>Category: <span className="font-semibold">{c}</span></> : <>Categories ({categories.length})</>}
+            {c ? (
+              <>
+                Category: <span className="font-semibold">{c}</span>
+              </>
+            ) : (
+              <>Categories ({categories.length})</>
+            )}
             <ChevronDown className="size-4 transition-transform duration-300 group-open:rotate-180" />
           </summary>
           <div className="mt-3 flex flex-wrap justify-center gap-2 text-ink-2">
             {c ? (
-              <Link href={href({ c: undefined, page: '1' })} className={`${chip(false)} text-[13px]`}>
+              <Link href={href({ c: undefined, page: "1" })} className={`${chip(false)} text-[13px]`}>
                 All categories
               </Link>
             ) : null}
             {categories.map((cat) => (
-              <Link key={cat} href={href({ c: c === cat ? undefined : cat, page: '1' })} className={`${chip(c === cat)} text-[13px]`} style={chipStyle(c === cat)}>
+              <Link
+                key={cat}
+                href={href({ c: c === cat ? undefined : cat, page: "1" })}
+                className={`${chip(c === cat)} text-[13px]`}
+                style={chipStyle(c === cat)}
+              >
                 {cat}
               </Link>
             ))}

@@ -1,6 +1,6 @@
-import { ChevronDown } from 'lucide-react';
-import { formatKes } from '@/lib/core/money';
-import { groupByCategory, type PublicPart } from '@/lib/public-data';
+import { ChevronDown } from "lucide-react";
+import { formatKes } from "@/lib/core/money";
+import { groupByCategory, type PublicPart } from "@/lib/public-data";
 
 /**
  * A device's published prices, one collapsed row per category ("Screen Replacement · 61 items · from KES 2,500").
@@ -18,7 +18,7 @@ export function PriceGroups({ parts, openFirst = false }: { parts: PublicPart[];
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold tracking-tight">{g.category}</span>
                 <span className="block text-[13px] text-ink-3">
-                  {g.items.length} {g.items.length === 1 ? 'item' : 'items'} · from {formatKes(from)}
+                  {g.items.length} {g.items.length === 1 ? "item" : "items"} · from {formatKes(from)}
                 </span>
               </span>
               <ChevronDown className="size-4 shrink-0 text-ink-3 transition-transform duration-300 group-open:rotate-180" />

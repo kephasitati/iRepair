@@ -1,17 +1,17 @@
-import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
-import { CookieSettingsLink } from '@/components/cookie-banner';
-import { WhatsAppLink } from '@/components/whatsapp';
-import { formatKenyanPhone } from '@/lib/core/phone';
-import { DEVICE_LABEL, enabledDevices, socialLinks, whatsappLink } from '@/lib/public-data';
-import type { Tenant } from '@/lib/tenant';
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { CookieSettingsLink } from "@/components/cookie-banner";
+import { WhatsAppLink } from "@/components/whatsapp";
+import { formatKenyanPhone } from "@/lib/core/phone";
+import { DEVICE_LABEL, enabledDevices, socialLinks, whatsappLink } from "@/lib/public-data";
+import type { Tenant } from "@/lib/tenant";
 
 /** apple.com-style footer: small grey type, link columns, legal line. Present on every customer page. */
 export async function ShopFooter({ tenant }: { tenant: Tenant }) {
   const t = await getTranslations();
   const devices = enabledDevices(tenant);
   const socials = socialLinks(tenant);
-  const apple = devices.some((d) => ['iphone', 'macbook', 'ipad', 'imac'].includes(d));
+  const apple = devices.some((d) => ["iphone", "macbook", "ipad", "imac"].includes(d));
   return (
     <footer className="mt-10 border-t border-line bg-canvas">
       <div className="mx-auto max-w-5xl px-5 py-10 text-[12px] leading-relaxed text-ink-3">
@@ -28,13 +28,13 @@ export async function ShopFooter({ tenant }: { tenant: Tenant }) {
               ))}
               <li>
                 <Link href="/book" className="hover:text-ink hover:underline">
-                  {t('landing.cta')}
+                  {t("landing.cta")}
                 </Link>
               </li>
               {tenant.settings.shop_page ? (
                 <li>
                   <Link href="/shop" className="hover:text-ink hover:underline">
-                    {t('nav.shop')}
+                    {t("nav.shop")}
                   </Link>
                 </li>
               ) : null}
@@ -55,7 +55,7 @@ export async function ShopFooter({ tenant }: { tenant: Tenant }) {
               </li>
               <li>
                 <Link href="/jobs" className="hover:text-ink hover:underline">
-                  {t('landing.myJobs')}
+                  {t("landing.myJobs")}
                 </Link>
               </li>
             </ul>
@@ -66,7 +66,7 @@ export async function ShopFooter({ tenant }: { tenant: Tenant }) {
             {tenant.settings.address_landmark ? <p>{tenant.settings.address_landmark}</p> : null}
             <p className="mt-2">
               <Link href="/about" className="hover:text-ink hover:underline">
-                {t('nav.about')}
+                {t("nav.about")}
               </Link>
             </p>
             {socials.length ? (
@@ -83,8 +83,10 @@ export async function ShopFooter({ tenant }: { tenant: Tenant }) {
           </div>
         </div>
         <p className="mt-8 border-t border-line pt-4">
-          {t('landing.footerNote')}
-          {apple ? ` iPhone, iPad, MacBook and iMac are trademarks of Apple Inc. ${tenant.branding.display_name} is an independent repair service and is not affiliated with or endorsed by Apple.` : ''}
+          {t("landing.footerNote")}
+          {apple
+            ? ` iPhone, iPad, MacBook and iMac are trademarks of Apple Inc. ${tenant.branding.display_name} is an independent repair service and is not affiliated with or endorsed by Apple.`
+            : ""}
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
           <span>
@@ -92,10 +94,10 @@ export async function ShopFooter({ tenant }: { tenant: Tenant }) {
           </span>
           {tenant.settings.kra_pin ? <span>KRA PIN {tenant.settings.kra_pin}</span> : null}
           <Link href="/terms" className="hover:text-ink hover:underline">
-            {t('landing.terms')}
+            {t("landing.terms")}
           </Link>
           <Link href="/privacy" className="hover:text-ink hover:underline">
-            {t('landing.privacy')}
+            {t("landing.privacy")}
           </Link>
           <CookieSettingsLink className="hover:text-ink hover:underline" />
           <Link href="/staff/login" className="hover:text-ink hover:underline">

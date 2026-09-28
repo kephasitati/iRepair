@@ -1,9 +1,9 @@
-import 'server-only';
-import { cache } from 'react';
-import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
-import { servicePool } from './db';
-import { env } from './env';
+import "server-only";
+import { cache } from "react";
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
+import { servicePool } from "./db";
+import { env } from "./env";
 
 /**
  * Tenant resolution from the Host header (DECISIONS D-8). One lookup per request (React cache) on top of a
@@ -16,11 +16,11 @@ export type Tenant = {
   id: string;
   slug: string;
   name: string;
-  status: 'active' | 'suspended';
+  status: "active" | "suspended";
   hostname: string;
   baseUrl: string;
   /** Where this hostname's home page sends visitors ('/' normally; a retail domain can open '/shop'). */
-  landingPath: '/' | '/shop' | '/about';
+  landingPath: "/" | "/shop" | "/about";
   branding: {
     display_name: string;
     tagline: string | null;
@@ -31,7 +31,7 @@ export type Tenant = {
     sms_sender_id: string | null;
     email_from_name: string | null;
     about: string | null;
-    social_links: Partial<Record<'instagram' | 'facebook' | 'tiktok' | 'x' | 'youtube' | 'website', string>>;
+    social_links: Partial<Record<"instagram" | "facebook" | "tiktok" | "x" | "youtube" | "website", string>>;
     instagram_posts: string[];
     google_place_id: string | null;
   };
@@ -47,15 +47,15 @@ export type Tenant = {
     vat_rate_bp: number;
     prices_include_vat: boolean;
     consultation_fee_cents: number;
-    consultation_fees: Partial<Record<import('./core/device-id').DeviceType, number>>;
+    consultation_fees: Partial<Record<import("./core/device-id").DeviceType, number>>;
     consultation_fee_credited: boolean;
-    deposit_rule: { kind: 'percent' | 'fixed'; value: number };
+    deposit_rule: { kind: "percent" | "fixed"; value: number };
     deposit_min_quote_cents: number;
     max_negotiation_rounds: number;
     quote_expiry_hours: number;
     expired_quote_autodecline_days: number;
     delivery_markup_bp: number;
-    delivery_provider: 'mock' | 'tumaboda';
+    delivery_provider: "mock" | "tumaboda";
     retention_days: number;
     quiet_hours_start: string;
     quiet_hours_end: string;
@@ -67,7 +67,7 @@ export type Tenant = {
     unclaimed_after_days: number;
     require_admin_mfa: boolean;
     collect_supplementary_upfront: boolean;
-    device_types: import('./core/device-id').DeviceType[];
+    device_types: import("./core/device-id").DeviceType[];
     whatsapp_phone: string | null;
     shop_page: boolean;
   };
@@ -103,14 +103,33 @@ export async function loadTenantByHost(hostname: string): Promise<Tenant | null>
   let value: Tenant | null = null;
   if (rows[0]) {
     const r = rows[0];
-    const scheme = /localhost|127\.0\.0\.1/.test(hostname) ? 'http' : 'https';
+    const scheme = /localhost|127\.0\.0\.1/.test(hostname) ? "http" : "https";
     const settings = toNumber(r.settings, [
-      'consultation_fee_cents', 'deposit_min_quote_cents', 'vat_rate_bp', 'max_negotiation_rounds', 'quote_expiry_hours',
-      'expired_quote_autodecline_days', 'delivery_markup_bp', 'retention_days', 'auto_close_hours', 'warranty_days', 'unclaimed_after_days',
+      "consultation_fee_cents",
+      "deposit_min_quote_cents",
+      "vat_rate_bp",
+      "max_negotiation_rounds",
+      "quote_expiry_hours",
+      "expired_quote_autodecline_days",
+      "delivery_markup_bp",
+      "retention_days",
+      "auto_close_hours",
+      "warranty_days",
+      "unclaimed_after_days",
     ]);
     settings.quiet_hours_start = String(settings.quiet_hours_start).slice(0, 5);
     settings.quiet_hours_end = String(settings.quiet_hours_end).slice(0, 5);
-    value = { id: r.id, slug: r.slug, name: r.name, status: r.status, hostname, baseUrl: `${scheme}://${hostname}`, landingPath: r.landing_path ?? '/', branding: r.branding, settings };
+    value = {
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      status: r.status,
+      hostname,
+      baseUrl: `${scheme}://${hostname}`,
+      landingPath: r.landing_path ?? "/",
+      branding: r.branding,
+      settings,
+    };
   }
   memo.set(hostname, { at: Date.now(), value });
   return value;
@@ -123,7 +142,7 @@ export async function loadTenantById(id: string): Promise<Tenant | null> {
 
 export const currentHost = cache(async () => {
   const h = await headers();
-  return (h.get('x-forwarded-host') ?? h.get('host') ?? '').toLowerCase();
+  return (h.get("x-forwarded-host") ?? h.get("host") ?? "").toLowerCase();
 });
 
 export function isPlatformHost(host: string) {

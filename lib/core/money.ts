@@ -33,8 +33,8 @@ export function formatKes(cents: Cents, opts: { withSymbol?: boolean } = {}): st
   const abs = Math.abs(cents);
   const whole = Math.floor(abs / 100);
   const frac = abs % 100;
-  const body = whole.toLocaleString('en-KE') + (frac ? '.' + String(frac).padStart(2, '0') : '');
-  return `${negative ? '-' : ''}${opts.withSymbol === false ? '' : 'KES '}${body}`;
+  const body = whole.toLocaleString("en-KE") + (frac ? "." + String(frac).padStart(2, "0") : "");
+  return `${negative ? "-" : ""}${opts.withSymbol === false ? "" : "KES "}${body}`;
 }
 
 /** VAT contained in a VAT-inclusive gross amount. */
@@ -54,12 +54,12 @@ export function deliveryCharge(costCents: Cents, markupBp: number): { charged: C
   return { charged, markup: charged - costCents };
 }
 
-export type DepositRule = { kind: 'percent'; value: number } | { kind: 'fixed'; value: Cents };
+export type DepositRule = { kind: "percent"; value: number } | { kind: "fixed"; value: Cents };
 
 /** Deposit required for a quote. `percent.value` is basis points (5000 = 50 %). Never exceeds the total. */
 export function depositFor(totalCents: Cents, rule: DepositRule, minQuoteCents = 0): Cents {
   if (totalCents <= 0 || totalCents < minQuoteCents) return 0;
-  const raw = rule.kind === 'percent' ? roundShilling(Math.round((totalCents * rule.value) / 10000)) : rule.value;
+  const raw = rule.kind === "percent" ? roundShilling(Math.round((totalCents * rule.value) / 10000)) : rule.value;
   return Math.min(Math.max(raw, 0), totalCents);
 }
 
@@ -76,7 +76,7 @@ export type Totals = {
   totalCents: Cents;
 };
 
-export function lineTotal(line: Pick<LineInput, 'qty' | 'unitPriceCents'>): Cents {
+export function lineTotal(line: Pick<LineInput, "qty" | "unitPriceCents">): Cents {
   return line.qty * line.unitPriceCents;
 }
 
@@ -112,7 +112,7 @@ export type InvoiceLine = {
 
 export type InvoiceInput = {
   tax: TaxConfig;
-  outcome: 'repaired' | 'declined' | 'cancelled';
+  outcome: "repaired" | "declined" | "cancelled";
   consultationFeeCents: Cents;
   consultationFeeCredited: boolean;
   pickupDelivery?: { costCents: Cents; chargedCents: Cents } | null;
@@ -144,24 +144,23 @@ export function composeInvoice(input: InvoiceInput): InvoiceComputation {
     lines.push({ code, description: l.description, qty: l.qty, unitPriceCents: l.unitPriceCents, totalCents: lineTotal(l), vatable: l.vatable !== false });
 
   if (input.consultationFeeCents > 0) {
-    push('consultation', { description: 'Consultation / diagnosis fee', qty: 1, unitPriceCents: input.consultationFeeCents });
+    push("consultation", { description: "Consultation / diagnosis fee", qty: 1, unitPriceCents: input.consultationFeeCents });
   }
-  if (input.pickupDelivery) lines.push(...deliveryLines('pickup_delivery', 'Pickup delivery', input.pickupDelivery));
+  if (input.pickupDelivery) lines.push(...deliveryLines("pickup_delivery", "Pickup delivery", input.pickupDelivery));
 
-  if (input.outcome === 'repaired') {
-    input.quoteLines.forEach((l) => push('quote', l));
-    input.supplementaryLines.forEach((l) => push('supplementary', l));
+  if (input.outcome === "repaired") {
+    input.quoteLines.forEach((l) => push("quote", l));
+    input.supplementaryLines.forEach((l) => push("supplementary", l));
     if (input.negotiatedAdjustmentCents) {
-      push('negotiated', { description: 'Agreed price adjustment', qty: 1, unitPriceCents: input.negotiatedAdjustmentCents });
+      push("negotiated", { description: "Agreed price adjustment", qty: 1, unitPriceCents: input.negotiatedAdjustmentCents });
     }
     if (input.consultationFeeCredited && input.consultationFeeCents > 0) {
-      const repairValue =
-        [...input.quoteLines, ...input.supplementaryLines].reduce((s, l) => s + lineTotal(l), 0) + (input.negotiatedAdjustmentCents ?? 0);
+      const repairValue = [...input.quoteLines, ...input.supplementaryLines].reduce((s, l) => s + lineTotal(l), 0) + (input.negotiatedAdjustmentCents ?? 0);
       const credit = Math.min(input.consultationFeeCents, Math.max(repairValue, 0));
-      if (credit > 0) push('consultation_credit', { description: 'Consultation fee credited to repair', qty: 1, unitPriceCents: -credit });
+      if (credit > 0) push("consultation_credit", { description: "Consultation fee credited to repair", qty: 1, unitPriceCents: -credit });
     }
   }
-  if (input.returnDelivery) lines.push(...deliveryLines('return_delivery', 'Return delivery', input.returnDelivery));
+  if (input.returnDelivery) lines.push(...deliveryLines("return_delivery", "Return delivery", input.returnDelivery));
 
   const totals = computeTotals(
     lines.map((l) => ({ description: l.description, qty: l.qty, unitPriceCents: l.unitPriceCents, vatable: l.vatable })),

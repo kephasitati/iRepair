@@ -1,8 +1,8 @@
-import 'server-only';
-import type { Tx } from '@/lib/db';
-import { encryptForTenant } from '@/lib/tenant-crypto';
-import { checkIdNumber, type IdKind } from '@/lib/core/identity';
-import { UserError } from '@/lib/jobs/types';
+import "server-only";
+import type { Tx } from "@/lib/db";
+import { encryptForTenant } from "@/lib/tenant-crypto";
+import { checkIdNumber, type IdKind } from "@/lib/core/identity";
+import { UserError } from "@/lib/jobs/types";
 
 export type CustomerIdSummary = { kind: IdKind; last4: string; hasPhoto: boolean };
 

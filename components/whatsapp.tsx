@@ -8,7 +8,7 @@ export function WhatsAppGlyph({ className }: { className?: string }) {
   );
 }
 
-export function WhatsAppFloat({ href, label = 'Chat with us on WhatsApp' }: { href: string; label?: string }) {
+export function WhatsAppFloat({ href, label = "Chat with us on WhatsApp" }: { href: string; label?: string }) {
   return (
     <a
       href={href}
@@ -16,7 +16,7 @@ export function WhatsAppFloat({ href, label = 'Chat with us on WhatsApp' }: { hr
       rel="noopener"
       aria-label={label}
       className="fixed right-4 bottom-4 z-40 grid size-14 place-items-center rounded-full bg-[#25d366] text-white shadow-[0_8px_30px_rgba(0,0,0,.2)] transition-transform hover:scale-105 active:scale-95 sm:right-6 sm:bottom-6"
-      style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
       data-testid="whatsapp-float"
     >
       <WhatsAppGlyph className="size-7" />
@@ -24,9 +24,19 @@ export function WhatsAppFloat({ href, label = 'Chat with us on WhatsApp' }: { hr
   );
 }
 
-export function WhatsAppLink({ href, children, className, style }: { href: string; children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+export function WhatsAppLink({
+  href,
+  children,
+  className,
+  style,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <a href={href} target="_blank" rel="noopener" className={`inline-flex items-center gap-2 ${className ?? ''}`} style={style}>
+    <a href={href} target="_blank" rel="noopener" className={`inline-flex items-center gap-2 ${className ?? ""}`} style={style}>
       <WhatsAppGlyph className="size-5 text-[#25d366]" />
       {children}
     </a>

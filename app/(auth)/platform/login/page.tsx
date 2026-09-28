@@ -1,9 +1,9 @@
-import { notFound } from 'next/navigation';
-import { AuthCard } from '@/components/auth-card';
-import { StaffLoginForm } from '@/components/auth-forms';
-import { IRepairLogo } from '@/components/irepair-logo';
-import { env } from '@/lib/env';
-import { getTenant } from '@/lib/tenant';
+import { notFound } from "next/navigation";
+import { AuthCard } from "@/components/auth-card";
+import { StaffLoginForm } from "@/components/auth-forms";
+import { IRepairLogo } from "@/components/irepair-logo";
+import { env } from "@/lib/env";
+import { getTenant } from "@/lib/tenant";
 
 export default async function PlatformLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   // The platform console only exists on the platform host, never on a shop's domain.

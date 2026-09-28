@@ -1,22 +1,29 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Field, Section } from '@/components/fields';
-import { ActionForm } from '@/components/action-form';
-import { StatusBadge } from '@/components/status-badge';
-import { requestCtx, requireStaff } from '@/lib/auth';
-import { ID_KIND_LABEL } from '@/lib/core/identity';
-import { formatKes } from '@/lib/core/money';
-import { formatKenyanPhone } from '@/lib/core/phone';
-import type { JobStatus } from '@/lib/core/state-machine';
-import { formatDate, formatDateTime } from '@/lib/core/time';
-import { getCustomerIdSummary } from '@/lib/customer-ids';
-import { withUser } from '@/lib/db';
-import { addCustomerNoteAction, addCustomerTagAction, addFollowupAction, completeFollowupAction, deleteCustomerNoteAction, removeCustomerTagAction } from '@/app/admin/actions';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Field, Section } from "@/components/fields";
+import { ActionForm } from "@/components/action-form";
+import { StatusBadge } from "@/components/status-badge";
+import { requestCtx, requireStaff } from "@/lib/auth";
+import { ID_KIND_LABEL } from "@/lib/core/identity";
+import { formatKes } from "@/lib/core/money";
+import { formatKenyanPhone } from "@/lib/core/phone";
+import type { JobStatus } from "@/lib/core/state-machine";
+import { formatDate, formatDateTime } from "@/lib/core/time";
+import { getCustomerIdSummary } from "@/lib/customer-ids";
+import { withUser } from "@/lib/db";
+import {
+  addCustomerNoteAction,
+  addCustomerTagAction,
+  addFollowupAction,
+  completeFollowupAction,
+  deleteCustomerNoteAction,
+  removeCustomerTagAction,
+} from "@/app/admin/actions";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,19 +31,23 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const { tenant, session } = await requireStaff();
   const ctx = await requestCtx();
   const data = await withUser(ctx, async (tx) => {
-    const jobs = await tx`select id, ref, status, device_brand, device_model, created_at, closed_at from jobs where tenant_id = ${tenant.id} and customer_user_id = ${id} order by created_at desc`;
+    const jobs =
+      await tx`select id, ref, status, device_brand, device_model, created_at, closed_at from jobs where tenant_id = ${tenant.id} and customer_user_id = ${id} order by created_at desc`;
     if (!jobs.length) return null;
     const [user] = await tx`select id, full_name, phone_e164, email, created_at from users where id = ${id}`;
-    const [{ spend }] = await tx`select coalesce(sum(paid_amount_cents), 0)::bigint as spend from payments where tenant_id = ${tenant.id} and status = 'success' and job_id in (select id from jobs where tenant_id = ${tenant.id} and customer_user_id = ${id})`;
-    const notes = await tx`select n.id, n.body, n.created_at, n.author_id, u.full_name as author from customer_notes n left join users u on u.id = n.author_id where n.tenant_id = ${tenant.id} and n.user_id = ${id} order by n.created_at desc`;
+    const [{ spend }] =
+      await tx`select coalesce(sum(paid_amount_cents), 0)::bigint as spend from payments where tenant_id = ${tenant.id} and status = 'success' and job_id in (select id from jobs where tenant_id = ${tenant.id} and customer_user_id = ${id})`;
+    const notes =
+      await tx`select n.id, n.body, n.created_at, n.author_id, u.full_name as author from customer_notes n left join users u on u.id = n.author_id where n.tenant_id = ${tenant.id} and n.user_id = ${id} order by n.created_at desc`;
     const tags = await tx`select tag from customer_tags where tenant_id = ${tenant.id} and user_id = ${id} order by tag`;
-    const followups = await tx`select f.id, f.due_on, f.reason, f.done_at, u.full_name as created_by_name from customer_followups f left join users u on u.id = f.created_by where f.tenant_id = ${tenant.id} and f.user_id = ${id} order by f.done_at nulls first, f.due_on asc`;
+    const followups =
+      await tx`select f.id, f.due_on, f.reason, f.done_at, u.full_name as created_by_name from customer_followups f left join users u on u.id = f.created_by where f.tenant_id = ${tenant.id} and f.user_id = ${id} order by f.done_at nulls first, f.due_on asc`;
     const identity = await getCustomerIdSummary(tx, tenant.id, id);
     return { user, jobs, spend: Number(spend), notes, tags: tags.map((t) => t.tag as string), followups, identity };
   });
   if (!data) notFound();
   const { user, jobs, spend, notes, tags, followups, identity } = data;
-  const first = (user.full_name as string).split(' ')[0];
+  const first = (user.full_name as string).split(" ")[0];
   const today = new Date().toISOString().slice(0, 10);
   const open = followups.filter((f) => !f.done_at);
   const done = followups.filter((f) => f.done_at);
@@ -46,7 +57,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       <p className="text-xs text-muted-foreground">
         <Link href="/bench/customers" className="underline">
           Customers
-        </Link>{' '}
+        </Link>{" "}
         ›
       </p>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -54,18 +65,23 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           <h1 className="text-lg font-semibold">{user.full_name || user.phone_e164 || user.email}</h1>
           <p className="text-sm text-muted-foreground">
             {user.phone_e164 ? formatKenyanPhone(user.phone_e164) : null}
-            {user.phone_e164 && user.email ? ' · ' : ''}
+            {user.phone_e164 && user.email ? " · " : ""}
             {user.email}
-            {' · '}customer since {formatDate(user.created_at)}
+            {" · "}customer since {formatDate(user.created_at)}
           </p>
           <p className="mt-1 text-sm">
-            {jobs.length} job{jobs.length === 1 ? '' : 's'} · <span className="font-medium tabular-nums">{formatKes(spend)}</span> paid
+            {jobs.length} job{jobs.length === 1 ? "" : "s"} · <span className="font-medium tabular-nums">{formatKes(spend)}</span> paid
           </p>
         </div>
         <div className="flex gap-2">
           {user.phone_e164 ? (
             <>
-              <a href={`https://wa.me/${(user.phone_e164 as string).replace(/^\+/, '')}?text=${encodeURIComponent(`Hi ${first}, this is ${tenant.branding.display_name}.`)}`} target="_blank" rel="noopener" className="rounded-md border px-3 py-1.5 text-sm">
+              <a
+                href={`https://wa.me/${(user.phone_e164 as string).replace(/^\+/, "")}?text=${encodeURIComponent(`Hi ${first}, this is ${tenant.branding.display_name}.`)}`}
+                target="_blank"
+                rel="noopener"
+                className="rounded-md border px-3 py-1.5 text-sm"
+              >
                 WhatsApp
               </a>
               <a href={`tel:${user.phone_e164}`} className="rounded-md border px-3 py-1.5 text-sm">
@@ -102,8 +118,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
               {open.map((f) => (
                 <li key={f.id} className="flex items-center justify-between gap-3 py-2">
                   <span>
-                    <span className={`font-medium ${f.due_on <= today ? 'text-amber-800' : ''}`}>{formatDate(f.due_on)}</span> · {f.reason}
-                    <span className="block text-xs text-muted-foreground">set by {f.created_by_name || 'staff'}</span>
+                    <span className={`font-medium ${f.due_on <= today ? "text-amber-800" : ""}`}>{formatDate(f.due_on)}</span> · {f.reason}
+                    <span className="block text-xs text-muted-foreground">set by {f.created_by_name || "staff"}</span>
                   </span>
                   <form action={completeFollowupAction.bind(null, f.id, id)}>
                     <Button type="submit" size="sm" variant="outline">
@@ -143,7 +159,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                 <span>
                   <span className="whitespace-pre-line">{n.body}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {n.author || 'staff'} · {formatDateTime(n.created_at)}
+                    {n.author || "staff"} · {formatDateTime(n.created_at)}
                   </span>
                 </span>
                 {n.author_id === session.user.id ? (
@@ -181,14 +197,14 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             {ID_KIND_LABEL[identity.kind]} ending {identity.last4}
             {identity.hasPhoto ? (
               <>
-                {' · '}
+                {" · "}
                 <a href={`/api/customer-ids/${id}/photo`} target="_blank" className="text-primary underline">
                   View photo
                 </a>
                 <span className="block text-xs text-muted-foreground">Viewing the photo is recorded in the audit log.</span>
               </>
             ) : (
-              ' · no photo on file'
+              " · no photo on file"
             )}
           </p>
         ) : (

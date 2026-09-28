@@ -1,29 +1,32 @@
-import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
-import { StatusBadge } from '@/components/status-badge';
-import { LiveRefresh } from '@/components/live-refresh';
-import { requestCtx, requireStaff } from '@/lib/auth';
-import { BOARD_COLUMNS, type JobStatus } from '@/lib/core/state-machine';
-import { formatDate, formatDateTime, formatTime } from '@/lib/core/time';
-import { dueFollowups } from '@/lib/crm';
-import { withUser } from '@/lib/db';
-import { cn } from '@/lib/utils';
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { StatusBadge } from "@/components/status-badge";
+import { LiveRefresh } from "@/components/live-refresh";
+import { requestCtx, requireStaff } from "@/lib/auth";
+import { BOARD_COLUMNS, type JobStatus } from "@/lib/core/state-machine";
+import { formatDate, formatDateTime, formatTime } from "@/lib/core/time";
+import { dueFollowups } from "@/lib/crm";
+import { withUser } from "@/lib/db";
+import { cn } from "@/lib/utils";
 
-export const metadata = { title: 'Board' };
-export const dynamic = 'force-dynamic';
+export const metadata = { title: "Board" };
+export const dynamic = "force-dynamic";
 
 export default async function BoardPage({ searchParams }: { searchParams: Promise<{ mine?: string }> }) {
   const [{ tenant, session }, sp, t, ctx] = await Promise.all([requireStaff(), searchParams, getTranslations(), requestCtx()]);
-  const mine = sp.mine === '1';
+  const mine = sp.mine === "1";
   const statuses = BOARD_COLUMNS.flatMap((c) => c.statuses);
-  const jobs = await withUser(ctx, (tx) => tx`
+  const jobs = await withUser(
+    ctx,
+    (tx) => tx`
     select j.id, j.ref, j.status, j.device_brand, j.device_model, j.assigned_tech_id, j.pickup_window_start, j.updated_at, j.intake_discrepancy,
            split_part(u.full_name, ' ', 1) as customer, split_part(tu.full_name, ' ', 1) as tech,
            (select count(*) from disputes d where d.job_id = j.id and d.status = 'open')::int as open_disputes
     from jobs j join users u on u.id = j.customer_user_id left join users tu on tu.id = j.assigned_tech_id
     where j.tenant_id = ${tenant.id} and j.status = any(${statuses}::job_status[])
       ${mine ? tx`and j.assigned_tech_id = ${session.user.id}` : tx``}
-    order by j.updated_at desc`);
+    order by j.updated_at desc`,
+  );
   const followups = await withUser(ctx, (tx) => dueFollowups(tx, tenant.id));
 
   return (
@@ -32,7 +35,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       {followups.length ? (
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm" data-testid="followups-due">
           <p className="mb-1 font-semibold text-amber-900">
-            Follow-ups due ({followups.length}) ·{' '}
+            Follow-ups due ({followups.length}) ·{" "}
             <Link href="/bench/customers?due=1" className="underline">
               see all
             </Link>
@@ -52,12 +55,12 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
         </section>
       ) : null}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">{t('bench.board')}</h1>
+        <h1 className="text-lg font-semibold">{t("bench.board")}</h1>
         <div className="flex gap-1 rounded-lg border bg-background p-0.5 text-sm">
-          <Link href="/bench" className={cn('rounded-md px-3 py-1', !mine && 'bg-primary text-primary-foreground')}>
+          <Link href="/bench" className={cn("rounded-md px-3 py-1", !mine && "bg-primary text-primary-foreground")}>
             All
           </Link>
-          <Link href="/bench?mine=1" className={cn('rounded-md px-3 py-1', mine && 'bg-primary text-primary-foreground')}>
+          <Link href="/bench?mine=1" className={cn("rounded-md px-3 py-1", mine && "bg-primary text-primary-foreground")}>
             Mine
           </Link>
         </div>
@@ -83,9 +86,9 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
                       </p>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <StatusBadge status={j.status as JobStatus} />
-                        <span className="text-[11px] text-muted-foreground">{j.tech ?? t('bench.unassigned')}</span>
+                        <span className="text-[11px] text-muted-foreground">{j.tech ?? t("bench.unassigned")}</span>
                       </div>
-                      {col.key === 'incoming' && j.pickup_window_start ? (
+                      {col.key === "incoming" && j.pickup_window_start ? (
                         <p className="mt-1 text-[11px] text-muted-foreground">Pickup {formatDateTime(j.pickup_window_start)}</p>
                       ) : (
                         <p className="mt-1 text-[11px] text-muted-foreground">Updated {formatTime(j.updated_at)}</p>

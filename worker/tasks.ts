@@ -1,17 +1,17 @@
-import { servicePool, withService } from '@/lib/db';
-import { deleteObject, invoiceKey, putObject } from '@/lib/storage';
-import { deliveryProviderFor, emailSender, loadTenantSecrets, smsSender } from '@/lib/providers';
-import { loadTenantById } from '@/lib/tenant';
-import { applyDeliveryStatus, bookLeg, cancelDelivery } from '@/lib/jobs/logistics';
-import { reconcilePayment } from '@/lib/jobs/payments';
-import type { DeliveryRow, JobRow } from '@/lib/jobs/types';
+import { servicePool, withService } from "@/lib/db";
+import { deleteObject, invoiceKey, putObject } from "@/lib/storage";
+import { deliveryProviderFor, emailSender, loadTenantSecrets, smsSender } from "@/lib/providers";
+import { loadTenantById } from "@/lib/tenant";
+import { applyDeliveryStatus, bookLeg, cancelDelivery } from "@/lib/jobs/logistics";
+import { reconcilePayment } from "@/lib/jobs/payments";
+import type { DeliveryRow, JobRow } from "@/lib/jobs/types";
 
 /**
  * Background work (DECISIONS D-3/D-17). Every function here is safe to run concurrently on several instances:
  * rows are claimed with SKIP LOCKED and every action is idempotent.
  */
 
-const log = (...a: unknown[]) => console.log(new Date().toISOString(), '[worker]', ...a);
+const log = (...a: unknown[]) => console.log(new Date().toISOString(), "[worker]", ...a);
 
 // ---------------------------------------------------------------------------
 // Outbox
@@ -31,7 +31,7 @@ export async function processOutbox(limit = 20): Promise<number> {
       const attempts = Number(row.attempts);
       const dead = !retryable || attempts >= 8;
       const backoff = Math.min(2 ** attempts * 15, 3600);
-      await sql`update outbox set status = ${dead ? 'dead' : 'pending'}, last_error = ${err}, next_attempt_at = now() + make_interval(secs => ${backoff}) where id = ${row.id}`;
+      await sql`update outbox set status = ${dead ? "dead" : "pending"}, last_error = ${err}, next_attempt_at = now() + make_interval(secs => ${backoff}) where id = ${row.id}`;
       log(`outbox ${row.id} ${row.kind} failed (${attempts}): ${err}`);
       if (dead) await alertPlatform(row.tenant_id, `Outbox job ${row.kind} #${row.id} gave up: ${err}`);
     }
@@ -41,11 +41,11 @@ export async function processOutbox(limit = 20): Promise<number> {
 
 async function runOutbox(kind: string, payload: Record<string, string>) {
   switch (kind) {
-    case 'delivery.create':
-      return bookLeg(payload.job_id, payload.leg as 'pickup' | 'return');
-    case 'delivery.cancel':
+    case "delivery.create":
+      return bookLeg(payload.job_id, payload.leg as "pickup" | "return");
+    case "delivery.cancel":
       return cancelDelivery(payload.delivery_id);
-    case 'invoice.pdf':
+    case "invoice.pdf":
       return generateInvoicePdf(payload.invoice_id);
     default:
       throw Object.assign(new Error(`unknown outbox kind ${kind}`), { retryable: false });
@@ -57,11 +57,12 @@ export async function generateInvoicePdf(invoiceId: string) {
   const [inv] = await sql`select i.*, j.ref as job_ref, trim(j.device_brand || ' ' || j.device_model) as device, j.warranty_until
     from invoices i join jobs j on j.id = i.job_id where i.id = ${invoiceId}`;
   if (!inv) return;
-  const payments = await sql`select mpesa_receipt as receipt, amount_cents, purpose, confirmed_at from payments where job_id = ${inv.job_id} and status = 'success' order by confirmed_at`;
+  const payments =
+    await sql`select mpesa_receipt as receipt, amount_cents, purpose, confirmed_at from payments where job_id = ${inv.job_id} and status = 'success' order by confirmed_at`;
   // Loaded lazily: @react-pdf/renderer pulls in an ESM-only hyphenation package that fails to resolve through
   // tsx's CommonJS require() path at process startup. A dynamic import always uses the ESM resolver, so it only
   // needs to succeed once a PDF is actually being generated (Next's own bundler doesn't hit this at all).
-  const { renderInvoicePdf } = await import('@/lib/invoice-pdf');
+  const { renderInvoicePdf } = await import("@/lib/invoice-pdf");
   const pdf = await renderInvoicePdf({
     number: inv.number,
     status: inv.status,
@@ -84,7 +85,7 @@ export async function generateInvoicePdf(invoiceId: string) {
     payments: payments.map((p) => ({ receipt: p.receipt, purpose: p.purpose, confirmed_at: p.confirmed_at, amount_cents: Number(p.amount_cents) })),
   });
   const key = invoiceKey(inv.tenant_id, inv.id);
-  await putObject(key, pdf, 'application/pdf');
+  await putObject(key, pdf, "application/pdf");
   await sql`update invoices set pdf_key = ${key} where id = ${invoiceId}`;
 }
 
@@ -101,20 +102,25 @@ export async function sendNotifications(limit = 30): Promise<number> {
     try {
       const tenant = await loadTenantById(n.tenant_id);
       const secrets = tenant ? await loadTenantSecrets(tenant.id) : undefined;
-      if (n.channel === 'sms') {
-        if (!n.phone_e164) throw new Error('no phone');
+      if (n.channel === "sms") {
+        if (!n.phone_e164) throw new Error("no phone");
         const r = await smsSender(tenant, secrets).send({ to: n.phone_e164, body: n.body, senderId: tenant?.branding.sms_sender_id });
-        if (!r.ok) throw new Error(r.error ?? 'sms failed');
+        if (!r.ok) throw new Error(r.error ?? "sms failed");
         await sql`update notifications set status = 'sent', sent_at = now(), provider_message_id = ${r.messageId ?? null}, last_error = null where id = ${n.id}`;
       } else {
-        if (!n.email) throw new Error('no email');
-        const r = await emailSender().send({ to: n.email, subject: n.title ?? `${tenant?.branding.display_name ?? 'Repair'} update`, text: n.body, fromName: tenant?.branding.email_from_name ?? tenant?.branding.display_name });
-        if (!r.ok) throw new Error(r.error ?? 'email failed');
+        if (!n.email) throw new Error("no email");
+        const r = await emailSender().send({
+          to: n.email,
+          subject: n.title ?? `${tenant?.branding.display_name ?? "Repair"} update`,
+          text: n.body,
+          fromName: tenant?.branding.email_from_name ?? tenant?.branding.display_name,
+        });
+        if (!r.ok) throw new Error(r.error ?? "email failed");
         await sql`update notifications set status = 'sent', sent_at = now(), provider_message_id = ${r.messageId ?? null}, last_error = null where id = ${n.id}`;
       }
     } catch (e) {
       const err = (e as Error).message.slice(0, 300);
-      await sql`update notifications set status = ${Number(n.attempts) >= 4 ? 'failed' : 'queued'}, last_error = ${err}, send_after = now() + make_interval(secs => ${60 * Number(n.attempts)}) where id = ${n.id}`;
+      await sql`update notifications set status = ${Number(n.attempts) >= 4 ? "failed" : "queued"}, last_error = ${err}, send_after = now() + make_interval(secs => ${60 * Number(n.attempts)}) where id = ${n.id}`;
       log(`notification ${n.id} failed: ${err}`);
     }
   }
@@ -134,44 +140,46 @@ export async function fireTimers(limit = 50): Promise<number> {
       await withService(async (tx) => {
         const job = t.job_id ? ((await tx`select * from jobs where id = ${t.job_id} for update`) as JobRow[])[0] : null;
         switch (t.kind) {
-          case 'payment_reconcile':
+          case "payment_reconcile":
             return reconcilePayment(t.payment_id);
-          case 'quote_expiry':
-            if (job && ['quote_sent', 'quote_negotiating'].includes(job.status)) {
+          case "quote_expiry":
+            if (job && ["quote_sent", "quote_negotiating"].includes(job.status)) {
               await tx`update quotes set status = 'expired' where job_id = ${job.id} and kind = 'main' and status in ('sent', 'negotiating')`;
               await tx`insert into negotiations (quote_id, tenant_id, author_side, kind) select id, tenant_id, 'shop', 'expired' from quotes where job_id = ${job.id} and kind = 'main'`;
               await tx`select transition_job(${job.id}, 'quote_expired', 'system', null, '{}')`;
             }
             return;
-          case 'expired_quote_autodecline':
-            if (job?.status === 'quote_expired') {
+          case "expired_quote_autodecline":
+            if (job?.status === "quote_expired") {
               await tx`update quotes set status = 'declined' where job_id = ${job.id} and kind = 'main' and status = 'expired'`;
-              await tx`select transition_job(${job.id}, 'quote_declined', 'system', null, ${tx.json({ reason: 'Quote expired without a response' })})`;
+              await tx`select transition_job(${job.id}, 'quote_declined', 'system', null, ${tx.json({ reason: "Quote expired without a response" })})`;
             }
             return;
-          case 'deposit_reminder':
-            if (job?.status === 'deposit_pending') await tx`select notify_job(${job.id}, 'reminder.deposit', '{}')`;
+          case "deposit_reminder":
+            if (job?.status === "deposit_pending") await tx`select notify_job(${job.id}, 'reminder.deposit', '{}')`;
             return;
-          case 'final_payment_reminder':
-            if (job?.status === 'final_payment_pending') await tx`select notify_job(${job.id}, 'reminder.final_payment', '{}')`;
+          case "final_payment_reminder":
+            if (job?.status === "final_payment_pending") await tx`select notify_job(${job.id}, 'reminder.final_payment', '{}')`;
             return;
-          case 'dropoff_reminder':
-            if (job?.status === 'repair_complete') {
+          case "dropoff_reminder":
+            if (job?.status === "repair_complete") {
               await tx`select notify_job(${job.id}, 'reminder.dropoff', '{}')`;
               const count = Number(t.payload?.count ?? 1);
-              if (count < 3) await tx`insert into timers (tenant_id, job_id, kind, due_at, payload) values (${t.tenant_id}, ${job.id}, 'dropoff_reminder', now() + interval '24 hours', ${tx.json({ count: count + 1 })})`;
+              if (count < 3)
+                await tx`insert into timers (tenant_id, job_id, kind, due_at, payload) values (${t.tenant_id}, ${job.id}, 'dropoff_reminder', now() + interval '24 hours', ${tx.json({ count: count + 1 })})`;
             }
             return;
-          case 'unclaimed_alert':
-            if (job && ['repair_complete', 'ready_for_collection', 'return_failed'].includes(job.status)) await tx`select notify_job(${job.id}, 'alert.unclaimed', '{}')`;
+          case "unclaimed_alert":
+            if (job && ["repair_complete", "ready_for_collection", "return_failed"].includes(job.status))
+              await tx`select notify_job(${job.id}, 'alert.unclaimed', '{}')`;
             return;
-          case 'auto_close':
-            if (job?.status === 'delivered') {
-              const to = job.outcome === 'repaired' ? 'closed' : job.outcome === 'declined' ? 'declined_returned' : 'cancelled';
-              await tx`select transition_job(${job.id}, ${to}::job_status, 'system', null, ${tx.json({ reason: 'Auto-closed 48h after delivery' })})`;
+          case "auto_close":
+            if (job?.status === "delivered") {
+              const to = job.outcome === "repaired" ? "closed" : job.outcome === "declined" ? "declined_returned" : "cancelled";
+              await tx`select transition_job(${job.id}, ${to}::job_status, 'system', null, ${tx.json({ reason: "Auto-closed 48h after delivery" })})`;
             }
             return;
-          case 'retention_sweep':
+          case "retention_sweep":
             return retentionSweep();
         }
       });
@@ -204,7 +212,13 @@ export async function pollDeliveries(limit = 50): Promise<number> {
       await withService(async (tx) => {
         const [fresh] = (await tx`select * from deliveries where id = ${d.id} for update`) as DeliveryRow[];
         if (fresh.status !== st.status) {
-          await applyDeliveryStatus(tx, fresh, { status: st.status, rider: st.rider, trackingUrl: st.trackingUrl, failureReason: st.failureReason, raw: st.raw });
+          await applyDeliveryStatus(tx, fresh, {
+            status: st.status,
+            rider: st.rider,
+            trackingUrl: st.trackingUrl,
+            failureReason: st.failureReason,
+            raw: st.raw,
+          });
           n++;
         } else {
           await tx`update deliveries set updated_at = now() where id = ${d.id}`;
@@ -252,8 +266,8 @@ export async function tick(): Promise<number> {
   const results = await Promise.allSettled([processOutbox(), sendNotifications(), fireTimers(), pollDeliveries()]);
   let total = 0;
   for (const r of results) {
-    if (r.status === 'fulfilled') total += r.value;
-    else log('tick error', r.reason);
+    if (r.status === "fulfilled") total += r.value;
+    else log("tick error", r.reason);
   }
   return total;
 }

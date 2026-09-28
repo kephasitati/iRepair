@@ -1,13 +1,13 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { requestCtx, requireStaff } from '@/lib/auth';
-import { run, type ActionResult } from '@/lib/actions';
-import { audit } from '@/lib/audit';
-import { safeEqual } from '@/lib/core/crypto';
-import { withService, withUser } from '@/lib/db';
-import { autoAdvanceAfterHandover, collectionCode, recordHandover, type HandoverPoint } from '@/lib/jobs/logistics';
-import { sendQuoteVersion, shopAcceptCounter, shopDeclineCounter, addQuoteMessage } from '@/lib/jobs/quotes';
+import { revalidatePath } from "next/cache";
+import { requestCtx, requireStaff } from "@/lib/auth";
+import { run, type ActionResult } from "@/lib/actions";
+import { audit } from "@/lib/audit";
+import { safeEqual } from "@/lib/core/crypto";
+import { withService, withUser } from "@/lib/db";
+import { autoAdvanceAfterHandover, collectionCode, recordHandover, type HandoverPoint } from "@/lib/jobs/logistics";
+import { sendQuoteVersion, shopAcceptCounter, shopDeclineCounter, addQuoteMessage } from "@/lib/jobs/quotes";
 import {
   cancelJob,
   completeIntake,
@@ -18,33 +18,45 @@ import {
   revealPasscode,
   skipZeroDeposit,
   type IntakeInput,
-} from '@/lib/jobs/service';
-import type { JobRow, QuoteLineInput } from '@/lib/jobs/types';
-import { UserError } from '@/lib/jobs/types';
+} from "@/lib/jobs/service";
+import type { JobRow, QuoteLineInput } from "@/lib/jobs/types";
+import { UserError } from "@/lib/jobs/types";
 
-async function staff(min: 'technician' | 'shop_admin' = 'technician') {
+async function staff(min: "technician" | "shop_admin" = "technician") {
   const { session, tenant, role } = await requireStaff(min);
   const ctx = await requestCtx();
-  const actor = session.user.is_platform_admin && session.impersonatingTenantId === tenant.id ? 'platform_admin' : role;
-  return { session, tenant, role, ctx, userId: session.user.id, actor, impersonatedBy: actor === 'platform_admin' ? session.user.id : null };
+  const actor = session.user.is_platform_admin && session.impersonatingTenantId === tenant.id ? "platform_admin" : role;
+  return { session, tenant, role, ctx, userId: session.user.id, actor, impersonatedBy: actor === "platform_admin" ? session.user.id : null };
 }
 
 function done(jobId?: string) {
   if (jobId) revalidatePath(`/bench/jobs/${jobId}`);
-  revalidatePath('/bench');
+  revalidatePath("/bench");
 }
 
 // ---------------------------------------------------------------------------
 // Handover at the bench: receive from rider (pickup leg) and hand to rider (return leg)
 // ---------------------------------------------------------------------------
-export async function benchHandoverAction(jobId: string, point: 'rider_to_shop' | 'shop_to_rider', method: 'qr' | 'otp', payload: string): Promise<ActionResult<null>> {
+export async function benchHandoverAction(
+  jobId: string,
+  point: "rider_to_shop" | "shop_to_rider",
+  method: "qr" | "otp",
+  payload: string,
+): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     await withUser(ctx, async (tx) => {
       const job = await loadJob(tx, jobId);
       const res = await recordHandover(tx, tenant, job, { point, method, payload, actorUserId: userId });
-      if (!res.ok) throw new UserError(res.error === 'invalid' ? 'That code does not belong to the rider assigned to this delivery.' : res.error === 'no_delivery' ? 'No rider is assigned to this job yet.' : 'This handover is not expected right now.');
-      if (!job.assigned_tech_id && point === 'rider_to_shop') await tx`update jobs set assigned_tech_id = ${userId} where id = ${jobId}`;
+      if (!res.ok)
+        throw new UserError(
+          res.error === "invalid"
+            ? "That code does not belong to the rider assigned to this delivery."
+            : res.error === "no_delivery"
+              ? "No rider is assigned to this job yet."
+              : "This handover is not expected right now.",
+        );
+      if (!job.assigned_tech_id && point === "rider_to_shop") await tx`update jobs set assigned_tech_id = ${userId} where id = ${jobId}`;
     });
     await autoAdvanceAfterHandover(jobId, point);
     return null;
@@ -58,7 +70,8 @@ export async function scanAtBenchAction(payload: string): Promise<ActionResult<{
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     const found = await withUser(ctx, async (tx) => {
-      const candidates = (await tx`select j.* from jobs j where j.tenant_id = ${tenant.id} and j.status in ('picked_up', 'in_transit_to_shop', 'return_requested', 'rider_en_route_to_shop') order by j.updated_at desc limit 50`) as JobRow[];
+      const candidates =
+        (await tx`select j.* from jobs j where j.tenant_id = ${tenant.id} and j.status in ('picked_up', 'in_transit_to_shop', 'return_requested', 'rider_en_route_to_shop') order by j.updated_at desc limit 50`) as JobRow[];
       // Mock payloads name the delivery; try that job first.
       const hinted = /^RDMOCK:([^:]+):/.exec(payload)?.[1];
       if (hinted) {
@@ -66,16 +79,16 @@ export async function scanAtBenchAction(payload: string): Promise<ActionResult<{
         if (d) candidates.sort((a) => (a.id === d.job_id ? -1 : 1));
       }
       for (const job of candidates) {
-        const point: HandoverPoint = ['picked_up', 'in_transit_to_shop'].includes(job.status) ? 'rider_to_shop' : 'shop_to_rider';
+        const point: HandoverPoint = ["picked_up", "in_transit_to_shop"].includes(job.status) ? "rider_to_shop" : "shop_to_rider";
         await tx`savepoint scan`;
-        const res = await recordHandover(tx, tenant, job, { point, method: 'qr', payload, actorUserId: userId });
+        const res = await recordHandover(tx, tenant, job, { point, method: "qr", payload, actorUserId: userId });
         if (res.ok) {
-          if (!job.assigned_tech_id && point === 'rider_to_shop') await tx`update jobs set assigned_tech_id = ${userId} where id = ${job.id}`;
+          if (!job.assigned_tech_id && point === "rider_to_shop") await tx`update jobs set assigned_tech_id = ${userId} where id = ${job.id}`;
           return { jobId: job.id, ref: job.ref, point };
         }
         await tx`rollback to savepoint scan`;
       }
-      throw new UserError('This QR code does not match any rider expected at the shop.');
+      throw new UserError("This QR code does not match any rider expected at the shop.");
     });
     await autoAdvanceAfterHandover(found.jobId, found.point);
     return found;
@@ -93,11 +106,20 @@ export async function assignAction(jobId: string, techId: string | null): Promis
     await withUser(ctx, async (tx) => {
       const job = await loadJob(tx, jobId);
       const target = techId ?? userId;
-      if (role !== 'shop_admin' && (target !== userId || (job.assigned_tech_id && job.assigned_tech_id !== userId))) throw new UserError('Only a shop admin can reassign jobs.');
+      if (role !== "shop_admin" && (target !== userId || (job.assigned_tech_id && job.assigned_tech_id !== userId)))
+        throw new UserError("Only a shop admin can reassign jobs.");
       const [m] = await tx`select 1 from tenant_memberships where tenant_id = ${tenant.id} and user_id = ${target} and active`;
-      if (!m) throw new UserError('That person is not active staff.');
+      if (!m) throw new UserError("That person is not active staff.");
       await tx`update jobs set assigned_tech_id = ${target} where id = ${jobId}`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'job.assign', entity: 'job', entityId: jobId, diff: { from: job.assigned_tech_id, to: target } });
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        impersonatedBy,
+        action: "job.assign",
+        entity: "job",
+        entityId: jobId,
+        diff: { from: job.assigned_tech_id, to: target },
+      });
     });
     return null;
   });
@@ -110,16 +132,19 @@ export async function revealPasscodeAction(jobId: string): Promise<ActionResult<
     const { tenant, ctx, userId } = await staff();
     return withUser(ctx, async (tx) => {
       const job = await loadJob(tx, jobId);
-      if (['closed', 'cancelled', 'declined_returned'].includes(job.status)) throw new UserError('The passcode is deleted once a job closes.');
+      if (["closed", "cancelled", "declined_returned"].includes(job.status)) throw new UserError("The passcode is deleted once a job closes.");
       // job_secrets RLS already limits this to the assigned technician and shop admins.
       const [visible] = await tx`select 1 from job_secrets where job_id = ${jobId}`;
-      if (!visible) throw new UserError('Only the assigned technician or a shop admin can see the passcode.');
+      if (!visible) throw new UserError("Only the assigned technician or a shop admin can see the passcode.");
       return { passcode: await revealPasscode(tx, tenant, job, userId) };
     });
   });
 }
 
-export async function progressAction(jobId: string, input: { template_key?: string | null; body: string; photo_ids?: string[]; internal?: boolean }): Promise<ActionResult<null>> {
+export async function progressAction(
+  jobId: string,
+  input: { template_key?: string | null; body: string; photo_ids?: string[]; internal?: boolean },
+): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     await withUser(ctx, async (tx) => postProgress(tx, tenant, await loadJob(tx, jobId), input, userId));
@@ -146,14 +171,27 @@ export async function completeIntakeAction(jobId: string, input: IntakeInput): P
 // ---------------------------------------------------------------------------
 export async function sendQuoteAction(
   jobId: string,
-  input: { kind: 'main' | 'supplementary'; lines: QuoteLineInput[]; turnaroundDays: number | null; message: string; collectUpfront?: boolean },
+  input: { kind: "main" | "supplementary"; lines: QuoteLineInput[]; turnaroundDays: number | null; message: string; collectUpfront?: boolean },
 ): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     await withUser(ctx, async (tx) => {
       const job = await loadJob(tx, jobId);
-      await sendQuoteVersion(tx, tenant, job, { kind: input.kind, lines: input.lines, turnaroundDays: input.turnaroundDays, message: input.message || null, collectUpfront: input.collectUpfront }, userId);
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, action: `quote.send.${input.kind}`, entity: 'job', entityId: jobId, diff: { lines: input.lines.length } });
+      await sendQuoteVersion(
+        tx,
+        tenant,
+        job,
+        { kind: input.kind, lines: input.lines, turnaroundDays: input.turnaroundDays, message: input.message || null, collectUpfront: input.collectUpfront },
+        userId,
+      );
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        action: `quote.send.${input.kind}`,
+        entity: "job",
+        entityId: jobId,
+        diff: { lines: input.lines.length },
+      });
     });
     return null;
   });
@@ -161,21 +199,21 @@ export async function sendQuoteAction(
   return r;
 }
 
-export async function acceptCounterAction(jobId: string, kind: 'main' | 'supplementary', negotiationId: string): Promise<ActionResult<null>> {
+export async function acceptCounterAction(jobId: string, kind: "main" | "supplementary", negotiationId: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     await withUser(ctx, async (tx) => {
       await shopAcceptCounter(tx, tenant, await loadJob(tx, jobId), kind, negotiationId, userId);
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, action: 'quote.accept_counter', entity: 'job', entityId: jobId, diff: { negotiationId } });
+      await audit(tx, { tenantId: tenant.id, actorUserId: userId, action: "quote.accept_counter", entity: "job", entityId: jobId, diff: { negotiationId } });
     });
-    if (kind === 'main') await skipZeroDeposit(jobId);
+    if (kind === "main") await skipZeroDeposit(jobId);
     return null;
   });
   done(jobId);
   return r;
 }
 
-export async function declineCounterAction(jobId: string, kind: 'main' | 'supplementary', message: string): Promise<ActionResult<null>> {
+export async function declineCounterAction(jobId: string, kind: "main" | "supplementary", message: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     await withUser(ctx, async (tx) => shopDeclineCounter(tx, tenant, await loadJob(tx, jobId), kind, message || null, userId));
@@ -185,10 +223,10 @@ export async function declineCounterAction(jobId: string, kind: 'main' | 'supple
   return r;
 }
 
-export async function shopMessageAction(jobId: string, kind: 'main' | 'supplementary', body: string): Promise<ActionResult<null>> {
+export async function shopMessageAction(jobId: string, kind: "main" | "supplementary", body: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
-    await withUser(ctx, async (tx) => addQuoteMessage(tx, tenant, await loadJob(tx, jobId), kind, 'shop', body, userId));
+    await withUser(ctx, async (tx) => addQuoteMessage(tx, tenant, await loadJob(tx, jobId), kind, "shop", body, userId));
     return null;
   });
   done(jobId);
@@ -198,7 +236,10 @@ export async function shopMessageAction(jobId: string, kind: 'main' | 'supplemen
 // ---------------------------------------------------------------------------
 // Completion, counter collection, cancellation
 // ---------------------------------------------------------------------------
-export async function completeRepairAction(jobId: string, input: { tests: Record<string, boolean>; notes: string; photo_ids: string[] }): Promise<ActionResult<null>> {
+export async function completeRepairAction(
+  jobId: string,
+  input: { tests: Record<string, boolean>; notes: string; photo_ids: string[] },
+): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     await withUser(ctx, async (tx) => completeRepair(tx, tenant, await loadJob(tx, jobId), input, userId));
@@ -212,8 +253,8 @@ export async function counterCollectionAction(jobId: string, code: string): Prom
   const r = await run(async () => {
     const { tenant, ctx, userId } = await staff();
     const expected = collectionCode(jobId);
-    const cleaned = code.trim().replace(/^RDCOLLECT:[^:]+:/, '');
-    if (!safeEqual(expected, cleaned)) throw new UserError('That collection code is not right.');
+    const cleaned = code.trim().replace(/^RDCOLLECT:[^:]+:/, "");
+    if (!safeEqual(expected, cleaned)) throw new UserError("That collection code is not right.");
     await withUser(ctx, async (tx) => counterHandover(tx, tenant, await loadJob(tx, jobId), userId));
     return null;
   });
@@ -223,9 +264,9 @@ export async function counterCollectionAction(jobId: string, code: string): Prom
 
 export async function cancelJobAction(jobId: string, reason: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
-    const { tenant, ctx, userId, actor } = await staff('shop_admin');
-    if (!reason.trim()) throw new UserError('Give a reason for the cancellation.');
-    await withUser(ctx, async (tx) => cancelJob(tx, tenant, await loadJob(tx, jobId), 'shop_admin', reason.trim(), userId));
+    const { tenant, ctx, userId, actor } = await staff("shop_admin");
+    if (!reason.trim()) throw new UserError("Give a reason for the cancellation.");
+    await withUser(ctx, async (tx) => cancelJob(tx, tenant, await loadJob(tx, jobId), "shop_admin", reason.trim(), userId));
     void actor;
     return null;
   });
@@ -239,11 +280,11 @@ export async function cancelJobAction(jobId: string, reason: string): Promise<Ac
  */
 export async function requestDispatchAction(jobId: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
-    const { ctx, userId } = await staff('shop_admin');
+    const { ctx, userId } = await staff("shop_admin");
     await withUser(ctx, async (tx) => {
       const job = await loadJob(tx, jobId);
-      if (job.status !== 'dispatch_pending') throw new UserError('This device is not waiting for dispatch.');
-      await tx`select transition_job(${jobId}, 'return_requested', 'shop_admin', ${userId}, ${tx.json({ reason: 'Dispatch requested by shop' })})`;
+      if (job.status !== "dispatch_pending") throw new UserError("This device is not waiting for dispatch.");
+      await tx`select transition_job(${jobId}, 'return_requested', 'shop_admin', ${userId}, ${tx.json({ reason: "Dispatch requested by shop" })})`;
     });
     return null;
   });
@@ -254,16 +295,24 @@ export async function requestDispatchAction(jobId: string): Promise<ActionResult
 /** Shop admin waives the return fee (e.g. the shop cancelled, or a dispute was resolved in the customer's favour). */
 export async function waiveReturnFeeAction(jobId: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
-    const { tenant, ctx, userId } = await staff('shop_admin');
+    const { tenant, ctx, userId } = await staff("shop_admin");
     await withUser(ctx, async (tx) => {
       const job = await loadJob(tx, jobId);
-      if (job.status !== 'return_fee_pending') throw new UserError('No return fee is due.');
+      if (job.status !== "return_fee_pending") throw new UserError("No return fee is due.");
       await tx`update jobs set return_fee_cents = 0 where id = ${jobId}`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, action: 'return_fee.waive', entity: 'job', entityId: jobId, diff: { was: job.return_fee_cents } });
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        action: "return_fee.waive",
+        entity: "job",
+        entityId: jobId,
+        diff: { was: job.return_fee_cents },
+      });
     });
     await withService(async (tx) => {
       const [j] = await tx`select dropoff_choice from jobs where id = ${jobId}`;
-      if (j.dropoff_choice && j.dropoff_choice !== 'collect_at_shop') await tx`select transition_job(${jobId}, 'dispatch_pending', 'system', null, ${tx.json({ reason: 'Return fee waived by shop' })})`;
+      if (j.dropoff_choice && j.dropoff_choice !== "collect_at_shop")
+        await tx`select transition_job(${jobId}, 'dispatch_pending', 'system', null, ${tx.json({ reason: "Return fee waived by shop" })})`;
     });
     return null;
   });
@@ -271,13 +320,14 @@ export async function waiveReturnFeeAction(jobId: string): Promise<ActionResult<
   return r;
 }
 
-export async function resolveDisputeAction(disputeId: string, status: 'resolved' | 'rejected', resolution: string): Promise<ActionResult<null>> {
+export async function resolveDisputeAction(disputeId: string, status: "resolved" | "rejected", resolution: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
-    const { tenant, ctx, userId } = await staff('shop_admin');
+    const { tenant, ctx, userId } = await staff("shop_admin");
     await withUser(ctx, async (tx) => {
-      const [d] = await tx`update disputes set status = ${status}, resolution = ${resolution}, resolved_by = ${userId}, resolved_at = now() where id = ${disputeId} returning job_id`;
-      if (!d) throw new UserError('Dispute not found.');
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, action: `dispute.${status}`, entity: 'dispute', entityId: disputeId, diff: { resolution } });
+      const [d] =
+        await tx`update disputes set status = ${status}, resolution = ${resolution}, resolved_by = ${userId}, resolved_at = now() where id = ${disputeId} returning job_id`;
+      if (!d) throw new UserError("Dispute not found.");
+      await audit(tx, { tenantId: tenant.id, actorUserId: userId, action: `dispute.${status}`, entity: "dispute", entityId: disputeId, diff: { resolution } });
       revalidatePath(`/bench/jobs/${d.job_id}`);
     });
     return null;
@@ -288,12 +338,19 @@ export async function resolveDisputeAction(disputeId: string, status: 'resolved'
 /** Shop admin can edit the dispute/warranty window of a single job (Q-16: "manually set on backend"). */
 export async function setWarrantyAction(jobId: string, until: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
-    const { tenant, ctx, userId } = await staff('shop_admin');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(until)) throw new UserError('Pick a date.');
+    const { tenant, ctx, userId } = await staff("shop_admin");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(until)) throw new UserError("Pick a date.");
     await withUser(ctx, async (tx) => {
       const job = await loadJob(tx, jobId);
       await tx`update jobs set warranty_until = ${until} where id = ${jobId}`;
-      await audit(tx, { tenantId: tenant.id, actorUserId: userId, action: 'job.warranty', entity: 'job', entityId: jobId, diff: { from: job.warranty_until, to: until } });
+      await audit(tx, {
+        tenantId: tenant.id,
+        actorUserId: userId,
+        action: "job.warranty",
+        entity: "job",
+        entityId: jobId,
+        diff: { from: job.warranty_until, to: until },
+      });
     });
     return null;
   });

@@ -1,13 +1,13 @@
-import { Button } from '@/components/ui/button';
-import { Section } from '@/components/fields';
-import { requirePlatformAdmin } from '@/lib/auth';
-import { formatKes } from '@/lib/core/money';
-import { formatDateTime } from '@/lib/core/time';
-import { servicePool } from '@/lib/db';
-import { retryOutboxAction } from '@/app/platform/actions';
+import { Button } from "@/components/ui/button";
+import { Section } from "@/components/fields";
+import { requirePlatformAdmin } from "@/lib/auth";
+import { formatKes } from "@/lib/core/money";
+import { formatDateTime } from "@/lib/core/time";
+import { servicePool } from "@/lib/db";
+import { retryOutboxAction } from "@/app/platform/actions";
 
-export const metadata = { title: 'Failures' };
-export const dynamic = 'force-dynamic';
+export const metadata = { title: "Failures" };
+export const dynamic = "force-dynamic";
 
 export default async function MonitorPage() {
   await requirePlatformAdmin();
@@ -29,7 +29,7 @@ export default async function MonitorPage() {
                 <span className="font-medium">{o.kind}</span> · {o.name} · {o.status} · {o.attempts} attempts
                 <span className="block text-xs text-destructive">{o.last_error}</span>
               </span>
-              {o.status !== 'pending' ? (
+              {o.status !== "pending" ? (
                 <form action={retryOutboxAction.bind(null, Number(o.id))}>
                   <Button type="submit" size="sm" variant="outline">
                     Retry
@@ -45,7 +45,8 @@ export default async function MonitorPage() {
         <ul className="divide-y text-sm">
           {payments.map((p) => (
             <li key={p.id} className="py-2">
-              {p.name} · {p.ref} · {p.purpose} · {formatKes(Number(p.amount_cents))} · <span className="font-medium">{p.status}</span> · {formatDateTime(p.created_at)} · {p.reconcile_attempts} STK queries
+              {p.name} · {p.ref} · {p.purpose} · {formatKes(Number(p.amount_cents))} · <span className="font-medium">{p.status}</span> ·{" "}
+              {formatDateTime(p.created_at)} · {p.reconcile_attempts} STK queries
               {p.result_desc ? <span className="block text-xs text-muted-foreground">{p.result_desc}</span> : null}
             </li>
           ))}
@@ -56,7 +57,8 @@ export default async function MonitorPage() {
         <ul className="divide-y text-sm">
           {webhooks.map((w) => (
             <li key={w.id} className="py-2">
-              {w.source} · {w.name ?? 'unknown shop'} · {formatDateTime(w.received_at)} · signature {w.signature_valid === null ? 'n/a' : w.signature_valid ? 'ok' : 'INVALID'}
+              {w.source} · {w.name ?? "unknown shop"} · {formatDateTime(w.received_at)} · signature{" "}
+              {w.signature_valid === null ? "n/a" : w.signature_valid ? "ok" : "INVALID"}
               <span className="block text-xs text-destructive">{w.error}</span>
             </li>
           ))}
