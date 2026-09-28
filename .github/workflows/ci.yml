@@ -7,7 +7,7 @@ on:
 
 env:
   # CI-only values — never used against a real M-Pesa/TumaBoda/SMS account or real data.
-  APP_MASTER_KEY: "Y2ktb25seS1kdW1teS0zMi1ieXRlLWtleSEhISE="
+  APP_MASTER_KEY: "Y2ktb25seS1ub3QtYS1zZWNyZXQtMzItYnl0ZS1rZXk=" # base64 of 32 ASCII bytes; the app refuses any other length
   INTERNAL_CRON_SECRET: ci-internal-cron-secret
   MOCK_PROVIDER_SECRET: ci-mock-provider-secret
   MOCK_DELAY_SECONDS: "2"
