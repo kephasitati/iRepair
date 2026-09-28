@@ -104,6 +104,7 @@
     "staffHelp": "Technicians and shop administrators sign in with email and password.",
     "invalidLogin": "Wrong email or password.",
     "notStaff": "This account is not a member of this shop.",
+    "passwordRequired": "You are signed in with a phone code, which only opens your customer account. Sign in with your staff email and password.",
     "forbidden": "You do not have access to that area.",
     "mfaTitle": "Two-factor authentication",
     "mfaHelp": "Enter the 6-digit code from your authenticator app.",

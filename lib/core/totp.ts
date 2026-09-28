@@ -1,13 +1,13 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from "node:crypto";
 
 /** RFC 6238 TOTP (SHA-1, 6 digits, 30 s): works with Google Authenticator, Authy, 1Password. */
 
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 export function base32Encode(buf: Buffer): string {
   let bits = 0;
   let value = 0;
-  let out = '';
+  let out = "";
   for (const byte of buf) {
     value = (value << 8) | byte;
     bits += 8;
@@ -21,13 +21,13 @@ export function base32Encode(buf: Buffer): string {
 }
 
 export function base32Decode(s: string): Buffer {
-  const clean = s.replace(/=+$/, '').replace(/\s+/g, '').toUpperCase();
+  const clean = s.replace(/=+$/, "").replace(/\s+/g, "").toUpperCase();
   let bits = 0;
   let value = 0;
   const out: number[] = [];
   for (const ch of clean) {
     const idx = ALPHABET.indexOf(ch);
-    if (idx < 0) throw new Error('Invalid base32');
+    if (idx < 0) throw new Error("Invalid base32");
     value = (value << 5) | idx;
     bits += 5;
     if (bits >= 8) {
@@ -45,10 +45,10 @@ export function generateTotpSecret(): string {
 export function hotp(secret: string, counter: number): string {
   const buf = Buffer.alloc(8);
   buf.writeBigUInt64BE(BigInt(counter));
-  const h = createHmac('sha1', base32Decode(secret)).update(buf).digest();
+  const h = createHmac("sha1", base32Decode(secret)).update(buf).digest();
   const offset = h[h.length - 1] & 0xf;
   const code = ((h[offset] & 0x7f) << 24) | (h[offset + 1] << 16) | (h[offset + 2] << 8) | h[offset + 3];
-  return String(code % 1_000_000).padStart(6, '0');
+  return String(code % 1_000_000).padStart(6, "0");
 }
 
 export function totp(secret: string, at = Date.now()): string {

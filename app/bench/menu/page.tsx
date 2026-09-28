@@ -1,9 +1,9 @@
-import { requireStaff } from '@/lib/auth';
-import { MenuGrid } from '@/components/staff-nav';
-import { staffNavItems } from '@/components/staff-shell';
-import { signOutAction } from '@/app/(auth)/actions';
+import { requireStaff } from "@/lib/auth";
+import { MenuGrid } from "@/components/staff-nav";
+import { staffNavItems } from "@/components/staff-shell";
+import { signOutAction } from "@/app/(auth)/actions";
 
-export const metadata = { title: 'Menu' };
+export const metadata = { title: "Menu" };
 
 /** Phone menu: every staff screen as a large tile (the bottom bar only fits the daily ones). */
 export default async function MenuPage() {
@@ -14,7 +14,7 @@ export default async function MenuPage() {
       <div>
         <h1 className="text-lg font-semibold">Menu</h1>
         <p className="text-sm text-muted-foreground">
-          Signed in as {session.user.full_name || session.user.email} · {role === 'shop_admin' ? 'Shop admin' : 'Technician'}
+          Signed in as {session.user.full_name || session.user.email} · {role === "shop_admin" ? "Shop admin" : "Technician"}
         </p>
       </div>
       <section>

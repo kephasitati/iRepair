@@ -1,20 +1,20 @@
-import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
-import { BookingWizard, type WizardInitial } from '@/components/booking-wizard';
-import { requestCtx, requireCustomer } from '@/lib/auth';
-import { withUser } from '@/lib/db';
-import type { JobRow } from '@/lib/jobs/types';
-import { DEFAULT_DEVICE_TYPES } from '@/lib/core/device-id';
-import { getCustomerIdSummary } from '@/lib/customer-ids';
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { BookingWizard, type WizardInitial } from "@/components/booking-wizard";
+import { requestCtx, requireCustomer } from "@/lib/auth";
+import { withUser } from "@/lib/db";
+import type { JobRow } from "@/lib/jobs/types";
+import { DEFAULT_DEVICE_TYPES } from "@/lib/core/device-id";
+import { getCustomerIdSummary } from "@/lib/customer-ids";
 
-export const metadata = { title: 'Book a pickup' };
+export const metadata = { title: "Book a pickup" };
 
 export default async function BookPage({ searchParams }: { searchParams: Promise<{ job?: string; type?: string }> }) {
   const sp = await searchParams;
-  const { tenant } = await requireCustomer(`/book${sp.job ? `?job=${sp.job}` : sp.type ? `?type=${sp.type}` : ''}`);
+  const { tenant } = await requireCustomer(`/book${sp.job ? `?job=${sp.job}` : sp.type ? `?type=${sp.type}` : ""}`);
   const deviceTypes = tenant.settings.device_types?.length ? tenant.settings.device_types : DEFAULT_DEVICE_TYPES;
   const requestedType = deviceTypes.find((d) => d === sp.type);
-  const t = await getTranslations('wizard');
+  const t = await getTranslations("wizard");
   const ctx = await requestCtx();
 
   const { draft, secret, photos, addresses, existingId } = await withUser(ctx, async (tx) => {
@@ -25,39 +25,55 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     const existingId = await getCustomerIdSummary(tx, tenant.id, ctx.userId!);
     return { draft, secret, photos, addresses, existingId };
   });
-  if (draft && draft.status !== 'draft') redirect(`/jobs/${draft.id}`);
+  if (draft && draft.status !== "draft") redirect(`/jobs/${draft.id}`);
 
   const c = draft?.declared_condition ?? {};
   const initial: WizardInitial = {
     jobId: draft?.id ?? null,
     device_type: draft?.device_type ?? requestedType ?? deviceTypes[0],
-    device_brand: draft?.device_brand ?? 'Apple',
-    device_model: draft?.device_model ?? '',
-    device_colour: draft?.device_colour ?? '',
-    device_storage: draft?.device_storage ?? '',
-    fault_description: draft?.fault_description ?? '',
-    condition: { powers_on: c.powers_on ?? true, screen_cracked: !!c.screen_cracked, back_cracked: !!c.back_cracked, water_damage: !!c.water_damage, notes: c.notes ?? '' },
+    device_brand: draft?.device_brand ?? "Apple",
+    device_model: draft?.device_model ?? "",
+    device_colour: draft?.device_colour ?? "",
+    device_storage: draft?.device_storage ?? "",
+    fault_description: draft?.fault_description ?? "",
+    condition: {
+      powers_on: c.powers_on ?? true,
+      screen_cracked: !!c.screen_cracked,
+      back_cracked: !!c.back_cracked,
+      water_damage: !!c.water_damage,
+      notes: c.notes ?? "",
+    },
     accessories: draft?.accessories ?? [],
     passcode_locked: draft?.passcode_locked ?? false,
     passcode_shared: draft?.passcode_shared ?? false,
     passcodeStored: !!secret?.has_passcode,
-    identifier: secret?.identifier ?? '',
-    identity_method: draft?.identity_method ?? 'device',
-    id_kind: existingId?.kind ?? 'national_id',
+    identifier: secret?.identifier ?? "",
+    identity_method: draft?.identity_method ?? "device",
+    id_kind: existingId?.kind ?? "national_id",
     existingId,
     userId: ctx.userId!,
-    declared_value_kes: draft ? String(Number(draft.declared_value_cents) / 100 || '') : '',
+    declared_value_kes: draft ? String(Number(draft.declared_value_cents) / 100 || "") : "",
     photos: photos.map((p) => ({ id: p.id, kind: p.kind })),
-    address: draft?.pickup_address ?? { formatted: '', lat: null, lng: null, landmark: '', building_floor: '', zone: null },
+    address: draft?.pickup_address ?? { formatted: "", lat: null, lng: null, landmark: "", building_floor: "", zone: null },
   };
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <h1 className="text-xl font-semibold">{t("title")}</h1>
       <BookingWizard
         deviceTypes={deviceTypes}
         initial={initial}
-        savedAddresses={addresses.map((a) => ({ id: a.id, label: a.label, formatted: a.formatted, lat: a.lat, lng: a.lng, landmark: a.landmark, building_floor: a.building_floor, zone: a.zone, place_id: a.place_id }))}
+        savedAddresses={addresses.map((a) => ({
+          id: a.id,
+          label: a.label,
+          formatted: a.formatted,
+          lat: a.lat,
+          lng: a.lng,
+          landmark: a.landmark,
+          building_floor: a.building_floor,
+          zone: a.zone,
+          place_id: a.place_id,
+        }))}
         zones={tenant.settings.service_zones}
         openingHours={tenant.settings.opening_hours}
         consultationCents={tenant.settings.consultation_fee_cents}

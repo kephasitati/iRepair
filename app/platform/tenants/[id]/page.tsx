@@ -1,20 +1,21 @@
-import { notFound } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Field, KV, NativeSelect, Section } from '@/components/fields';
-import { requirePlatformAdmin } from '@/lib/auth';
-import { formatKes } from '@/lib/core/money';
-import { formatDate, formatDateTime } from '@/lib/core/time';
-import { servicePool } from '@/lib/db';
-import { addDomainAction, enterSupportModeAction, setFeeAction, setTenantStatusAction } from '@/app/platform/actions';
+import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, KV, NativeSelect, Section } from "@/components/fields";
+import { requirePlatformAdmin } from "@/lib/auth";
+import { formatKes } from "@/lib/core/money";
+import { formatDate, formatDateTime } from "@/lib/core/time";
+import { servicePool } from "@/lib/db";
+import { addDomainAction, enterSupportModeAction, setFeeAction, setTenantStatusAction } from "@/app/platform/actions";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function TenantPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   await requirePlatformAdmin();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const sql = servicePool();
-  const [t] = await sql`select t.*, s.contact_phone, s.vat_registered, s.kra_pin, s.delivery_provider from tenants t join tenant_settings s on s.tenant_id = t.id where t.id = ${id}`;
+  const [t] =
+    await sql`select t.*, s.contact_phone, s.vat_registered, s.kra_pin, s.delivery_provider from tenants t join tenant_settings s on s.tenant_id = t.id where t.id = ${id}`;
   if (!t) notFound();
   const [domains, fees, ledger, audit, stats] = await Promise.all([
     sql`select * from tenant_domains where tenant_id = ${id} order by is_primary desc, created_at`,
@@ -32,21 +33,23 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
         <Section title="Overview">
           <KV k="Jobs (all time)" v={stats[0].jobs} />
           <KV k="Closed" v={stats[0].closed} />
-          <KV k="Average rating" v={stats[0].rating ? stats[0].rating.toFixed(1) : '—'} />
+          <KV k="Average rating" v={stats[0].rating ? stats[0].rating.toFixed(1) : "—"} />
           <KV k="Phone" v={t.contact_phone} />
-          <KV k="VAT" v={t.vat_registered ? `registered · ${t.kra_pin}` : 'not registered'} />
+          <KV k="VAT" v={t.vat_registered ? `registered · ${t.kra_pin}` : "not registered"} />
           <KV k="Courier" v={t.delivery_provider} />
-          <form action={setTenantStatusAction.bind(null, id, t.status === 'active' ? 'suspended' : 'active')} className="mt-3">
-            <Button type="submit" variant={t.status === 'active' ? 'destructive' : 'default'} size="sm">
-              {t.status === 'active' ? 'Suspend shop' : 'Reactivate shop'}
+          <form action={setTenantStatusAction.bind(null, id, t.status === "active" ? "suspended" : "active")} className="mt-3">
+            <Button type="submit" variant={t.status === "active" ? "destructive" : "default"} size="sm">
+              {t.status === "active" ? "Suspend shop" : "Reactivate shop"}
             </Button>
           </form>
         </Section>
 
         <Section title="Support mode">
-          <p className="mb-3 text-sm text-muted-foreground">Act as this shop&apos;s admin for up to 60 minutes. Every action is recorded with your name in the shop&apos;s audit log.</p>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Act as this shop&apos;s admin for up to 60 minutes. Every action is recorded with your name in the shop&apos;s audit log.
+          </p>
           <form action={enterSupportModeAction.bind(null, id)} className="space-y-3">
-            <Field label="Reason" htmlFor="reason" error={sp.error === 'reason' ? 'Give a reason (at least 5 characters).' : null}>
+            <Field label="Reason" htmlFor="reason" error={sp.error === "reason" ? "Give a reason (at least 5 characters)." : null}>
               <Input id="reason" name="reason" required minLength={5} placeholder="e.g. Customer DR-26-00012 cannot pay, investigating" />
             </Field>
             <Button type="submit">Enter support mode</Button>
@@ -57,7 +60,7 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
           <ul className="mb-3 space-y-1 text-sm">
             {fees.map((f) => (
               <li key={f.id}>
-                {f.kind === 'percent' ? `${Number(f.value) / 100}% of invoice` : `${formatKes(Number(f.value))} per job`} · from {formatDate(f.effective_from)}
+                {f.kind === "percent" ? `${Number(f.value) / 100}% of invoice` : `${formatKes(Number(f.value))} per job`} · from {formatDate(f.effective_from)}
               </li>
             ))}
             {!fees.length ? <li className="text-muted-foreground">No fee.</li> : null}
@@ -76,7 +79,7 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
           <ul className="text-sm">
             {ledger.map((l) => (
               <li key={String(l.m)} className="flex justify-between">
-                <span>{new Date(l.m).toLocaleDateString('en-KE', { month: 'short', year: 'numeric' })}</span>
+                <span>{new Date(l.m).toLocaleDateString("en-KE", { month: "short", year: "numeric" })}</span>
                 <span className="tabular-nums">
                   {formatKes(Number(l.cents))} ({l.n} jobs)
                 </span>
@@ -89,7 +92,13 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
           <ul className="mb-3 space-y-1 text-sm">
             {domains.map((d) => (
               <li key={d.hostname}>
-                {d.hostname} <span className="text-xs text-muted-foreground">({d.kind}{d.is_primary ? ', primary' : ''}{d.verified_at ? ', verified' : ', DNS pending'}{d.landing_path && d.landing_path !== '/' ? `, opens ${d.landing_path}` : ''})</span>
+                {d.hostname}{" "}
+                <span className="text-xs text-muted-foreground">
+                  ({d.kind}
+                  {d.is_primary ? ", primary" : ""}
+                  {d.verified_at ? ", verified" : ", DNS pending"}
+                  {d.landing_path && d.landing_path !== "/" ? `, opens ${d.landing_path}` : ""})
+                </span>
               </li>
             ))}
           </ul>
@@ -104,7 +113,9 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
               Add
             </Button>
           </form>
-          <p className="mt-2 text-xs text-muted-foreground">The shop points a CNAME at the platform host; Caddy issues the certificate on first request (docs/DEPLOY.md).</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            The shop points a CNAME at the platform host; Caddy issues the certificate on first request (docs/DEPLOY.md).
+          </p>
         </Section>
       </div>
 
@@ -112,7 +123,7 @@ export default async function TenantPage({ params, searchParams }: { params: Pro
         <ul className="divide-y text-sm">
           {audit.map((a) => (
             <li key={a.id} className="py-1.5">
-              <span className="font-medium">{a.action}</span> · {a.email ?? 'system'} · {formatDateTime(a.created_at)}
+              <span className="font-medium">{a.action}</span> · {a.email ?? "system"} · {formatDateTime(a.created_at)}
               {a.diff?.reason ? <span className="text-muted-foreground"> · {a.diff.reason}</span> : null}
             </li>
           ))}

@@ -1,24 +1,21 @@
-'use server';
+"use server";
 
-import { redirect } from 'next/navigation';
-import { createSession, destroySession, getSession, markMfaVerified, sendOtp, staffLogin, verifyOtp } from '@/lib/auth';
-import { run, str, type ActionResult } from '@/lib/actions';
-import { decrypt, encrypt, parseKey, sha256Hex } from '@/lib/core/crypto';
-import { passwordProblems, hashPassword } from '@/lib/core/password';
-import { generateTotpSecret, otpauthUrl, verifyTotp } from '@/lib/core/totp';
-import { servicePool, withService } from '@/lib/db';
-import { env } from '@/lib/env';
-import { getTenant } from '@/lib/tenant';
-import { UserError } from '@/lib/jobs/types';
-
-function safeNext(next: string | null | undefined, fallback: string) {
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : fallback;
-}
+import { redirect } from "next/navigation";
+import { createSession, destroySession, getSession, markMfaVerified, rateLimit, sendOtp, staffLogin, verifyOtp, type Session } from "@/lib/auth";
+import { run, str, type ActionResult } from "@/lib/actions";
+import { decrypt, encrypt, parseKey, sha256Hex } from "@/lib/core/crypto";
+import { passwordProblems, hashPassword, verifyPassword } from "@/lib/core/password";
+import { safeRedirectPath } from "@/lib/core/redirect";
+import { generateTotpSecret, otpauthUrl, verifyTotp } from "@/lib/core/totp";
+import { servicePool, withService } from "@/lib/db";
+import { env } from "@/lib/env";
+import { getTenant } from "@/lib/tenant";
+import { UserError } from "@/lib/jobs/types";
 
 export async function sendOtpAction(_prev: unknown, fd: FormData): Promise<ActionResult<{ phone: string }>> {
   return run(async () => {
     const tenant = await getTenant();
-    const r = await sendOtp(str(fd, 'phone'), tenant);
+    const r = await sendOtp(str(fd, "phone"), tenant);
     if (!r.ok) throw new UserError(r.error);
     return { phone: r.phone };
   });
@@ -27,18 +24,18 @@ export async function sendOtpAction(_prev: unknown, fd: FormData): Promise<Actio
 export async function verifyOtpAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const tenant = await getTenant();
   const res = await run(async () => {
-    const r = await verifyOtp(str(fd, 'phone'), str(fd, 'code'), str(fd, 'name') || undefined);
+    const r = await verifyOtp(str(fd, "phone"), str(fd, "code"), str(fd, "name") || undefined);
     if (!r.ok) throw new UserError(r.error);
-    await createSession(r.userId, tenant?.id ?? null);
+    await createSession(r.userId, tenant?.id ?? null, "otp");
     return null;
   });
-  if (res.ok) redirect(safeNext(str(fd, 'next'), '/jobs'));
+  if (res.ok) redirect(safeRedirectPath(str(fd, "next"), "/jobs"));
   return res;
 }
 
 export async function signOutAction() {
   await destroySession();
-  redirect('/');
+  redirect("/");
 }
 
 // ---------------------------------------------------------------------------
@@ -46,24 +43,24 @@ export async function signOutAction() {
 // ---------------------------------------------------------------------------
 export async function staffLoginAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const tenant = await getTenant();
-  const platform = str(fd, 'area') === 'platform';
-  let dest = '';
+  const platform = str(fd, "area") === "platform";
+  let dest = "";
   const res = await run(async () => {
-    const r = await staffLogin(str(fd, 'email'), str(fd, 'password'));
-    if (!r.ok) throw new UserError(r.error === 'rate_limited' ? 'rate_limited' : 'invalid_login');
+    const r = await staffLogin(str(fd, "email"), str(fd, "password"));
+    if (!r.ok) throw new UserError(r.error === "rate_limited" ? "rate_limited" : "invalid_login");
     if (platform) {
       const [u] = await servicePool()`select is_platform_admin from users where id = ${r.userId}`;
-      if (!u?.is_platform_admin) throw new UserError('forbidden');
-      await createSession(r.userId, null);
-      dest = r.totpEnabled ? '/platform/mfa' : '/platform/mfa/setup';
+      if (!u?.is_platform_admin) throw new UserError("forbidden");
+      await createSession(r.userId, null, "password");
+      dest = r.totpEnabled ? "/platform/mfa" : "/platform/mfa/setup";
       return null;
     }
-    if (!tenant) throw new UserError('not_staff');
+    if (!tenant) throw new UserError("not_staff");
     const [m] = await servicePool()`select role from tenant_memberships where tenant_id = ${tenant.id} and user_id = ${r.userId} and active`;
-    if (!m) throw new UserError('not_staff');
-    await createSession(r.userId, tenant.id);
-    const needMfa = m.role === 'shop_admin' && (r.totpEnabled || tenant.settings.require_admin_mfa);
-    dest = needMfa ? (r.totpEnabled ? '/staff/mfa' : '/staff/mfa/setup') : safeNext(str(fd, 'next'), '/bench');
+    if (!m) throw new UserError("not_staff");
+    await createSession(r.userId, tenant.id, "password");
+    const needMfa = m.role === "shop_admin" && (r.totpEnabled || tenant.settings.require_admin_mfa);
+    dest = needMfa ? (r.totpEnabled ? "/staff/mfa" : "/staff/mfa/setup") : safeRedirectPath(str(fd, "next"), "/bench");
     return null;
   });
   if (res.ok) redirect(dest);
@@ -80,25 +77,40 @@ async function readTotpSecret(userId: string): Promise<string | null> {
   return decrypt(u.totp_secret_enc, parseKey(env().APP_MASTER_KEY), totpAad(userId));
 }
 
+/** Six digits fall to guessing without a limit: five tries per account per quarter hour, for verify and setup alike. */
+async function allowMfaAttempt(userId: string): Promise<void> {
+  if (!(await rateLimit(`mfa:${userId}`, 5, 15 * 60))) throw new UserError("rate_limited");
+}
+
+/**
+ * Enrolling a new authenticator replaces the second factor, so someone holding only the password must not be able to do
+ * it: once TOTP is on, setup needs a session that has already passed it.
+ */
+function mayEnrolMfa(session: Session): boolean {
+  return !session.user.totp_enabled || session.mfaVerified;
+}
+
 export async function mfaVerifyAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const session = await getSession();
-  if (!session) redirect('/');
-  const area = str(fd, 'area');
+  if (!session) redirect("/");
+  const area = str(fd, "area");
   const res = await run(async () => {
+    await allowMfaAttempt(session.user.id);
     const secret = await readTotpSecret(session.user.id);
-    if (!secret || !verifyTotp(secret, str(fd, 'code'))) throw new UserError('mfa_wrong');
+    if (!secret || !verifyTotp(secret, str(fd, "code"))) throw new UserError("mfa_wrong");
     await markMfaVerified(session.id);
     return null;
   });
-  if (res.ok) redirect(area === 'platform' ? '/platform' : '/admin/settings');
+  if (res.ok) redirect(area === "platform" ? "/platform" : "/admin/settings");
   return res;
 }
 
 /** Start enrolment: a fresh secret is kept in the session row (pending) until the first code verifies. */
 export async function mfaBeginSetup(): Promise<{ secret: string; url: string }> {
   const session = await getSession();
-  if (!session) redirect('/');
+  if (!session) redirect("/");
   const tenant = await getTenant();
+  if (!mayEnrolMfa(session)) redirect(tenant ? "/staff/mfa" : "/platform/mfa");
   const secret = generateTotpSecret();
   const master = parseKey(env().APP_MASTER_KEY);
   await servicePool()`update sessions set mfa_pending_enc = ${encrypt(secret, master, `mfa-pending:${session.id}`)} where id = ${session.id}`;
@@ -108,14 +120,16 @@ export async function mfaBeginSetup(): Promise<{ secret: string; url: string }> 
 
 export async function mfaCompleteSetupAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const session = await getSession();
-  if (!session) redirect('/');
-  const area = str(fd, 'area');
+  if (!session) redirect("/");
+  const area = str(fd, "area");
   const res = await run(async () => {
+    if (!mayEnrolMfa(session)) throw new UserError("forbidden");
+    await allowMfaAttempt(session.user.id);
     const [s] = await servicePool()`select mfa_pending_enc from sessions where id = ${session.id}`;
-    if (!s?.mfa_pending_enc) throw new UserError('mfa_wrong');
+    if (!s?.mfa_pending_enc) throw new UserError("mfa_wrong");
     const master = parseKey(env().APP_MASTER_KEY);
     const secret = decrypt(s.mfa_pending_enc, master, `mfa-pending:${session.id}`);
-    if (!verifyTotp(secret, str(fd, 'code'))) throw new UserError('mfa_wrong');
+    if (!verifyTotp(secret, str(fd, "code"))) throw new UserError("mfa_wrong");
     await withService(async (tx) => {
       await tx`update users set totp_secret_enc = ${encrypt(secret, master, totpAad(session.user.id))}, totp_enabled = true where id = ${session.user.id}`;
       await tx`update sessions set mfa_pending_enc = null, mfa_verified = true where id = ${session.id}`;
@@ -123,29 +137,42 @@ export async function mfaCompleteSetupAction(_prev: unknown, fd: FormData): Prom
     });
     return null;
   });
-  if (res.ok) redirect(area === 'platform' ? '/platform' : '/admin/settings');
+  if (res.ok) redirect(area === "platform" ? "/platform" : "/admin/settings");
   return res;
 }
 
-/** Staff invite acceptance: set name and password, then sign in. */
+/**
+ * Staff invite acceptance. A new account chooses its password here. An account that already has one (staff at another
+ * shop, a platform admin) proves it is theirs by entering that password; an invite never replaces it, because whoever
+ * created the invite holds the link (D-40).
+ */
 export async function acceptInviteAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
   const tenant = await getTenant();
   const res = await run(async () => {
-    if (!tenant) throw new UserError('Invalid invitation.');
-    const token = str(fd, 'token');
-    const password = str(fd, 'password');
-    const problems = passwordProblems(password);
-    if (problems.length) throw new UserError(`password:${problems.join(',')}`);
+    if (!tenant) throw new UserError("Invalid invitation.");
+    const token = str(fd, "token");
+    const password = str(fd, "password");
+    const tokenHash = sha256Hex(token);
+    if (!(await rateLimit(`invite:${tokenHash}`, 10, 15 * 60))) throw new UserError("Too many attempts. Wait a few minutes and try again.");
     const userId = await withService(async (tx) => {
-      const [m] = await tx`select m.user_id from tenant_memberships m where m.tenant_id = ${tenant.id} and m.invite_token_hash = ${sha256Hex(token)} and m.invite_expires_at > now()`;
-      if (!m) throw new UserError('This invitation has expired. Ask your shop admin for a new one.');
-      await tx`update users set password_hash = ${await hashPassword(password)}, full_name = coalesce(nullif(${str(fd, 'name')}, ''), full_name) where id = ${m.user_id}`;
+      const [m] = await tx`select m.user_id, u.password_hash, u.password_set_at from tenant_memberships m join users u on u.id = m.user_id
+        where m.tenant_id = ${tenant.id} and m.invite_token_hash = ${tokenHash} and m.invite_expires_at > now() for update of m`;
+      if (!m) throw new UserError("This invitation has expired. Ask your shop admin for a new one.");
+      if (m.password_set_at) {
+        if (!(await verifyPassword(password, m.password_hash)))
+          throw new UserError("That is not the password for this account. Enter the password you already sign in with.");
+      } else {
+        const problems = passwordProblems(password);
+        if (problems.length) throw new UserError(`password:${problems.join(",")}`);
+        await tx`update users set password_hash = ${await hashPassword(password)}, password_set_at = now(), full_name = coalesce(nullif(${str(fd, "name")}, ''), full_name) where id = ${m.user_id}`;
+      }
       await tx`update tenant_memberships set invite_token_hash = null, invite_expires_at = null, active = true where tenant_id = ${tenant.id} and user_id = ${m.user_id}`;
+      await tx`insert into audit_log (tenant_id, actor_user_id, action, entity, entity_id) values (${tenant.id}, ${m.user_id}, 'staff.invite_accepted', 'user', ${m.user_id})`;
       return m.user_id as string;
     });
-    await createSession(userId, tenant.id);
+    await createSession(userId, tenant.id, "password");
     return null;
   });
-  if (res.ok) redirect('/bench');
+  if (res.ok) redirect("/bench");
   return res;
 }

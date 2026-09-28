@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useActionState, useEffect, useRef } from 'react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { ErrorText } from '@/components/fields';
+import { useActionState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { ErrorText } from "@/components/fields";
 
 type Result = { ok: true; data: unknown } | { ok: false; error: string } | null;
 
@@ -14,8 +14,8 @@ type Result = { ok: true; data: unknown } | { ok: false; error: string } | null;
 export function ActionForm({
   action,
   children,
-  submitLabel = 'Save',
-  successMessage = 'Saved',
+  submitLabel = "Save",
+  successMessage = "Saved",
   resetOnSuccess = false,
   className,
   successKind,
@@ -28,7 +28,7 @@ export function ActionForm({
   resetOnSuccess?: boolean;
   className?: string;
   /** What to show under the form on success — a plain flag, since server pages can't pass render functions to this client component. */
-  successKind?: 'invite';
+  successKind?: "invite";
   encType?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
@@ -40,12 +40,12 @@ export function ActionForm({
     }
   }, [state, successMessage, resetOnSuccess]);
   return (
-    <form ref={ref} action={formAction} className={className ?? 'space-y-4'} encType={encType}>
+    <form ref={ref} action={formAction} className={className ?? "space-y-4"} encType={encType}>
       {children}
       <ErrorText>{state && !state.ok ? state.error : null}</ErrorText>
-      {state?.ok && successKind === 'invite' ? <InviteResult data={state.data} /> : null}
+      {state?.ok && successKind === "invite" ? <InviteResult data={state.data} /> : null}
       <Button type="submit" disabled={pending}>
-        {pending ? 'Saving…' : submitLabel}
+        {pending ? "Saving…" : submitLabel}
       </Button>
     </form>
   );

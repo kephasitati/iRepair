@@ -1,19 +1,19 @@
-import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
-import { Toaster } from '@/components/ui/sonner';
-import { brandCssVars } from '@/lib/branding';
-import { env } from '@/lib/env';
-import { getTenant } from '@/lib/tenant';
-import { PwaRegister } from '@/components/pwa-register';
-import './globals.css';
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
+import { Toaster } from "@/components/ui/sonner";
+import { brandCssVars } from "@/lib/branding";
+import { env } from "@/lib/env";
+import { getTenant } from "@/lib/tenant";
+import { PwaRegister } from "@/components/pwa-register";
+import "./globals.css";
 
 // Apple devices render SF Pro (system font); everyone else gets Inter, self-hosted at build time by next/font
 // (no runtime request to Google, swap display for slow networks).
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
-const DEFAULT_PLATFORM_NAME = 'iRepair';
+const DEFAULT_PLATFORM_NAME = "iRepair";
 
 /**
  * `app/offline/page.tsx` is `force-static` — it has to render with zero network, the whole point of a PWA offline
@@ -47,16 +47,16 @@ export async function generateMetadata(): Promise<Metadata> {
   const name = tenant?.branding.display_name ?? platformNameForLayout();
   return {
     title: { default: name, template: `%s · ${name}` },
-    description: tenant?.branding.tagline ?? 'Device repair with doorstep pickup and return.',
-    manifest: '/manifest.webmanifest',
-    appleWebApp: { capable: true, statusBarStyle: 'default', title: name },
-    icons: tenant?.branding.icon_path ? { icon: '/api/branding/icon', apple: '/api/branding/icon' } : undefined,
+    description: tenant?.branding.tagline ?? "Device repair with doorstep pickup and return.",
+    manifest: "/manifest.webmanifest",
+    appleWebApp: { capable: true, statusBarStyle: "default", title: name },
+    icons: tenant?.branding.icon_path ? { icon: "/api/branding/icon", apple: "/api/branding/icon" } : undefined,
   };
 }
 
 export async function generateViewport(): Promise<Viewport> {
   await getTenantForLayout();
-  return { themeColor: '#f5f5f7', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
+  return { themeColor: "#f5f5f7", width: "device-width", initialScale: 1, viewportFit: "cover" };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

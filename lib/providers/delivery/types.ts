@@ -10,15 +10,7 @@ export type Address = {
   zone?: string | null;
 };
 
-export type DeliveryStatusValue =
-  | 'requested'
-  | 'rider_assigned'
-  | 'rider_en_route'
-  | 'picked_up'
-  | 'in_transit'
-  | 'delivered'
-  | 'failed'
-  | 'cancelled';
+export type DeliveryStatusValue = "requested" | "rider_assigned" | "rider_en_route" | "picked_up" | "in_transit" | "delivered" | "failed" | "cancelled";
 
 export type Rider = { name: string; phone: string; plate?: string | null };
 
@@ -46,10 +38,15 @@ export type DeliveryEvent = {
 export type ProviderCapabilities = { qr: boolean; otp: boolean; scheduling: boolean; webhooks: boolean; polling: boolean };
 
 export interface DeliveryProvider {
-  readonly kind: 'mock' | 'tumaboda';
+  readonly kind: "mock" | "tumaboda";
   readonly capabilities: ProviderCapabilities;
 
-  quote(input: { pickup: Address; dropoff: Address; itemValueKes: number; scheduledFor?: Date }): Promise<{ feeKes: number; etaMinutes: number; quoteRef: string }>;
+  quote(input: {
+    pickup: Address;
+    dropoff: Address;
+    itemValueKes: number;
+    scheduledFor?: Date;
+  }): Promise<{ feeKes: number; etaMinutes: number; quoteRef: string }>;
 
   create(input: {
     quoteRef: string;
@@ -82,6 +79,6 @@ export class ProviderError extends Error {
     public readonly retryable = true,
   ) {
     super(message);
-    this.name = 'ProviderError';
+    this.name = "ProviderError";
   }
 }

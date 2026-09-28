@@ -1,24 +1,24 @@
-import type { DeviceType } from '@/lib/core/device-id';
+import type { DeviceType } from "@/lib/core/device-id";
 
 /** Thin-line device glyphs in the spirit of apple.com's product navigation. */
 export function DeviceIcon({ type, className }: { type: DeviceType; className?: string }) {
-  const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, className };
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, className };
   switch (type) {
-    case 'iphone':
+    case "iphone":
       return (
         <svg viewBox="0 0 40 54" {...common} aria-hidden>
           <rect x="9" y="3" width="22" height="48" rx="5" />
           <rect x="16.5" y="6" width="7" height="2" rx="1" />
         </svg>
       );
-    case 'ipad':
+    case "ipad":
       return (
         <svg viewBox="0 0 54 54" {...common} aria-hidden>
           <rect x="8" y="5" width="38" height="46" rx="4" />
           <circle cx="27" cy="7.8" r="0.8" />
         </svg>
       );
-    case 'macbook':
+    case "macbook":
       return (
         <svg viewBox="0 0 64 54" {...common} aria-hidden>
           <rect x="11" y="10" width="42" height="28" rx="2.5" />
@@ -26,7 +26,7 @@ export function DeviceIcon({ type, className }: { type: DeviceType; className?: 
           <path d="M28 41.5h8" />
         </svg>
       );
-    case 'imac':
+    case "imac":
       return (
         <svg viewBox="0 0 64 54" {...common} aria-hidden>
           <rect x="7" y="5" width="50" height="34" rx="2.5" />
@@ -35,7 +35,7 @@ export function DeviceIcon({ type, className }: { type: DeviceType; className?: 
           <path d="M22 48h20" />
         </svg>
       );
-    case 'apple_watch':
+    case "apple_watch":
       return (
         <svg viewBox="0 0 40 54" {...common} aria-hidden>
           <rect x="9" y="14" width="22" height="26" rx="6" />
@@ -44,14 +44,14 @@ export function DeviceIcon({ type, className }: { type: DeviceType; className?: 
           <path d="M31 22h1.5v6H31" />
         </svg>
       );
-    case 'android':
+    case "android":
       return (
         <svg viewBox="0 0 40 54" {...common} aria-hidden>
           <rect x="9" y="3" width="22" height="48" rx="4" />
           <circle cx="20" cy="7" r="1" />
         </svg>
       );
-    case 'windows_laptop':
+    case "windows_laptop":
       return (
         <svg viewBox="0 0 64 54" {...common} aria-hidden>
           <rect x="11" y="10" width="42" height="28" rx="1" />

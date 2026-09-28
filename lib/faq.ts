@@ -1,9 +1,9 @@
-import { formatKes } from './core/money';
-import { consultationFeeFor } from './core/fees';
-import { MODEL_SUGGESTIONS } from './core/device-models';
-import type { DeviceType } from './core/device-id';
-import { cityOf, DEVICE_LABEL, enabledDevices, type PublicPart } from './public-data';
-import type { Tenant } from './tenant';
+import { formatKes } from "./core/money";
+import { consultationFeeFor } from "./core/fees";
+import { MODEL_SUGGESTIONS } from "./core/device-models";
+import type { DeviceType } from "./core/device-id";
+import { cityOf, DEVICE_LABEL, enabledDevices, type PublicPart } from "./public-data";
+import type { Tenant } from "./tenant";
 
 /**
  * Answer-first FAQs (AEO/GEO): each answer opens with the direct fact a search or AI assistant would quote, then adds
@@ -29,39 +29,46 @@ export function generalFaqs(tenant: Tenant, parts: PublicPart[]): Faq[] {
   const shop = tenant.branding.display_name;
   const city = cityOf(tenant);
   const devices = enabledDevices(tenant).map((d) => DEVICE_LABEL[d]);
-  const screen = fromPrice(parts, 'iphone', /screen/i);
+  const screen = fromPrice(parts, "iphone", /screen/i);
   const faqs: Faq[] = [
     {
       q: `Do I have to bring my device to ${shop}?`,
-      a: `No. A TumaBoda rider collects your device from your door${s.service_zones.length ? ` in ${s.service_zones.slice(0, 6).join(', ')}${s.service_zones.length > 6 ? ' and more' : ''}` : ` in ${city}`}, and returns it after the repair. You can also collect it from our workshop at ${s.address_formatted}.`,
+      a: `No. A TumaBoda rider collects your device from your door${s.service_zones.length ? ` in ${s.service_zones.slice(0, 6).join(", ")}${s.service_zones.length > 6 ? " and more" : ""}` : ` in ${city}`}, and returns it after the repair. You can also collect it from our workshop at ${s.address_formatted}.`,
     },
     {
       q: `Which devices does ${shop} repair?`,
-      a: `${devices.join(', ')}. We handle screens, batteries, charging ports, cameras, Face ID, keyboards, liquid damage and board-level repairs.`,
+      a: `${devices.join(", ")}. We handle screens, batteries, charging ports, cameras, Face ID, keyboards, liquid damage and board-level repairs.`,
     },
     {
-      q: 'How much does the pickup cost?',
-      a: `The pickup fee is the courier fare for your address plus a diagnosis fee of ${describeConsultationFee(tenant)}, shown before you pay.${s.consultation_fee_credited ? ' If you go ahead with the repair, the diagnosis fee is credited against it.' : ''}`,
+      q: "How much does the pickup cost?",
+      a: `The pickup fee is the courier fare for your address plus a diagnosis fee of ${describeConsultationFee(tenant)}, shown before you pay.${s.consultation_fee_credited ? " If you go ahead with the repair, the diagnosis fee is credited against it." : ""}`,
     },
     ...(screen
-      ? [{ q: `How much is an iPhone screen replacement in ${city}?`, a: `iPhone screen replacements at ${shop} start from ${formatKes(screen.default_price_cents)} (${screen.name}), including VAT. You get an itemised quote after diagnosis and nothing is done until you accept it.` }]
+      ? [
+          {
+            q: `How much is an iPhone screen replacement in ${city}?`,
+            a: `iPhone screen replacements at ${shop} start from ${formatKes(screen.default_price_cents)} (${screen.name}), including VAT. You get an itemised quote after diagnosis and nothing is done until you accept it.`,
+          },
+        ]
       : []),
     {
-      q: 'Do I have to accept the quote?',
+      q: "Do I have to accept the quote?",
       a: `No. You can accept it, make up to ${s.max_negotiation_rounds} counter-offers, or decline. If you decline, you pay only the diagnosis fee and the return delivery, and your device comes back to you.`,
     },
     {
-      q: 'How do I pay?',
-      a: `By M-Pesa, straight to ${shop}'s own Paybill or Till. A ${s.deposit_rule.kind === 'percent' ? `${s.deposit_rule.value / 100}%` : formatKes(s.deposit_rule.value)} deposit starts the repair and the balance is paid before your device is returned. You get an M-Pesa receipt and a tax invoice.`,
+      q: "How do I pay?",
+      a: `By M-Pesa, straight to ${shop}'s own Paybill or Till. A ${s.deposit_rule.kind === "percent" ? `${s.deposit_rule.value / 100}%` : formatKes(s.deposit_rule.value)} deposit starts the repair and the balance is paid before your device is returned. You get an M-Pesa receipt and a tax invoice.`,
     },
     {
-      q: 'How do I know my device is safe with the rider?',
-      a: 'Every handover is verified by scanning the rider’s TumaBoda QR code in the app, and recorded with the time, the rider and the photos you took. We photograph the device again when it arrives at the bench.',
+      q: "How do I know my device is safe with the rider?",
+      a: "Every handover is verified by scanning the rider’s TumaBoda QR code in the app, and recorded with the time, the rider and the photos you took. We photograph the device again when it arrives at the bench.",
     },
-    ...(s.warranty_days ? [{ q: 'Is there a warranty?', a: `Yes, ${s.warranty_days} days on the parts we fit and our workmanship for the repaired fault.` }] : []),
+    ...(s.warranty_days
+      ? [{ q: "Is there a warranty?", a: `Yes, ${s.warranty_days} days on the parts we fit and our workmanship for the repaired fault.` }]
+      : []),
     {
-      q: 'Is my data and passcode safe?',
-      a: 'Back up first. If you share your passcode it is encrypted, shown only to the technician working on your device, and deleted when the job closes.',
+      q: "Is my data and passcode safe?",
+      a: "Back up first. If you share your passcode it is encrypted, shown only to the technician working on your device, and deleted when the job closes.",
     },
     {
       q: `Is ${shop} part of Apple?`,
@@ -85,16 +92,16 @@ export function deviceFaqs(tenant: Tenant, device: DeviceType, parts: PublicPart
         ? `${label} repairs at ${shop} start from ${formatKes(cheapest.default_price_cents)} (${cheapest.name}). ${mine
             .slice(0, 4)
             .map((p) => `${p.name}: ${formatKes(p.default_price_cents)}`)
-            .join('; ')}. Prices include VAT; your exact quote follows diagnosis.`
+            .join("; ")}. Prices include VAT; your exact quote follows diagnosis.`
         : `You get an itemised quote after diagnosis, and nothing is done until you accept it.`,
     },
     {
       q: `Can you collect my ${label} from home or the office?`,
       a: `Yes. Book online, pay the pickup fee by M-Pesa, and a TumaBoda rider collects your ${label} in ${city}. It comes back the same way, or you can collect it.`,
     },
-    ...(models.length ? [{ q: `Which ${label} models do you repair?`, a: `All recent models, including ${models.join(', ')}.` }] : []),
+    ...(models.length ? [{ q: `Which ${label} models do you repair?`, a: `All recent models, including ${models.join(", ")}.` }] : []),
     {
-      q: `How long does ${/^[aeiou]/i.test(label) ? 'an' : 'a'} ${label} repair take?`,
+      q: `How long does ${/^[aeiou]/i.test(label) ? "an" : "a"} ${label} repair take?`,
       a: `Your quote states the estimated turnaround before you accept. You can follow every step live in the app.`,
     },
   ];

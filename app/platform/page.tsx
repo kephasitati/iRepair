@@ -1,12 +1,12 @@
-import Link from 'next/link';
-import { Section } from '@/components/fields';
-import { requirePlatformAdmin } from '@/lib/auth';
-import { formatKes } from '@/lib/core/money';
-import { formatDate } from '@/lib/core/time';
-import { servicePool } from '@/lib/db';
+import Link from "next/link";
+import { Section } from "@/components/fields";
+import { requirePlatformAdmin } from "@/lib/auth";
+import { formatKes } from "@/lib/core/money";
+import { formatDate } from "@/lib/core/time";
+import { servicePool } from "@/lib/db";
 
-export const metadata = { title: 'Shops' };
-export const dynamic = 'force-dynamic';
+export const metadata = { title: "Shops" };
+export const dynamic = "force-dynamic";
 
 export default async function PlatformHome() {
   await requirePlatformAdmin();
@@ -29,18 +29,25 @@ export default async function PlatformHome() {
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-4">
         {[
-          ['Dead outbox jobs', failures.dead_outbox],
-          ['Webhook errors (7d)', failures.webhook_errors],
-          ['Stuck payments', failures.stuck_payments],
-          ['Failed SMS (7d)', failures.failed_sms],
+          ["Dead outbox jobs", failures.dead_outbox],
+          ["Webhook errors (7d)", failures.webhook_errors],
+          ["Stuck payments", failures.stuck_payments],
+          ["Failed SMS (7d)", failures.failed_sms],
         ].map(([k, v]) => (
-          <Link key={k as string} href="/platform/monitor" className={`rounded-xl border bg-card p-4 ${Number(v) > 0 ? 'border-destructive/50' : ''}`}>
+          <Link key={k as string} href="/platform/monitor" className={`rounded-xl border bg-card p-4 ${Number(v) > 0 ? "border-destructive/50" : ""}`}>
             <p className="text-xs text-muted-foreground">{k}</p>
             <p className="text-2xl font-semibold">{v}</p>
           </Link>
         ))}
       </div>
-      <Section title="Shops" action={<Link href="/platform/tenants/new" className="text-sm font-medium text-primary underline">New shop</Link>}>
+      <Section
+        title="Shops"
+        action={
+          <Link href="/platform/tenants/new" className="text-sm font-medium text-primary underline">
+            New shop
+          </Link>
+        }
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -65,13 +72,23 @@ export default async function PlatformHome() {
                     <span className="block text-xs text-muted-foreground">{t.hostname}</span>
                   </td>
                   <td>
-                    <span className={`rounded-full px-2 py-0.5 text-xs ${t.status === 'active' ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900'}`}>{t.status}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs ${t.status === "active" ? "bg-emerald-100 text-emerald-900" : "bg-red-100 text-red-900"}`}
+                    >
+                      {t.status}
+                    </span>
                   </td>
                   <td className="text-right tabular-nums">{t.jobs_30d}</td>
                   <td className="text-right tabular-nums">{t.open_jobs}</td>
                   <td className="text-right tabular-nums">{formatKes(Number(t.gmv_30d))}</td>
                   <td className="text-right tabular-nums">{formatKes(Number(t.fees_30d))}</td>
-                  <td className="text-xs">{t.fee_rule ? (t.fee_rule.startsWith('percent') ? `${Number(t.fee_rule.split(':')[1]) / 100}%` : formatKes(Number(t.fee_rule.split(':')[1]))) : '—'}</td>
+                  <td className="text-xs">
+                    {t.fee_rule
+                      ? t.fee_rule.startsWith("percent")
+                        ? `${Number(t.fee_rule.split(":")[1]) / 100}%`
+                        : formatKes(Number(t.fee_rule.split(":")[1]))
+                      : "—"}
+                  </td>
                   <td className="text-xs">{formatDate(t.created_at)}</td>
                 </tr>
               ))}

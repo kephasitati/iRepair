@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 /**
  * Camera QR scanner (@zxing/browser works on iOS Safari, which lacks BarcodeDetector) with a manual
@@ -20,13 +20,12 @@ export function QrScanner({
   manualLabel?: string;
   busy?: boolean;
 }) {
-  const t = useTranslations('bench');
+  const t = useTranslations("bench");
   const videoRef = useRef<HTMLVideoElement>(null);
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [manual, setManual] = useState('');
-  const onScanRef = useRef(onScan);
-  onScanRef.current = onScan;
+  const [manual, setManual] = useState("");
+  const scanned = useEffectEvent((payload: string) => onScan(payload));
 
   useEffect(() => {
     if (!active) return;
@@ -34,19 +33,19 @@ export function QrScanner({
     let cancelled = false;
     (async () => {
       try {
-        const { BrowserQRCodeReader } = await import('@zxing/browser');
+        const { BrowserQRCodeReader } = await import("@zxing/browser");
         const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 200 });
-        controls = await reader.decodeFromConstraints({ video: { facingMode: 'environment' } }, videoRef.current!, (result) => {
+        controls = await reader.decodeFromConstraints({ video: { facingMode: "environment" } }, videoRef.current!, (result) => {
           if (result && !cancelled) {
             cancelled = true;
             controls?.stop();
             setActive(false);
             if (navigator.vibrate) navigator.vibrate(80);
-            onScanRef.current(result.getText());
+            scanned(result.getText());
           }
         });
       } catch {
-        setError(t('noCamera'));
+        setError(t("noCamera"));
         setActive(false);
       }
     })();
@@ -63,12 +62,12 @@ export function QrScanner({
           <video ref={videoRef} className="aspect-square w-full object-cover" muted playsInline />
           <div className="pointer-events-none absolute inset-8 rounded-2xl border-4 border-white/80" />
           <Button type="button" variant="secondary" className="absolute right-2 bottom-2" onClick={() => setActive(false)}>
-            {t('manualCode')}
+            {t("manualCode")}
           </Button>
         </div>
       ) : (
         <Button type="button" size="lg" className="w-full" onClick={() => (setError(null), setActive(true))} disabled={busy}>
-          {t('scanner')}
+          {t("scanner")}
         </Button>
       )}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -80,7 +79,13 @@ export function QrScanner({
             if (manual.trim()) onManual(manual.trim());
           }}
         >
-          <Input value={manual} onChange={(e) => setManual(e.target.value)} placeholder={manualLabel ?? t('manualCode')} inputMode="text" autoCapitalize="characters" />
+          <Input
+            value={manual}
+            onChange={(e) => setManual(e.target.value)}
+            placeholder={manualLabel ?? t("manualCode")}
+            inputMode="text"
+            autoCapitalize="characters"
+          />
           <Button type="submit" variant="outline" disabled={busy || !manual.trim()}>
             OK
           </Button>

@@ -5,8 +5,8 @@
  *   npx tsx scripts/set-faqs.ts --slug primefix --file scripts/data/primefix-faqs.txt
  *   (`--file -` reads the text from stdin)
  */
-import './shim-server-only';
-import { readFileSync } from 'node:fs';
+import "./shim-server-only";
+import { readFileSync } from "node:fs";
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -14,15 +14,15 @@ function arg(name: string): string | undefined {
 }
 
 async function main() {
-  const { withService } = await import('../lib/db');
-  const { parseFaqText } = await import('../lib/core/faq-text');
-  const slug = arg('slug')?.toLowerCase();
-  const file = arg('file');
+  const { withService } = await import("../lib/db");
+  const { parseFaqText } = await import("../lib/core/faq-text");
+  const slug = arg("slug")?.toLowerCase();
+  const file = arg("file");
   if (!slug || !file) {
-    console.error('Usage: npx tsx scripts/set-faqs.ts --slug shop-slug --file faqs.txt');
+    console.error("Usage: npx tsx scripts/set-faqs.ts --slug shop-slug --file faqs.txt");
     process.exit(1);
   }
-  const faqs = parseFaqText(readFileSync(file === '-' ? 0 : file, 'utf8'));
+  const faqs = parseFaqText(readFileSync(file === "-" ? 0 : file, "utf8"));
   if (!faqs.length) throw new Error('No "Q: … / A: …" blocks found in the file.');
 
   await withService(async (tx) => {

@@ -1,8 +1,8 @@
-import { safeEqual } from '@/lib/core/crypto';
-import { env } from '@/lib/env';
-import { tick } from '@/worker/tasks';
+import { safeEqual } from "@/lib/core/crypto";
+import { env } from "@/lib/env";
+import { tick } from "@/worker/tasks";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Runs one worker pass. For hosts without a resident worker process (DECISIONS D-17), e.g. Vercel, where a
@@ -12,14 +12,14 @@ export const dynamic = 'force-dynamic';
  * timer on a VPS, so the same route works either way without a secret ever appearing in vercel.json itself.
  */
 function authorized(req: Request): boolean {
-  const auth = req.headers.get('authorization') ?? '';
+  const auth = req.headers.get("authorization") ?? "";
   if (safeEqual(auth, `Bearer ${env().INTERNAL_CRON_SECRET}`)) return true;
   const vercelCronSecret = process.env.CRON_SECRET;
   return !!vercelCronSecret && safeEqual(auth, `Bearer ${vercelCronSecret}`);
 }
 
 async function run(req: Request) {
-  if (!authorized(req)) return new Response('unauthorized', { status: 401 });
+  if (!authorized(req)) return new Response("unauthorized", { status: 401 });
   const did = await tick();
   return Response.json({ ok: true, did });
 }

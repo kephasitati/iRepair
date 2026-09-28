@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 /** Apple ID-style sign-in: centred, generous whitespace, one frosted card over the brand backdrop. */
 export function AuthCard({

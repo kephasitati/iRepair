@@ -300,3 +300,39 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   a paid device can't be forgotten. Verified: unit + DB tests (189), and in the browser on the demo shop (waive →
   Ready to dispatch → Request rider → courier booking queued only after the click).
 
+- **D-40 Account security: who a session is, and what an invite may do.** A read-through against the conventions
+  of the TumaBoda codebase found four holes, all closed by migration 0023 and the matching code:
+  1. *A phone sign-in is only ever a customer.* Sessions now record `auth_method` (`otp` | `password`), and both
+     the app (`getSession`) and the RLS helpers (`is_platform_admin`, `has_tenant_role`, via `app.auth_method`)
+     grant staff and platform rights only to a password session. Before this, a customer who typed a staff email on
+     their profile could be handed a membership and sign in to the bench by SMS code.
+  2. *An invite never replaces a password.* `users.password_set_at` marks a password the person chose. Accepting an
+     invite sets a password only when none was chosen; an existing account proves itself with its own password.
+     An unverified email a customer typed is released to a fresh staff account (`lib/invites.ts`), and a customer
+     with a password can no longer edit the email their staff login uses. Before this, any shop admin could invite
+     an address belonging to staff at another shop, or the platform admin, open the link and set that account's
+     password.
+  3. *Two-factor enrolment needs the second factor.* Once TOTP is on, the setup screen and its action are reachable
+     only from a session that has already passed it (a password alone could re-enrol and skip MFA). Code entry
+     (verify and setup) is limited to five tries per quarter hour.
+  4. *Least privilege in the database.* The app role may update only `users.full_name` and `users.email`;
+     `is_trusted_context()` is false for the app role however it sets `app.trusted`.
+  Alongside: `?next=` redirects accept only same-origin paths (`lib/core/redirect.ts`); platform actions require
+  the platform host and refuse support-mode sessions; SVG logos are served sandboxed; the CRM CSV neutralises
+  formula cells; the SMS short link no longer puts the customer's phone number in the URL; staff login is also
+  rate-limited per address; the OTP hash compare is constant-time; a rating is accepted only once the device is
+  back with the customer; M-Pesa's own error text stays on the payment row instead of reaching the customer.
+  In production a missing SMS or email provider now fails closed (`UnconfiguredSms` / `UnconfiguredEmail`) rather
+  than printing codes to the container log. Webhooks: the SMS delivery-report route needs `SMS_DLR_TOKEN` in its URL
+  and stores nothing from an unverified caller; the courier webhook stores nothing for an unknown shop; bodies are
+  size-capped; the M-Pesa callback token is compared in constant time. Every response carries a baseline CSP
+  (`frame-ancestors`, `base-uri`, `object-src`) and, in production, HSTS. Tests: `tests/db/auth-hardening.test.ts`, `tests/unit/redirect.test.ts`.
+- **D-41 Background work is leased, and a courier booking can no longer hang.** The resident worker and
+  `/api/internal/tick` may run side by side, and the claim queries promised that was safe, but `FOR UPDATE SKIP
+  LOCKED` only held for the claiming statement: a second worker could take the same outbox row or SMS a moment later.
+  Claims now also move the row's due time five minutes ahead (a lease), so nobody else picks it up while it runs and a
+  crashed run's rows come back when the lease lapses. The same race exposed a hang in `bookLeg`: it locked the job
+  row, then asked `quoteLeg` for a quote in a *second* transaction whose insert needed that lock, so each waited on
+  the other forever (Postgres cannot see a wait that passes through the client). `quoteLeg` now writes in the
+  caller's transaction when given one, and `bookLeg` returns early when the leg is already booked. Found by the
+  end-to-end suite; pinned by `tests/db/worker-claims.test.ts`.

@@ -1,9 +1,9 @@
-import { notFound } from 'next/navigation';
-import QRCode from 'qrcode';
-import { isProd } from '@/lib/env';
-import { mockProvider } from '@/lib/providers';
+import { notFound } from "next/navigation";
+import QRCode from "qrcode";
+import { isProd } from "@/lib/env";
+import { mockProvider } from "@/lib/providers";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Demo only: the simulated rider's phone. Open it on a second device and scan the QR from the customer app
@@ -30,7 +30,10 @@ export default async function MockRiderPage({ params }: { params: Promise<{ deli
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={qr} alt="Rider QR" className="mx-auto size-72 rounded-xl border bg-white p-3" data-testid="rider-qr" />
       <p className="text-sm">
-        Handover code: <span className="font-mono text-2xl font-bold tracking-widest" data-testid="rider-otp">{mock.otp(deliveryId)}</span>
+        Handover code:{" "}
+        <span className="font-mono text-2xl font-bold tracking-widest" data-testid="rider-otp">
+          {mock.otp(deliveryId)}
+        </span>
       </p>
       <p className="font-mono text-[10px] break-all text-muted-foreground" data-testid="rider-qr-payload">
         {mock.qrPayload(deliveryId)}

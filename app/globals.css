@@ -150,7 +150,12 @@
     color: var(--ink-3);
   }
   .text-gradient {
-    background: linear-gradient(90deg, color-mix(in oklab, var(--brand-primary) 60%, white), var(--brand-accent) 60%, color-mix(in oklab, var(--brand-accent) 60%, white));
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--brand-primary) 60%, white),
+      var(--brand-accent) 60%,
+      color-mix(in oklab, var(--brand-accent) 60%, white)
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -245,7 +250,9 @@
     border: 1px solid var(--line);
     border-radius: 12px;
     background: var(--tile);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
   }
   .opt:hover {
     border-color: var(--ink-3);
@@ -268,7 +275,10 @@
     font-size: 14px;
     white-space: nowrap;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    transition:
+      background 0.2s,
+      color 0.2s,
+      border-color 0.2s;
   }
   .pill:hover {
     border-color: var(--ink-3);
@@ -353,7 +363,9 @@
     animation: rd-pulse 1.6s infinite;
   }
   .lift {
-    transition: transform 0.3s cubic-bezier(0, 0, 0.5, 1), box-shadow 0.3s cubic-bezier(0, 0, 0.5, 1);
+    transition:
+      transform 0.3s cubic-bezier(0, 0, 0.5, 1),
+      box-shadow 0.3s cubic-bezier(0, 0, 0.5, 1);
   }
   .lift:hover {
     transform: scale(1.01);

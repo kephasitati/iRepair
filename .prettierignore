@@ -1,0 +1,11 @@
+.next
+.claude
+.scratch
+node_modules
+test-results
+playwright-report
+package-lock.json
+public/sw.js
+messages/*.json
+db/migrations
+*.md

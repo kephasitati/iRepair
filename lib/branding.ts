@@ -1,7 +1,7 @@
 /** Tenant colours -> CSS variables for the shadcn theme. Pure functions, safe on the client. */
 
 export function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
+  const h = hex.replace("#", "");
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 }
 
@@ -21,7 +21,7 @@ export function contrastRatio(a: string, b: string) {
 
 /** White or near-black text, whichever reads better on the colour. */
 export function foregroundFor(hex: string): string {
-  return contrastRatio(hex, '#ffffff') >= contrastRatio(hex, '#0a0a0a') ? '#ffffff' : '#0a0a0a';
+  return contrastRatio(hex, "#ffffff") >= contrastRatio(hex, "#0a0a0a") ? "#ffffff" : "#0a0a0a";
 }
 
 export function isValidHex(hex: string) {
@@ -34,10 +34,10 @@ export function isValidHex(hex: string) {
  */
 export function brandCssVars(primary: string, accent: string): Record<string, string> {
   return {
-    '--primary': primary,
-    '--primary-foreground': foregroundFor(primary) === '#ffffff' ? '#ffffff' : '#1d1d1f',
-    '--brand-primary': primary,
-    '--brand-accent': accent,
-    '--brand-accent-foreground': foregroundFor(accent) === '#ffffff' ? '#ffffff' : '#1d1d1f',
+    "--primary": primary,
+    "--primary-foreground": foregroundFor(primary) === "#ffffff" ? "#ffffff" : "#1d1d1f",
+    "--brand-primary": primary,
+    "--brand-accent": accent,
+    "--brand-accent-foreground": foregroundFor(accent) === "#ffffff" ? "#ffffff" : "#1d1d1f",
   };
 }

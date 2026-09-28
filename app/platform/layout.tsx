@@ -1,9 +1,9 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { requirePlatformAdmin } from '@/lib/auth';
-import { IRepairLogo } from '@/components/irepair-logo';
-import { getTenant } from '@/lib/tenant';
-import { signOutAction } from '@/app/(auth)/actions';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { requirePlatformAdmin } from "@/lib/auth";
+import { IRepairLogo } from "@/components/irepair-logo";
+import { getTenant } from "@/lib/tenant";
+import { signOutAction } from "@/app/(auth)/actions";
 
 export default async function PlatformLayout({ children }: { children: React.ReactNode }) {
   if (await getTenant()) notFound(); // the console never exists on a shop's domain

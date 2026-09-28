@@ -1,16 +1,18 @@
-import { redirect } from 'next/navigation';
-import { ShopHeader } from '@/components/shop-header';
-import { ShopFooter } from '@/components/shop-footer';
-import { CookieBanner } from '@/components/cookie-banner';
-import { WhatsAppFloat } from '@/components/whatsapp';
-import { getSession } from '@/lib/auth';
-import { whatsappLink } from '@/lib/public-data';
-import { getTenant } from '@/lib/tenant';
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { ShopHeader } from "@/components/shop-header";
+import { ShopFooter } from "@/components/shop-footer";
+import { CookieBanner } from "@/components/cookie-banner";
+import { WhatsAppFloat } from "@/components/whatsapp";
+import { getSession } from "@/lib/auth";
+import { CONSENT_COOKIE, parseConsent } from "@/lib/legal";
+import { whatsappLink } from "@/lib/public-data";
+import { getTenant } from "@/lib/tenant";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   const tenant = await getTenant();
-  if (!tenant) redirect('/platform');
-  if (tenant.status === 'suspended') {
+  if (!tenant) redirect("/platform");
+  if (tenant.status === "suspended") {
     return (
       <main className="mx-auto max-w-md px-4 py-24 text-center">
         <h1 className="display text-[32px]">{tenant.branding.display_name}</h1>
@@ -19,13 +21,14 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     );
   }
   const session = await getSession();
+  const consent = parseConsent((await cookies()).get(CONSENT_COOKIE)?.value);
   return (
     <>
       <ShopHeader tenant={tenant} session={session} />
       <main>{children}</main>
       <ShopFooter tenant={tenant} />
       <WhatsAppFloat href={whatsappLink(tenant, `Hi ${tenant.branding.display_name}, I need help with a repair.`)} />
-      <CookieBanner />
+      <CookieBanner consent={consent} />
     </>
   );
 }

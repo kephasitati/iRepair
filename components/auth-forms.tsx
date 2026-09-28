@@ -1,27 +1,28 @@
-'use client';
+"use client";
 
-import { useActionState, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ErrorText, Field } from '@/components/fields';
-import { mfaCompleteSetupAction, mfaVerifyAction, sendOtpAction, staffLoginAction, verifyOtpAction, acceptInviteAction } from '@/app/(auth)/actions';
+import { useActionState, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ErrorText, Field } from "@/components/fields";
+import { mfaCompleteSetupAction, mfaVerifyAction, sendOtpAction, staffLoginAction, verifyOtpAction, acceptInviteAction } from "@/app/(auth)/actions";
 
 const CODE_TO_KEY: Record<string, string> = {
-  invalid_phone: 'invalidPhone',
-  rate_limited: 'rateLimited',
-  send_failed: 'sendFailed',
-  invalid_code: 'invalidCode',
-  expired: 'expired',
-  too_many_attempts: 'tooManyAttempts',
-  invalid_login: 'invalidLogin',
-  not_staff: 'notStaff',
-  forbidden: 'forbidden',
-  mfa_wrong: 'mfaWrong',
+  invalid_phone: "invalidPhone",
+  rate_limited: "rateLimited",
+  send_failed: "sendFailed",
+  invalid_code: "invalidCode",
+  expired: "expired",
+  too_many_attempts: "tooManyAttempts",
+  invalid_login: "invalidLogin",
+  not_staff: "notStaff",
+  password_required: "passwordRequired",
+  forbidden: "forbidden",
+  mfa_wrong: "mfaWrong",
 };
 
 export function useAuthError() {
-  const t = useTranslations('auth');
+  const t = useTranslations("auth");
   return (code?: string | null) => (code ? (CODE_TO_KEY[code] ? t(CODE_TO_KEY[code]) : code) : null);
 }
 
@@ -36,11 +37,21 @@ export function PhoneLoginForm({ next, defaultPhone }: { next?: string; defaultP
   if (!phone) {
     return (
       <form action={(fd) => (setEditing(false), sendAction(fd))} className="space-y-4">
-        <Field label={t('common.phone')} hint={t('auth.phoneHelp')} htmlFor="phone" error={sendState && !sendState.ok ? err(sendState.error) : null}>
-          <Input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder={t('auth.phonePlaceholder')} defaultValue={defaultPhone} required autoFocus />
+        <Field label={t("common.phone")} hint={t("auth.phoneHelp")} htmlFor="phone" error={sendState && !sendState.ok ? err(sendState.error) : null}>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder={t("auth.phonePlaceholder")}
+            defaultValue={defaultPhone}
+            required
+            autoFocus
+          />
         </Field>
         <Button type="submit" size="lg" className="w-full" disabled={sending}>
-          {sending ? t('common.loading') : t('auth.sendCode')}
+          {sending ? t("common.loading") : t("auth.sendCode")}
         </Button>
       </form>
     );
@@ -48,69 +59,88 @@ export function PhoneLoginForm({ next, defaultPhone }: { next?: string; defaultP
   return (
     <form action={verifyAction} className="space-y-4">
       <input type="hidden" name="phone" value={phone} />
-      <input type="hidden" name="next" value={next ?? ''} />
-      <p className="text-sm">{t('auth.codeSentTo', { phone })}</p>
-      <Field label={t('auth.code')} htmlFor="code" error={verifyState && !verifyState.ok ? err(verifyState.error) : null}>
-        <Input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus className="text-center text-2xl tracking-[0.5em]" />
+      <input type="hidden" name="next" value={next ?? ""} />
+      <p className="text-sm">{t("auth.codeSentTo", { phone })}</p>
+      <Field label={t("auth.code")} htmlFor="code" error={verifyState && !verifyState.ok ? err(verifyState.error) : null}>
+        <Input
+          id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="\d{6}"
+          maxLength={6}
+          required
+          autoFocus
+          className="text-center text-2xl tracking-[0.5em]"
+        />
       </Field>
-      <Field label={t('auth.yourName')} htmlFor="name" hint={t('common.optional')}>
+      <Field label={t("auth.yourName")} htmlFor="name" hint={t("common.optional")}>
         <Input id="name" name="name" autoComplete="name" />
       </Field>
       <Button type="submit" size="lg" className="w-full" disabled={verifying}>
-        {verifying ? t('common.loading') : t('auth.verify')}
+        {verifying ? t("common.loading") : t("auth.verify")}
       </Button>
       <div className="flex justify-between text-sm">
         <button type="button" className="text-muted-foreground underline" onClick={() => setEditing(true)}>
-          {t('auth.changeNumber')}
+          {t("auth.changeNumber")}
         </button>
         <button type="submit" formAction={(fd) => sendAction(fd)} formNoValidate className="text-primary underline">
-          {t('auth.resend')}
+          {t("auth.resend")}
         </button>
       </div>
     </form>
   );
 }
 
-export function StaffLoginForm({ area, next, initialError }: { area: 'shop' | 'platform'; next?: string; initialError?: string }) {
+export function StaffLoginForm({ area, next, initialError }: { area: "shop" | "platform"; next?: string; initialError?: string }) {
   const t = useTranslations();
   const err = useAuthError();
   const [state, action, pending] = useActionState(staffLoginAction, null);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="area" value={area} />
-      <input type="hidden" name="next" value={next ?? ''} />
+      <input type="hidden" name="next" value={next ?? ""} />
       <ErrorText>{state && !state.ok ? err(state.error) : err(initialError)}</ErrorText>
-      <Field label={t('common.email')} htmlFor="email">
+      <Field label={t("common.email")} htmlFor="email">
         <Input id="email" name="email" type="email" autoComplete="username" required autoFocus />
       </Field>
-      <Field label={t('common.password')} htmlFor="password">
+      <Field label={t("common.password")} htmlFor="password">
         <Input id="password" name="password" type="password" autoComplete="current-password" required />
       </Field>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? t('common.loading') : t('auth.signIn')}
+        {pending ? t("common.loading") : t("auth.signIn")}
       </Button>
     </form>
   );
 }
 
-export function MfaVerifyForm({ area }: { area: 'shop' | 'platform' }) {
+export function MfaVerifyForm({ area }: { area: "shop" | "platform" }) {
   const t = useTranslations();
   const err = useAuthError();
   const [state, action, pending] = useActionState(mfaVerifyAction, null);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="area" value={area} />
-      <Field label={t('auth.code')} htmlFor="code" error={state && !state.ok ? err(state.error) : null}>
-        <Input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required autoFocus className="text-center text-2xl tracking-[0.5em]" />
+      <Field label={t("auth.code")} htmlFor="code" error={state && !state.ok ? err(state.error) : null}>
+        <Input
+          id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          required
+          autoFocus
+          className="text-center text-2xl tracking-[0.5em]"
+        />
       </Field>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {t('auth.verify')}
+        {t("auth.verify")}
       </Button>
     </form>
   );
 }
 
-export function MfaSetupForm({ area, secret, qrDataUrl }: { area: 'shop' | 'platform'; secret: string; qrDataUrl: string }) {
+export function MfaSetupForm({ area, secret, qrDataUrl }: { area: "shop" | "platform"; secret: string; qrDataUrl: string }) {
   const t = useTranslations();
   const err = useAuthError();
   const [state, action, pending] = useActionState(mfaCompleteSetupAction, null);
@@ -120,35 +150,49 @@ export function MfaSetupForm({ area, secret, qrDataUrl }: { area: 'shop' | 'plat
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={qrDataUrl} alt="" className="mx-auto size-48 rounded-lg border bg-white p-2" />
       <p className="text-center text-xs text-muted-foreground">
-        {t('auth.mfaSecret')}: <code className="font-mono text-foreground select-all">{secret}</code>
+        {t("auth.mfaSecret")}: <code className="font-mono text-foreground select-all">{secret}</code>
       </p>
-      <Field label={t('auth.code')} htmlFor="code" error={state && !state.ok ? err(state.error) : null}>
+      <Field label={t("auth.code")} htmlFor="code" error={state && !state.ok ? err(state.error) : null}>
         <Input id="code" name="code" inputMode="numeric" maxLength={6} required className="text-center text-2xl tracking-[0.5em]" />
       </Field>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {t('auth.verify')}
+        {t("auth.verify")}
       </Button>
     </form>
   );
 }
 
-export function AcceptInviteForm({ token, email }: { token: string; email: string }) {
+/** `existingAccount`: the invitee already signs in somewhere, so they confirm with that password instead of choosing one. */
+export function AcceptInviteForm({ token, email, existingAccount }: { token: string; email: string; existingAccount: boolean }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState(acceptInviteAction, null);
-  const error = state && !state.ok ? (state.error.startsWith('password:') ? 'Use at least 12 characters with upper and lower case letters and a number.' : state.error) : null;
+  const error =
+    state && !state.ok
+      ? state.error.startsWith("password:")
+        ? "Use at least 12 characters with upper and lower case letters and a number."
+        : state.error
+      : null;
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="token" value={token} />
       <p className="text-sm text-muted-foreground">{email}</p>
       <ErrorText>{error}</ErrorText>
-      <Field label={t('common.name')} htmlFor="name">
-        <Input id="name" name="name" autoComplete="name" required />
-      </Field>
-      <Field label={t('common.password')} htmlFor="password" hint="At least 12 characters with upper and lower case letters and a number.">
-        <Input id="password" name="password" type="password" autoComplete="new-password" minLength={12} required />
-      </Field>
+      {existingAccount ? (
+        <Field label={t("common.password")} htmlFor="password">
+          <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        </Field>
+      ) : (
+        <>
+          <Field label={t("common.name")} htmlFor="name">
+            <Input id="name" name="name" autoComplete="name" required />
+          </Field>
+          <Field label={t("common.password")} htmlFor="password" hint="At least 12 characters with upper and lower case letters and a number.">
+            <Input id="password" name="password" type="password" autoComplete="new-password" minLength={12} required />
+          </Field>
+        </>
+      )}
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {t('common.continue')}
+        {t("common.continue")}
       </Button>
     </form>
   );

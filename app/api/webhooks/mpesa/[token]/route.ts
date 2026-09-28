@@ -1,6 +1,6 @@
-import { handleMpesaCallback } from '@/lib/jobs/payments';
+import { handleMpesaCallback } from "@/lib/jobs/payments";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /** Safaricom Daraja STK callback. The per-payment token in the URL is the only authentication Daraja allows. */
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
