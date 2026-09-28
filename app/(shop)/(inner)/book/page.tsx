@@ -19,7 +19,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
 
   const { draft, secret, photos, addresses, existingId } = await withUser(ctx, async (tx) => {
     const [draft] = sp.job ? ((await tx`select * from jobs where id = ${sp.job}`) as JobRow[]) : [];
-    const [secret] = draft ? await tx`select identifier from job_secrets where job_id = ${draft.id}` : [];
+    const [secret] = draft ? await tx`select identifier, passcode_enc is not null as has_passcode from job_secrets where job_id = ${draft.id}` : [];
     const photos = draft ? await tx`select id, kind from job_photos where job_id = ${draft.id} and stage = 'customer_declared' and deleted_at is null` : [];
     const addresses = await tx`select * from addresses where user_id = ${ctx.userId} order by created_at desc`;
     const existingId = await getCustomerIdSummary(tx, tenant.id, ctx.userId!);
@@ -40,6 +40,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     accessories: draft?.accessories ?? [],
     passcode_locked: draft?.passcode_locked ?? false,
     passcode_shared: draft?.passcode_shared ?? false,
+    passcodeStored: !!secret?.has_passcode,
     identifier: secret?.identifier ?? '',
     identity_method: draft?.identity_method ?? 'device',
     id_kind: existingId?.kind ?? 'national_id',

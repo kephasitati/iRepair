@@ -281,4 +281,13 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   Google Place ID; with a server `GOOGLE_PLACES_API_KEY` (Places API New) the page shows the rating, count and up to
   five recent reviews with Google's attribution, refreshed at most every six hours; without a key it still shows
   "Read all reviews" / "Write a review" links. Primefix's Instagram set to its real profile.
+- **D-38 Two user-reported bugs.** (1) *"When I choose passcode and share, I can't proceed."* A saved draft's
+  passcode is stored encrypted and never sent back to the browser, so coming back to step 2 (reload, Back, or
+  reopening the booking) showed an empty passcode box and the server rejected Next with "Enter the passcode" —
+  stuck. A blank box on a draft that already has a passcode now means "keep it" (server and client), the field says
+  so, and whenever Next is disabled the wizard lists what is still needed (IMEI/serial or ID number, passcode).
+  (2) *"Instagram not showing under About."* The section only rendered when specific posts were chosen; it now shows
+  a profile card (@handle, Follow) whenever the shop has an Instagram link, with any chosen posts below it. Also:
+  0020's Place ID check used a regex bound of 300, above Postgres's 255 limit, so saving any Place ID failed —
+  0021 replaces the check. Primefix's Google Place ID (verified against its Maps listing) and map pin are set.
 

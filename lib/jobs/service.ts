@@ -63,7 +63,12 @@ export async function createOrUpdateDraft(tx: Tx, tenant: Tenant, userId: string
   const consultationFee = consultationFeeFor(tenant.settings, input.device_type);
   if (!input.device_model.trim()) throw new UserError('Enter the device model.');
   if (input.fault_description.trim().length < 5) throw new UserError('Describe the fault in a few words.');
-  if (input.passcode_locked && input.passcode_shared && !input.passcode) throw new UserError('Enter the passcode or choose not to share it.');
+  if (input.passcode_locked && input.passcode_shared && !input.passcode) {
+    // Editing a saved draft: the passcode is already stored (encrypted) and is never sent back to the browser, so a
+    // blank field means "keep it", not "missing".
+    const [stored] = jobId ? await tx`select passcode_enc is not null as has from job_secrets where job_id = ${jobId}` : [];
+    if (!stored?.has) throw new UserError('Enter the passcode or choose not to share it.');
+  }
 
   let job: JobRow;
   if (jobId) {

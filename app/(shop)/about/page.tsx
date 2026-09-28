@@ -10,6 +10,20 @@ import { DEVICE_LABEL, cityOf, enabledDevices, socialLinks, whatsappLink } from 
 import { breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
 import { requireTenant } from '@/lib/tenant';
 
+function instagramHandle(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').split(/[/?#]/)[0] || 'instagram';
+}
+
+function InstagramGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await requireTenant();
   const name = tenant.branding.display_name;
@@ -101,12 +115,28 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {b.instagram_posts?.length ? (
-        <section className="mt-12">
+      {instagram || b.instagram_posts?.length ? (
+        <section className="mt-12" data-testid="about-instagram">
           <h2 className="display text-[28px] sm:text-[40px]">On Instagram</h2>
-          <div className="mt-6">
-            <InstagramEmbeds posts={b.instagram_posts} profileUrl={instagram?.url} />
-          </div>
+          {instagram ? (
+            <a href={instagram.url} target="_blank" rel="noopener me" className="tile mt-6 flex items-center gap-4 p-5 hover:bg-fill/40">
+              <span className="grid size-14 shrink-0 place-items-center rounded-2xl text-white" style={{ background: 'linear-gradient(45deg,#f58529,#dd2a7b 50%,#8134af 80%,#515bd4)' }}>
+                <InstagramGlyph className="size-7" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[17px] font-semibold">@{instagramHandle(instagram.url)}</span>
+                <span className="block text-[14px] text-ink-3">Latest repairs, stock and offers from {b.display_name}</span>
+              </span>
+              <span className="shrink-0 rounded-full px-4 py-2 text-[14px]" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>
+                Follow
+              </span>
+            </a>
+          ) : null}
+          {b.instagram_posts?.length ? (
+            <div className="mt-4">
+              <InstagramEmbeds posts={b.instagram_posts} profileUrl={instagram?.url} />
+            </div>
+          ) : null}
         </section>
       ) : null}
 

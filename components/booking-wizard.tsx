@@ -32,6 +32,8 @@ export type WizardInitial = {
   accessories: string[];
   passcode_locked: boolean;
   passcode_shared: boolean;
+  /** A passcode is already saved (encrypted) for this draft; it is never sent back, so a blank field keeps it. */
+  passcodeStored: boolean;
   identifier: string;
   identity_method: 'device' | 'id';
   id_kind: IdKind;
@@ -169,6 +171,11 @@ export function BookingWizard({
   const idNumCheck = idNumber ? checkIdNumber(s.id_kind, idNumber) : null;
   const idNumError = idNumCheck && !idNumCheck.ok ? tw(`idErrors.${idNumCheck.error}`) : null;
   const identityOk = s.identity_method === 'device' ? !!idCheck?.ok : (useExistingId && !!s.existingId) || !!idNumCheck?.ok;
+  const passcodeMissing = s.passcode_locked && s.passcode_shared && !passcode && !s.passcodeStored;
+  const step2Missing = [
+    ...(identityOk ? [] : [s.identity_method === 'device' ? tw('needIdentifier') : tw('needIdNumber')]),
+    ...(passcodeMissing ? [tw('needPasscode')] : []),
+  ];
   const needScreenOn = s.condition.powers_on;
   const photosOk =
     photoState.kinds.includes('front') && photoState.kinds.includes('back') && (!needScreenOn || photoState.kinds.includes('screen_on')) && photoState.pending === 0 && (s.identity_method !== 'id' || idPhoto);
@@ -211,7 +218,8 @@ export function BookingWizard({
         setUseExistingId(true);
         setIdPhoto(!!kept && !!s.existingId?.hasPhoto);
       }
-      set({ jobId: r.data.jobId });
+      set({ jobId: r.data.jobId, passcodeStored: s.passcode_locked && s.passcode_shared && (!!passcode || s.passcodeStored) });
+      setPasscode('');
       window.history.replaceState(null, '', `/book?job=${r.data.jobId}`);
       setStep(3);
     });
@@ -378,8 +386,16 @@ export function BookingWizard({
                 <>
                   <CheckRow label={tw('passcodeShare')} description={tw('passcodeHelp')} checked={s.passcode_shared} onChange={(e) => set({ passcode_shared: e.target.checked })} />
                   {s.passcode_shared ? (
-                    <Field label={tw('passcodeValue')} htmlFor="passcode">
-                      <Input id="passcode" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} />
+                    <Field label={tw('passcodeValue')} htmlFor="passcode" hint={s.passcodeStored ? tw('passcodeStored') : undefined}>
+                      <Input
+                        id="passcode"
+                        type="password"
+                        autoComplete="off"
+                        value={passcode}
+                        onChange={(e) => setPasscode(e.target.value)}
+                        placeholder={s.passcodeStored ? '••••••' : undefined}
+                        data-testid="passcode"
+                      />
                     </Field>
                   ) : null}
                 </>
@@ -390,7 +406,12 @@ export function BookingWizard({
             </Field>
             {s.identity_method === 'device' ? <CheckRow label={tw('saveDevice')} checked={saveDevice} onChange={(e) => setSaveDevice(e.target.checked)} /> : null}
             <ErrorText>{error}</ErrorText>
-            <Button type="button" size="lg" className="w-full" disabled={pending || !identityOk || (s.passcode_locked && s.passcode_shared && !passcode && !initial.jobId)} onClick={saveDetails}>
+            {step2Missing.length ? (
+              <p className="text-[13px] text-ink-3" data-testid="step2-missing">
+                {tw('stillNeeded')} {step2Missing.join(' · ')}
+              </p>
+            ) : null}
+            <Button type="button" size="lg" className="w-full" disabled={pending || step2Missing.length > 0} onClick={saveDetails}>
               {pending ? tw('saving') : t('common.next')}
             </Button>
           </div>
