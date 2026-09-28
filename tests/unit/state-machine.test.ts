@@ -36,7 +36,11 @@ describe('state machine definition', () => {
       const queue = [start];
       while (queue.length) {
         const s = queue.shift()!;
-        for (const to of Object.keys(TRANSITIONS[s]) as JobStatus[]) if (!seen.has(to)) (seen.add(to), queue.push(to));
+        for (const to of Object.keys(TRANSITIONS[s]) as JobStatus[]) {
+          if (seen.has(to)) continue;
+          seen.add(to);
+          queue.push(to);
+        }
       }
       expect(TERMINAL_STATUSES.some((t) => seen.has(t)), `${start} cannot terminate`).toBe(true);
     }
@@ -47,7 +51,11 @@ describe('state machine definition', () => {
     const queue: JobStatus[] = ['draft'];
     while (queue.length) {
       const s = queue.shift()!;
-      for (const to of Object.keys(TRANSITIONS[s]) as JobStatus[]) if (!seen.has(to)) (seen.add(to), queue.push(to));
+      for (const to of Object.keys(TRANSITIONS[s]) as JobStatus[]) {
+        if (seen.has(to)) continue;
+        seen.add(to);
+        queue.push(to);
+      }
     }
     expect([...seen].sort()).toEqual([...JOB_STATUSES].sort());
   });

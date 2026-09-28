@@ -6,7 +6,6 @@ import { Bike, MessageSquareText, QrCode, ShieldCheck } from 'lucide-react';
 import { DeviceIcon } from '@/components/device-icon';
 import { FaqList, JsonLd } from '@/components/seo-bits';
 import { DEVICE_TYPES, type DeviceType } from '@/lib/core/device-id';
-import { formatKes } from '@/lib/core/money';
 import { deviceFaqs } from '@/lib/faq';
 import { enabledDevices, getPublishedCatalogue, DEVICE_LABEL, cityOf } from '@/lib/public-data';
 import { PriceGroups } from '@/components/price-groups';

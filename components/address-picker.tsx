@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { LocateFixed } from 'lucide-react';
 import { APIProvider, AdvancedMarker, Map, useMapsLibrary } from '@vis.gl/react-google-maps';
@@ -93,8 +93,14 @@ function PlacesInput({ value, onChange, zones }: { value: Address; onChange: (a:
   const places = useMapsLibrary('places');
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState(value.formatted);
-  const latest = useRef({ value, onChange });
-  latest.current = { value, onChange };
+  const placeChosen = useEffectEvent((p: google.maps.places.PlaceResult) => {
+    const loc = p.geometry?.location;
+    const areas = (p.address_components ?? []).filter((c) => c.types.some((ty) => ['sublocality', 'sublocality_level_1', 'neighborhood', 'locality'].includes(ty))).map((c) => c.long_name);
+    const zone = zones.find((z) => areas.some((a) => a.toLowerCase().includes(z.toLowerCase()))) ?? value.zone ?? null;
+    const formatted = [p.name, p.formatted_address].filter(Boolean).join(', ');
+    setText(formatted);
+    onChange({ ...value, formatted, place_id: p.place_id ?? null, lat: loc?.lat() ?? null, lng: loc?.lng() ?? null, zone });
+  });
 
   useEffect(() => {
     if (!places || !inputRef.current) return;
@@ -102,17 +108,9 @@ function PlacesInput({ value, onChange, zones }: { value: Address; onChange: (a:
       componentRestrictions: { country: 'ke' },
       fields: ['formatted_address', 'name', 'geometry', 'place_id', 'address_components'],
     });
-    const l = ac.addListener('place_changed', () => {
-      const p = ac.getPlace();
-      const loc = p.geometry?.location;
-      const areas = (p.address_components ?? []).filter((c) => c.types.some((ty) => ['sublocality', 'sublocality_level_1', 'neighborhood', 'locality'].includes(ty))).map((c) => c.long_name);
-      const zone = zones.find((z) => areas.some((a) => a.toLowerCase().includes(z.toLowerCase()))) ?? latest.current.value.zone ?? null;
-      const formatted = [p.name, p.formatted_address].filter(Boolean).join(', ');
-      setText(formatted);
-      latest.current.onChange({ ...latest.current.value, formatted, place_id: p.place_id ?? null, lat: loc?.lat() ?? null, lng: loc?.lng() ?? null, zone });
-    });
+    const l = ac.addListener('place_changed', () => placeChosen(ac.getPlace()));
     return () => l.remove();
-  }, [places, zones]);
+  }, [places]);
 
   return (
     <Field label={t('address')} htmlFor="addr">
@@ -122,7 +120,7 @@ function PlacesInput({ value, onChange, zones }: { value: Address; onChange: (a:
         value={text}
         onChange={(e) => {
           setText(e.target.value);
-          latest.current.onChange({ ...latest.current.value, formatted: e.target.value });
+          onChange({ ...value, formatted: e.target.value });
         }}
         placeholder={t('addressSearch')}
         required

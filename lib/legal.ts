@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /** Versions of the customer-facing legal texts. Bump when the wording changes materially; consent is re-asked. */
 export const TERMS_VERSION = '2026-09-25';
 export const PRIVACY_VERSION = '2026-09-25';
@@ -6,13 +8,15 @@ export const COOKIE_POLICY_VERSION = '2026-09-25';
 export const CONSENT_COOKIE = 'rd_consent';
 export const VISITOR_COOKIE = 'rd_vid';
 
-export type ConsentChoice = { v: string; analytics: boolean; marketing: boolean; at: string };
+const ConsentChoice = z.object({ v: z.string(), analytics: z.boolean(), marketing: z.boolean(), at: z.string() });
+export type ConsentChoice = z.infer<typeof ConsentChoice>;
 
+/** The visitor's stored cookie choice, or null when it is missing, malformed or for an older policy version. */
 export function parseConsent(raw: string | undefined | null): ConsentChoice | null {
   if (!raw) return null;
   try {
-    const c = JSON.parse(decodeURIComponent(raw)) as ConsentChoice;
-    return c.v === COOKIE_POLICY_VERSION ? c : null;
+    const parsed = ConsentChoice.safeParse(JSON.parse(decodeURIComponent(raw)));
+    return parsed.success && parsed.data.v === COOKIE_POLICY_VERSION ? parsed.data : null;
   } catch {
     return null;
   }

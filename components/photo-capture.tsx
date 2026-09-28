@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Camera, Check, CloudOff, Loader2, RotateCw, X } from 'lucide-react';
 import { enqueue, remove, retry, subscribe, type QueuedPhoto } from '@/lib/upload-queue';
@@ -44,15 +44,14 @@ export function PhotoCapture({
     [existing, items],
   );
   const pending = items.filter((i) => i.status === 'queued' || i.status === 'uploading').length;
-  const cb = useRef(onChange);
-  cb.current = onChange;
+  const report = useEffectEvent((up: typeof uploaded, n: number) => onChange?.(up, n));
   // Notify only when the uploaded set or pending count really changes (parents re-render on every call).
   const signature = `${uploaded.map((u) => `${u.kind}:${u.photoId}`).join(',')}|${pending}`;
   const lastSig = useRef<string | null>(null);
   useEffect(() => {
     if (lastSig.current === signature) return;
     lastSig.current = signature;
-    cb.current?.(uploaded, pending);
+    report(uploaded, pending);
   }, [signature, uploaded, pending]);
 
   const pick = (kind: string) => {
@@ -87,7 +86,12 @@ export function PhotoCapture({
                   has ? 'border-emerald-500 border-solid' : slot.required ? 'border-primary/60' : 'border-input',
                 )}
               >
-                {latest ? <Thumb blob={latest.blob} /> : ex[0] ? <img src={`/api/photos/${ex[0].id}`} alt="" className="absolute inset-0 size-full object-cover" /> : null}
+                {latest ? (
+                  <Thumb blob={latest.blob} />
+                ) : ex[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- a private photo; it must never enter the shared image-optimiser cache
+                  <img src={`/api/photos/${ex[0].id}`} alt="" className="absolute inset-0 size-full object-cover" />
+                ) : null}
                 <span className="relative z-10 flex flex-col items-center gap-1 rounded-lg bg-background/80 px-2 py-1 text-xs font-medium">
                   {latest?.status === 'uploading' ? (
                     <Loader2 className="size-5 animate-spin" />
@@ -127,13 +131,17 @@ export function PhotoCapture({
   );
 }
 
+/** A local preview of a queued photo. The object URL lives exactly as long as the <img> it is attached to. */
 function Thumb({ blob }: { blob: Blob }) {
-  const [url, setUrl] = useState<string>();
-  useEffect(() => {
-    const u = URL.createObjectURL(blob);
-    setUrl(u);
-    return () => URL.revokeObjectURL(u);
-  }, [blob]);
-  // eslint-disable-next-line @next/next/no-img-element
-  return url ? <img src={url} alt="" className="absolute inset-0 size-full object-cover" /> : null;
+  const attach = useCallback(
+    (img: HTMLImageElement | null) => {
+      if (!img) return;
+      const url = URL.createObjectURL(blob);
+      img.src = url;
+      return () => URL.revokeObjectURL(url);
+    },
+    [blob],
+  );
+  // eslint-disable-next-line @next/next/no-img-element -- a local blob, nothing for next/image to optimise
+  return <img ref={attach} alt="" className="absolute inset-0 size-full object-cover" />;
 }

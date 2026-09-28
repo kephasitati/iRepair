@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+
+export type LiveEvent = { t: string; job_id?: string; payment_id?: string };
 
 /**
  * Subscribes to /api/events and refreshes the current route when something relevant changes.
  * `jobId` limits refreshes to one job; omit it on list/board pages. Falls back to a 30 s poll if SSE drops.
  */
-export function LiveRefresh({ jobId, onEvent }: { jobId?: string; onEvent?: (e: { t: string; job_id?: string; payment_id?: string }) => void }) {
+export function LiveRefresh({ jobId, onEvent }: { jobId?: string; onEvent?: (e: LiveEvent) => void }) {
   const router = useRouter();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cb = useRef(onEvent);
-  cb.current = onEvent;
+  const notify = useEffectEvent((e: LiveEvent) => onEvent?.(e));
 
   useEffect(() => {
     let es: EventSource | null = null;
@@ -24,9 +25,9 @@ export function LiveRefresh({ jobId, onEvent }: { jobId?: string; onEvent?: (e: 
       es = new EventSource('/api/events');
       es.onmessage = (m) => {
         try {
-          const e = JSON.parse(m.data);
+          const e = JSON.parse(m.data) as LiveEvent;
           if (e.t === 'hello') return;
-          cb.current?.(e);
+          notify(e);
           if (!jobId || e.job_id === jobId) refresh();
         } catch {}
       };

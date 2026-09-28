@@ -20,7 +20,7 @@ import {
 } from '@/components/customer-job';
 import { requestCtx, requireCustomer } from '@/lib/auth';
 import { formatKes } from '@/lib/core/money';
-import { formatDate, formatDateTime } from '@/lib/core/time';
+import { formatDate, formatDateTime, msAgo } from '@/lib/core/time';
 import { withUser } from '@/lib/db';
 import { collectionCode } from '@/lib/jobs/logistics';
 import { loadJobView, type JobView } from '@/lib/jobs/view';
@@ -47,7 +47,8 @@ export default async function CustomerJobPage({ params }: { params: Promise<{ id
   const phone = session.user.phone_e164 ?? '';
   const s = job.status;
   // The pay panel disappears once the job moves on, so the receipt for a payment in the last 15 minutes stays on top.
-  const recentPayment = v.payments.filter((p) => p.status === 'success' && p.confirmed_at && Date.now() - new Date(p.confirmed_at).getTime() < 15 * 60_000).at(-1);
+  const receiptSince = msAgo(15 * 60_000);
+  const recentPayment = v.payments.filter((p) => p.status === 'success' && p.confirmed_at && new Date(p.confirmed_at) > receiptSince).at(-1);
 
   return (
     <div className="space-y-4">

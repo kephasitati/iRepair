@@ -13,7 +13,6 @@ import { faqJsonLd, localBusinessJsonLd, pageMetadata } from '@/lib/seo';
 import { requireTenant } from '@/lib/tenant';
 import { redirect } from 'next/navigation';
 import { formatKenyanPhone } from '@/lib/core/phone';
-import { formatKes } from '@/lib/core/money';
 import { WEEKDAYS } from '@/lib/core/time';
 import { getSession } from '@/lib/auth';
 

@@ -3,30 +3,25 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { CONSENT_COOKIE, COOKIE_POLICY_VERSION, parseConsent } from '@/lib/legal';
+import { COOKIE_POLICY_VERSION, type ConsentChoice } from '@/lib/legal';
 
 /**
  * Cookie consent (Kenya DPA). Strictly necessary cookies (sign-in, the choice itself) are always on; optional
  * categories are off until the visitor opts in. "Essential only" is as easy as "Accept all". Reopen from the footer
- * with `window.dispatchEvent(new Event('rd:cookie-settings'))`.
+ * with `window.dispatchEvent(new Event('rd:cookie-settings'))`. `consent` is the stored choice, read on the server.
  */
-export function CookieBanner() {
-  const [open, setOpen] = useState(false);
+export function CookieBanner({ consent }: { consent: ConsentChoice | null }) {
+  const [open, setOpen] = useState(!consent);
   const [custom, setCustom] = useState(false);
-  const [analytics, setAnalytics] = useState(false);
-  const [marketing, setMarketing] = useState(false);
+  const [analytics, setAnalytics] = useState(consent?.analytics ?? false);
+  const [marketing, setMarketing] = useState(consent?.marketing ?? false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const raw = document.cookie.split('; ').find((c) => c.startsWith(`${CONSENT_COOKIE}=`))?.slice(CONSENT_COOKIE.length + 1);
-    const current = parseConsent(raw);
-    if (current) {
-      setAnalytics(current.analytics);
-      setMarketing(current.marketing);
-    } else {
+    const reopen = () => {
+      setCustom(true);
       setOpen(true);
-    }
-    const reopen = () => (setCustom(true), setOpen(true));
+    };
     window.addEventListener('rd:cookie-settings', reopen);
     return () => window.removeEventListener('rd:cookie-settings', reopen);
   }, []);

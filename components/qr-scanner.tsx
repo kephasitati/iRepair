@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +25,7 @@ export function QrScanner({
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState('');
-  const onScanRef = useRef(onScan);
-  onScanRef.current = onScan;
+  const scanned = useEffectEvent((payload: string) => onScan(payload));
 
   useEffect(() => {
     if (!active) return;
@@ -42,7 +41,7 @@ export function QrScanner({
             controls?.stop();
             setActive(false);
             if (navigator.vibrate) navigator.vibrate(80);
-            onScanRef.current(result.getText());
+            scanned(result.getText());
           }
         });
       } catch {

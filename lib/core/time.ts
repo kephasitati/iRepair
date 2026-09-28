@@ -15,6 +15,11 @@ export function formatTime(d: Date | string): string {
   return new Intl.DateTimeFormat('en-KE', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(d));
 }
 
+/** The instant `ms` milliseconds before now. Pages call this rather than reading the clock mid-render. */
+export function msAgo(ms: number): Date {
+  return new Date(Date.now() - ms);
+}
+
 /** Minutes since local (Nairobi) midnight. */
 export function nairobiMinuteOfDay(d: Date): number {
   const local = new Date(d.getTime() + OFFSET_MS);

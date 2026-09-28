@@ -4,6 +4,7 @@ import { KV, Section } from '@/components/fields';
 import { StatusBadge } from '@/components/status-badge';
 import { requestCtx, requireStaff } from '@/lib/auth';
 import { formatKes } from '@/lib/core/money';
+import { msAgo } from '@/lib/core/time';
 import type { JobStatus } from '@/lib/core/state-machine';
 import { withUser } from '@/lib/db';
 import { cn } from '@/lib/utils';
@@ -19,7 +20,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const days = PERIODS[(sp.days ?? '30') as keyof typeof PERIODS] ?? 30;
   const t = await getTranslations();
   const ctx = await requestCtx();
-  const since = new Date(Date.now() - days * 86400000);
+  const since = msAgo(days * 86_400_000);
 
   const r = await withUser(ctx, async (tx) => {
     const byState = await tx`select status, count(*)::int as n from jobs where tenant_id = ${tenant.id} and created_at >= ${since} group by status order by n desc`;
