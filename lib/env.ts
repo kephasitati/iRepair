@@ -35,6 +35,8 @@ const schema = z.object({
   AT_USERNAME: z.string().default('sandbox'),
   AT_API_KEY: z.string().optional(),
   AT_SENDER_ID: z.string().optional(),
+  /** Secret in the delivery-report URL given to Africa's Talking (?token=…); their reports are otherwise unsigned. */
+  SMS_DLR_TOKEN: z.string().min(24).optional(),
 
   EMAIL_DRIVER: z.enum(['console', 'smtp']).default('console'),
   SMTP_URL: z.string().optional(),

@@ -28,6 +28,7 @@ import {
 import type { PaymentPurpose } from '@/lib/jobs/types';
 import { TERMS_VERSION } from '@/lib/legal';
 import { UserError } from '@/lib/jobs/types';
+import { EMAIL_PATTERN } from '@/lib/invites';
 import type { Address } from '@/lib/providers/delivery/types';
 import { customerIdKey, deleteObject, putObject } from '@/lib/storage';
 
@@ -77,6 +78,11 @@ export async function submitDraftAction(jobId: string): Promise<ActionResult<nul
 // ---------------------------------------------------------------------------
 // Payments
 // ---------------------------------------------------------------------------
+const STK_FAILURE_COPY = {
+  rate_limited: 'Too many payment prompts. Please wait a minute.',
+  rejected: 'M-Pesa could not send the prompt. Check the number is registered for M-Pesa, then try again.',
+} as const;
+
 export async function startPaymentAction(
   jobId: string,
   purpose: PaymentPurpose,
@@ -88,7 +94,7 @@ export async function startPaymentAction(
     const phone = normalizeKenyanPhone(phoneRaw);
     if (!phone) throw new UserError('Enter a valid Safaricom number.');
     const r = await initiateStkPayment(ctx, tenant, jobId, purpose, phone, quoteId);
-    if (!r.ok) throw new UserError(r.error === 'rate_limited' ? 'Too many payment prompts. Please wait a minute.' : `M-Pesa did not accept the request: ${r.error}`);
+    if (!r.ok) throw new UserError(STK_FAILURE_COPY[r.error]);
     return { paymentId: r.paymentId, simulated: r.simulated, message: r.customerMessage };
   });
 }
@@ -224,11 +230,18 @@ export async function confirmDeliveredAction(jobId: string, input: { score: numb
   return r;
 }
 
+/** Statuses in which the customer has the device back; only then does a rating count (the public star rating is built from these). */
+const RATEABLE_STATUSES = new Set(['collected_from_shop', 'delivered', 'closed']);
+
 export async function rateJobAction(jobId: string, score: number, comment: string): Promise<ActionResult<null>> {
   const r = await run(async () => {
     const { tenant, ctx } = await customer();
-    if (score < 1 || score > 5) throw new UserError('Choose 1 to 5 stars.');
-    await withUser(ctx, (tx) => tx`insert into ratings (job_id, tenant_id, score, comment) values (${jobId}, ${tenant.id}, ${score}, ${comment || null}) on conflict (job_id) do nothing`);
+    if (!Number.isInteger(score) || score < 1 || score > 5) throw new UserError('Choose 1 to 5 stars.');
+    await withUser(ctx, async (tx) => {
+      const job = await loadJob(tx, jobId);
+      if (!RATEABLE_STATUSES.has(job.status)) throw new UserError('You can rate once your device is back with you.');
+      await tx`insert into ratings (job_id, tenant_id, score, comment) values (${jobId}, ${tenant.id}, ${score}, ${comment.slice(0, 1000) || null}) on conflict (job_id) do nothing`;
+    });
     return null;
   });
   done(jobId);
@@ -314,10 +327,25 @@ export async function deleteDeviceAction(id: string) {
   revalidatePath('/account');
 }
 
+/**
+ * Name and contact email. The email of an account with a password is its staff sign-in, so it is left alone here: a
+ * phone sign-in must not be able to move someone's staff login (D-40). An address another account uses is ignored.
+ */
 export async function updateNameAction(fd: FormData) {
   const { ctx, userId } = await customer();
   const name = String(fd.get('name') ?? '').trim().slice(0, 100);
-  const email = String(fd.get('email') ?? '').trim().toLowerCase().slice(0, 200) || null;
-  await withUser(ctx, (tx) => tx`update users set full_name = ${name}, email = ${email} where id = ${userId}`);
+  const raw = String(fd.get('email') ?? '').trim().toLowerCase().slice(0, 200);
+  // Blank clears the email; a malformed one leaves it as it was.
+  const email = raw === '' ? null : EMAIL_PATTERN.test(raw) ? raw : undefined;
+  const save = (withEmail: boolean) =>
+    withUser(ctx, (tx) => tx`update users set full_name = ${name},
+        email = case when ${withEmail && email !== undefined} and password_set_at is null then ${email ?? null} else email end
+      where id = ${userId}`);
+  try {
+    await save(true);
+  } catch (e) {
+    if ((e as { code?: string }).code !== '23505') throw e;
+    await save(false); // another account already uses that address: keep the name, leave the email as it was
+  }
   revalidatePath('/account');
 }

@@ -19,7 +19,7 @@ function arg(name: string, fallback?: string): string | undefined {
 
 async function main() {
   const { randomToken, sha256Hex, generateDataKey, wrapDataKey, parseKey } = await import('../lib/core/crypto');
-  const { hashPassword } = await import('../lib/core/password');
+  const { resolveInvitee } = await import('../lib/invites');
   const { normalizeKenyanPhone } = await import('../lib/core/phone');
   const { withService } = await import('../lib/db');
   const { env } = await import('../lib/env');
@@ -54,12 +54,11 @@ async function main() {
     if (feePercent) {
       await tx`insert into platform_fee_rules (tenant_id, kind, value) values (${t.id}, 'percent', ${Math.round(Number(feePercent) * 100)})`;
     }
-    let [u] = await tx`select id from users where email = ${adminEmail}`;
-    if (!u) [u] = await tx`insert into users (email, full_name, password_hash) values (${adminEmail}, '', ${await hashPassword(randomToken(24))}) returning id`;
+    const invitee = await resolveInvitee(tx, { email: adminEmail });
     // No inviting platform admin on record yet if this is run before any exists (bootstrap) — invited_by is nullable.
     const [admin] = await tx`select id from users where is_platform_admin limit 1`;
     await tx`insert into tenant_memberships (tenant_id, user_id, role, invited_by, invite_token_hash, invite_expires_at)
-      values (${t.id}, ${u.id}, 'shop_admin', ${admin?.id ?? null}, ${sha256Hex(token)}, now() + interval '7 days')`;
+      values (${t.id}, ${invitee.userId}, 'shop_admin', ${admin?.id ?? null}, ${sha256Hex(token)}, now() + interval '7 days')`;
     return { tenantId: t.id as string, host };
   });
 

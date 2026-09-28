@@ -18,11 +18,13 @@ export const metadata = { title: 'Account' };
 export default async function AccountPage() {
   const { session, tenant } = await requireCustomer('/account');
   const [ctx, t] = await Promise.all([requestCtx(), getTranslations()]);
-  const { addresses, devices, invoices, identity } = await withUser(ctx, async (tx) => ({
+  const { addresses, devices, invoices, identity, staffLogin } = await withUser(ctx, async (tx) => ({
     addresses: await tx`select * from addresses where user_id = ${ctx.userId} order by created_at desc`,
     devices: await tx`select * from devices where user_id = ${ctx.userId} order by created_at desc`,
     invoices: await tx`select i.id, i.number, i.total_cents, i.issued_at, j.ref from invoices i join jobs j on j.id = i.job_id where j.customer_user_id = ${ctx.userId} and i.status = 'issued' order by i.issued_at desc`,
     identity: await getCustomerIdSummary(tx, tenant.id, ctx.userId!),
+    // An account with a password signs in to a shop's bench with this email; it is not edited from here (D-40).
+    staffLogin: ((await tx`select password_set_at is not null as v from users where id = ${ctx.userId}`)[0]?.v ?? false) as boolean,
   }));
   return (
     <div className="space-y-4">
@@ -33,9 +35,15 @@ export default async function AccountPage() {
           <Field label={t('common.name')} htmlFor="name">
             <Input id="name" name="name" defaultValue={session.user.full_name} />
           </Field>
-          <Field label={t('common.email')} htmlFor="email" hint={t('common.optional')}>
-            <Input id="email" name="email" type="email" defaultValue={session.user.email ?? ''} />
-          </Field>
+          {staffLogin ? (
+            <Field label={t('common.email')} htmlFor="email" hint="This is your staff sign-in email. Ask your shop admin to change it.">
+              <Input id="email" type="email" defaultValue={session.user.email ?? ''} readOnly />
+            </Field>
+          ) : (
+            <Field label={t('common.email')} htmlFor="email" hint={t('common.optional')}>
+              <Input id="email" name="email" type="email" defaultValue={session.user.email ?? ''} />
+            </Field>
+          )}
           <Button type="submit">{t('common.save')}</Button>
         </form>
       </Section>

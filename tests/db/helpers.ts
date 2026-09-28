@@ -16,14 +16,15 @@ export async function closeAll() {
   await Promise.all([app.end(), service.end()]);
 }
 
-export type Ctx = { userId?: string | null; tenantId?: string | null; impersonating?: boolean };
+export type Ctx = { userId?: string | null; tenantId?: string | null; impersonating?: boolean; authMethod?: 'otp' | 'password' };
 
 /** Run `fn` inside an app-role transaction with the request context set (what the web app does per request). */
 export async function asUser<T>(ctx: Ctx, fn: (tx: TransactionSql) => Promise<T>): Promise<T> {
   return app.begin(async (tx) => {
     await tx`select set_config('app.user_id', ${ctx.userId ?? ''}, true),
                     set_config('app.tenant_id', ${ctx.tenantId ?? ''}, true),
-                    set_config('app.impersonating', ${ctx.impersonating ? 'true' : ''}, true)`;
+                    set_config('app.impersonating', ${ctx.impersonating ? 'true' : ''}, true),
+                    set_config('app.auth_method', ${ctx.authMethod ?? ''}, true)`;
     return fn(tx);
   }) as Promise<T>;
 }

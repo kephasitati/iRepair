@@ -11,7 +11,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ asset: 
   try {
     const body = await getObject(key);
     const type = key.endsWith('.png') ? 'image/png' : key.endsWith('.svg') ? 'image/svg+xml' : key.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
-    return new Response(new Uint8Array(body), { headers: { 'content-type': type, 'cache-control': 'public, max-age=300' } });
+    // An SVG is a document: sandboxed so a script inside a shop's logo cannot run on the shop's origin.
+    const headers = new Headers({ 'content-type': type, 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' });
+    if (type === 'image/svg+xml') headers.set('content-security-policy', "sandbox; script-src 'none'");
+    return new Response(new Uint8Array(body), { headers });
   } catch {
     return new Response('not found', { status: 404 });
   }

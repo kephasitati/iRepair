@@ -28,9 +28,18 @@ export class SmtpEmail implements EmailSender {
   }
 }
 
+/** Development driver: prints the email to the server console. Never chosen in production (see emailSender). */
 export class ConsoleEmail implements EmailSender {
   async send(input: { to: string; subject: string; text: string }) {
     console.log(`\n✉️  EMAIL -> ${input.to}\nSubject: ${input.subject}\n${input.text}\n`);
     return { ok: true, messageId: `console-${Date.now()}` };
+  }
+}
+
+/** Production with no SMTP configured: fails without printing the message (invoices and invites are personal data). */
+export class UnconfiguredEmail implements EmailSender {
+  async send(input: { subject: string }) {
+    console.error(`[email] no SMTP configured; "${input.subject.slice(0, 40)}" not sent`);
+    return { ok: false, error: 'not_configured' };
   }
 }

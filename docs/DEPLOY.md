@@ -119,3 +119,19 @@ reflect what actually happened, including the parts the Dokploy UI doesn't make 
   silently rather than erroring loudly, so make sure it shows healthy after any change.
 - **Monitoring:** `/platform/monitor` (platform console) surfaces dead outbox jobs, webhook errors, stuck payments
   and failed SMS — check it after a deploy, and periodically otherwise.
+
+## After deploying 0023 (account security, D-40)
+
+Run `scripts/migrate.ts` as usual; migration 0023 backfills `sessions.auth_method` and `users.password_set_at`, so
+nobody has to sign in again. Two things to check in the Environment tab afterwards:
+
+- **SMS and email are no longer allowed to fall back to the console in production.** With `SMS_DRIVER=console` (or
+  no Africa's Talking key), customer sign-in codes are simply not sent and the sign-in screen says so; staff sign-in
+  is unaffected. Set `SMS_DRIVER=africastalking` with `AT_USERNAME`, `AT_API_KEY` and `AT_SENDER_ID`, or add the
+  shop's own SMS credentials under Admin → Settings → Credentials. Likewise `EMAIL_DRIVER=smtp` with `SMTP_URL`.
+- Anyone invited before this release who never accepted keeps their link; accepting works as before for a new
+  account. An invitee who already has an account (staff elsewhere, or the platform admin) is asked for that
+  account's password instead of setting one.
+- **SMS delivery reports need a token.** Set `SMS_DLR_TOKEN` (24+ random characters, e.g. `openssl rand -hex 24`)
+  and give Africa's Talking the callback URL `https://<platform host>/api/webhooks/sms/dlr?token=<SMS_DLR_TOKEN>`.
+  Without it the route answers 404 and reports are ignored (sending still works).

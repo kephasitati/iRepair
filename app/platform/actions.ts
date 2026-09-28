@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createSession, destroySession, getSession, requirePlatformAdmin } from '@/lib/auth';
 import { run, str, type ActionResult } from '@/lib/actions';
 import { generateDataKey, parseKey, randomToken, sha256Hex, wrapDataKey } from '@/lib/core/crypto';
-import { hashPassword } from '@/lib/core/password';
+import { resolveInvitee } from '@/lib/invites';
 import { normalizeKenyanPhone } from '@/lib/core/phone';
 import { servicePool, withService } from '@/lib/db';
 import { env } from '@/lib/env';
@@ -42,10 +42,9 @@ export async function createTenantAction(_prev: unknown, fd: FormData): Promise<
       const feeKind = str(fd, 'fee_kind') || 'percent';
       const feeValue = Math.round(Number(str(fd, 'fee_value') || '0') * (feeKind === 'percent' ? 100 : 100));
       if (feeValue > 0) await tx`insert into platform_fee_rules (tenant_id, kind, value) values (${t.id}, ${feeKind}, ${feeValue})`;
-      let [u] = await tx`select id from users where email = ${adminEmail}`;
-      if (!u) [u] = await tx`insert into users (email, full_name, password_hash) values (${adminEmail}, '', ${await hashPassword(randomToken(24))}) returning id`;
+      const invitee = await resolveInvitee(tx, { email: adminEmail });
       await tx`insert into tenant_memberships (tenant_id, user_id, role, invited_by, invite_token_hash, invite_expires_at)
-        values (${t.id}, ${u.id}, 'shop_admin', ${admin.user.id}, ${sha256Hex(token)}, now() + interval '7 days')`;
+        values (${t.id}, ${invitee.userId}, 'shop_admin', ${admin.user.id}, ${sha256Hex(token)}, now() + interval '7 days')`;
       return t.id as string;
     });
     await platformAudit(admin.user.id, tenantId, 'tenant.create', { slug, name, adminEmail });
@@ -107,7 +106,7 @@ export async function completeSupportHandoff(token: string): Promise<boolean> {
     return u?.is_platform_admin && !u.disabled ? row : null;
   });
   if (!h) return false;
-  await createSession(h.user_id, tenant.id, { mfaVerified: true, impersonatingTenantId: tenant.id, impersonationReason: h.reason });
+  await createSession(h.user_id, tenant.id, 'password', { mfaVerified: true, impersonatingTenantId: tenant.id, impersonationReason: h.reason });
   await platformAudit(h.user_id, tenant.id, 'support.start', { reason: h.reason });
   return true;
 }

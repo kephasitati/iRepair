@@ -34,10 +34,21 @@ export class AfricasTalkingSms implements SmsSender {
   }
 }
 
-/** Development driver: prints the SMS to the server console. */
+/** Development driver: prints the SMS to the server console. Never chosen in production (see smsSender). */
 export class ConsoleSms implements SmsSender {
   async send(input: { to: string; body: string }): Promise<SmsResult> {
     console.log(`\n📱 SMS -> ${input.to}\n${input.body}\n`);
     return { ok: true, messageId: `console-${Date.now()}` };
+  }
+}
+
+/**
+ * Production with no SMS credentials: every send fails, loudly and without the message. An OTP in a container log would
+ * let anyone who reads logs sign in as any customer, so this is the only acceptable fallback.
+ */
+export class UnconfiguredSms implements SmsSender {
+  async send(input: { to: string }): Promise<SmsResult> {
+    console.error(`[sms] no SMS provider configured; message to …${input.to.slice(-3)} not sent`);
+    return { ok: false, error: 'not_configured' };
   }
 }

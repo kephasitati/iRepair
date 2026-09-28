@@ -46,14 +46,16 @@ export function servicePool(): Sql {
   return (g.__rdService ??= make(env().DATABASE_SERVICE_URL));
 }
 
-export type RequestCtx = { userId: string | null; tenantId: string | null; impersonating?: boolean };
+/** `authMethod: 'otp'` marks a customer sign-in: the RLS helpers then grant no staff or platform rights (D-40). */
+export type RequestCtx = { userId: string | null; tenantId: string | null; impersonating?: boolean; authMethod?: 'otp' | 'password' };
 
 /** Run `fn` as the app role with RLS scoped to this user and shop. */
 export async function withUser<T>(ctx: RequestCtx, fn: (tx: Tx) => Promise<T>): Promise<T> {
   return appPool().begin(async (tx) => {
     await tx`select set_config('app.user_id', ${ctx.userId ?? ''}, true),
                     set_config('app.tenant_id', ${ctx.tenantId ?? ''}, true),
-                    set_config('app.impersonating', ${ctx.impersonating ? 'true' : ''}, true)`;
+                    set_config('app.impersonating', ${ctx.impersonating ? 'true' : ''}, true),
+                    set_config('app.auth_method', ${ctx.authMethod ?? ''}, true)`;
     return fn(tx);
   }) as Promise<T>;
 }

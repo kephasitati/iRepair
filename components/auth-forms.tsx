@@ -16,6 +16,7 @@ const CODE_TO_KEY: Record<string, string> = {
   too_many_attempts: 'tooManyAttempts',
   invalid_login: 'invalidLogin',
   not_staff: 'notStaff',
+  password_required: 'passwordRequired',
   forbidden: 'forbidden',
   mfa_wrong: 'mfaWrong',
 };
@@ -132,7 +133,8 @@ export function MfaSetupForm({ area, secret, qrDataUrl }: { area: 'shop' | 'plat
   );
 }
 
-export function AcceptInviteForm({ token, email }: { token: string; email: string }) {
+/** `existingAccount`: the invitee already signs in somewhere, so they confirm with that password instead of choosing one. */
+export function AcceptInviteForm({ token, email, existingAccount }: { token: string; email: string; existingAccount: boolean }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState(acceptInviteAction, null);
   const error = state && !state.ok ? (state.error.startsWith('password:') ? 'Use at least 12 characters with upper and lower case letters and a number.' : state.error) : null;
@@ -141,12 +143,20 @@ export function AcceptInviteForm({ token, email }: { token: string; email: strin
       <input type="hidden" name="token" value={token} />
       <p className="text-sm text-muted-foreground">{email}</p>
       <ErrorText>{error}</ErrorText>
-      <Field label={t('common.name')} htmlFor="name">
-        <Input id="name" name="name" autoComplete="name" required />
-      </Field>
-      <Field label={t('common.password')} htmlFor="password" hint="At least 12 characters with upper and lower case letters and a number.">
-        <Input id="password" name="password" type="password" autoComplete="new-password" minLength={12} required />
-      </Field>
+      {existingAccount ? (
+        <Field label={t('common.password')} htmlFor="password">
+          <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        </Field>
+      ) : (
+        <>
+          <Field label={t('common.name')} htmlFor="name">
+            <Input id="name" name="name" autoComplete="name" required />
+          </Field>
+          <Field label={t('common.password')} htmlFor="password" hint="At least 12 characters with upper and lower case letters and a number.">
+            <Input id="password" name="password" type="password" autoComplete="new-password" minLength={12} required />
+          </Field>
+        </>
+      )}
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {t('common.continue')}
       </Button>

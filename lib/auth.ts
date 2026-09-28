@@ -1,18 +1,19 @@
 import 'server-only';
 import { cache } from 'react';
 import { cookies, headers } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { randomDigits, randomToken, sha256Hex } from './core/crypto';
+import { notFound, redirect } from 'next/navigation';
+import { randomDigits, randomToken, safeEqual, sha256Hex } from './core/crypto';
 import { normalizeKenyanPhone } from './core/phone';
 import { verifyPassword } from './core/password';
 import { servicePool, withService, type RequestCtx } from './db';
 import { env, isProd } from './env';
 import { getTenant, type Tenant } from './tenant';
-import { smsSender } from './providers';
+import { loadTenantSecrets, smsSender } from './providers';
 
 /**
  * Sessions are opaque random tokens stored hashed; the cookie is host-bound (DECISIONS D-9).
- * Customers sign in with phone + OTP; staff with email + password (+ optional TOTP).
+ * Customers sign in with phone + OTP; staff with email + password (+ optional TOTP). A session remembers which, and
+ * only a password session carries staff or platform rights (D-40): a phone number alone never opens the bench.
  */
 
 export const SESSION_COOKIE = 'rd_session';
@@ -28,9 +29,12 @@ export type SessionUser = {
   totp_enabled: boolean;
 };
 
+export type AuthMethod = 'otp' | 'password';
+
 export type Session = {
   id: string;
   user: SessionUser;
+  authMethod: AuthMethod;
   mfaVerified: boolean;
   impersonatingTenantId: string | null;
   /** Membership role on the current tenant, if any. */
@@ -52,21 +56,28 @@ export async function rateLimit(bucket: string, max: number, windowSeconds: numb
   return Number(r.count) <= max;
 }
 
+/** The caller's address as the reverse proxy (Traefik or Caddy) reports it; the proxy replaces any client-sent value. */
+export async function clientIp(): Promise<string | null> {
+  const h = await headers();
+  return (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || null;
+}
+
 // ---------------------------------------------------------------------------
 // Session
 // ---------------------------------------------------------------------------
 export async function createSession(
   userId: string,
   tenantId: string | null,
+  method: AuthMethod,
   opts: { mfaVerified?: boolean; impersonatingTenantId?: string; impersonationReason?: string } = {},
 ) {
   const token = randomToken(32);
   const h = await headers();
   const ua = h.get('user-agent')?.slice(0, 300) ?? null;
-  const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || null;
+  const ip = await clientIp();
   const support = !!opts.impersonatingTenantId;
-  await servicePool()`insert into sessions (user_id, token_hash, tenant_id, mfa_verified, ip, user_agent, expires_at, impersonating_tenant_id, impersonation_reason, impersonation_expires_at)
-    values (${userId}, ${sha256Hex(token)}, ${tenantId}, ${opts.mfaVerified ?? false}, ${ip}::inet, ${ua},
+  await servicePool()`insert into sessions (user_id, token_hash, tenant_id, auth_method, mfa_verified, ip, user_agent, expires_at, impersonating_tenant_id, impersonation_reason, impersonation_expires_at)
+    values (${userId}, ${sha256Hex(token)}, ${tenantId}, ${method}, ${opts.mfaVerified ?? false}, ${ip}::inet, ${ua},
             ${support ? new Date(Date.now() + 60 * 60 * 1000) : new Date(Date.now() + SESSION_DAYS * 86400 * 1000)},
             ${opts.impersonatingTenantId ?? null}, ${opts.impersonationReason ?? null}, ${support ? new Date(Date.now() + 60 * 60 * 1000) : null})`;
   await servicePool()`update users set last_login_at = now() where id = ${userId}`;
@@ -87,12 +98,12 @@ export const getSession = cache(async (): Promise<Session | null> => {
   if (!token) return null;
   const tenant = await getTenant();
   const rows = await servicePool()`
-    select s.id as session_id, s.mfa_verified, s.impersonating_tenant_id, s.impersonation_expires_at,
-           u.id, u.phone_e164, u.email, u.full_name, u.is_platform_admin, u.totp_enabled, u.disabled,
-           m.role
+    select s.id as session_id, s.auth_method, s.mfa_verified, s.impersonating_tenant_id, s.impersonation_expires_at,
+           u.id, u.phone_e164, u.email, u.full_name, u.is_platform_admin and s.auth_method = 'password' as is_platform_admin,
+           u.totp_enabled, u.disabled, m.role
     from sessions s
     join users u on u.id = s.user_id
-    left join tenant_memberships m on m.user_id = u.id and m.active and m.tenant_id = ${tenant?.id ?? null}
+    left join tenant_memberships m on m.user_id = u.id and m.active and m.tenant_id = ${tenant?.id ?? null} and s.auth_method = 'password'
     where s.token_hash = ${sha256Hex(token)} and s.expires_at > now()
     limit 1`;
   const r = rows[0];
@@ -104,6 +115,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
   return {
     id: r.session_id,
     user: { id: r.id, phone_e164: r.phone_e164, email: r.email, full_name: r.full_name, is_platform_admin: r.is_platform_admin, totp_enabled: r.totp_enabled },
+    authMethod: r.auth_method,
     mfaVerified: r.mfa_verified,
     impersonatingTenantId: impersonating,
     role: r.role ?? null,
@@ -115,7 +127,12 @@ export const getSession = cache(async (): Promise<Session | null> => {
 export async function requestCtx(): Promise<RequestCtx> {
   const s = await getSession();
   const t = await getTenant();
-  return { userId: s?.user.id ?? null, tenantId: t?.id ?? null, impersonating: !!(s?.user.is_platform_admin && s.impersonatingTenantId && s.impersonatingTenantId === t?.id) };
+  return {
+    userId: s?.user.id ?? null,
+    tenantId: t?.id ?? null,
+    impersonating: !!(s?.user.is_platform_admin && s.impersonatingTenantId && s.impersonatingTenantId === t?.id),
+    authMethod: s?.authMethod ?? 'otp',
+  };
 }
 
 export async function requireCustomer(next?: string): Promise<{ session: Session; tenant: Tenant }> {
@@ -133,7 +150,7 @@ export async function requireStaff(minRole: 'technician' | 'shop_admin' = 'techn
   if (!session) redirect('/staff/login');
   const supportMode = session.user.is_platform_admin && session.impersonatingTenantId === tenant.id;
   const role = supportMode ? 'shop_admin' : session.role;
-  if (!role) redirect('/staff/login?error=not_staff');
+  if (!role) redirect(`/staff/login?error=${session.authMethod === 'otp' ? 'password_required' : 'not_staff'}`);
   if (minRole === 'shop_admin' && role !== 'shop_admin') redirect('/bench?error=forbidden');
   if (role === 'shop_admin' && !supportMode && (session.user.totp_enabled || tenant.settings.require_admin_mfa) && !session.mfaVerified) {
     redirect(session.user.totp_enabled ? '/staff/mfa' : '/staff/mfa/setup');
@@ -141,10 +158,15 @@ export async function requireStaff(minRole: 'technician' | 'shop_admin' = 'techn
   return { session, tenant, role };
 }
 
+/**
+ * Platform powers exist only on the platform host, and never inside a support-mode session: a support session lives on
+ * a shop's origin, where shop-controlled content (a logo, say) must not be able to reach platform actions.
+ */
 export async function requirePlatformAdmin(): Promise<Session> {
+  if (await getTenant()) notFound();
   const session = await getSession();
   if (!session) redirect('/platform/login');
-  if (!session.user.is_platform_admin) redirect('/platform/login?error=forbidden');
+  if (!session.user.is_platform_admin || session.impersonatingTenantId) redirect('/platform/login?error=forbidden');
   if (!session.mfaVerified) redirect(session.user.totp_enabled ? '/platform/mfa' : '/platform/mfa/setup');
   return session;
 }
@@ -157,15 +179,15 @@ export type OtpSendResult = { ok: true; phone: string } | { ok: false; error: 'i
 export async function sendOtp(rawPhone: string, tenant: Tenant | null): Promise<OtpSendResult> {
   const phone = normalizeKenyanPhone(rawPhone);
   if (!phone) return { ok: false, error: 'invalid_phone' };
-  const h = await headers();
-  const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'local';
+  const ip = (await clientIp()) ?? 'local';
   if (!(await rateLimit(`otp:phone:${phone}`, 3, 15 * 60)) || (isProd() && !(await rateLimit(`otp:ip:${ip}`, 10, 60 * 60)))) {
     return { ok: false, error: 'rate_limited' };
   }
   const code = env().OTP_DEV_CODE && !isProd() ? env().OTP_DEV_CODE! : randomDigits(6);
   await servicePool()`insert into otp_codes (phone_e164, code_hash, expires_at) values (${phone}, ${sha256Hex(`${phone}:${code}`)}, now() + make_interval(mins => ${OTP_TTL_MIN}))`;
   const shop = tenant?.branding.display_name ?? env().PLATFORM_NAME;
-  const res = await smsSender(tenant).send({ to: phone, body: `${shop}: your sign-in code is ${code}. It expires in ${OTP_TTL_MIN} minutes.`, senderId: tenant?.branding.sms_sender_id });
+  // The shop's own SMS account, when it has one, so the code arrives under the shop's sender name.
+  const res = await smsSender(tenant, tenant ? await loadTenantSecrets(tenant.id) : undefined).send({ to: phone, body: `${shop}: your sign-in code is ${code}. It expires in ${OTP_TTL_MIN} minutes.`, senderId: tenant?.branding.sms_sender_id });
   if (!res.ok) return { ok: false, error: 'send_failed' };
   return { ok: true, phone };
 }
@@ -178,7 +200,7 @@ export async function verifyOtp(phone: string, code: string, fullName?: string):
     if (!row) return { ok: false, error: 'expired' };
     if (new Date(row.expires_at) < new Date()) return { ok: false, error: 'expired' };
     if (row.attempts >= 5) return { ok: false, error: 'too_many_attempts' };
-    if (row.code_hash !== sha256Hex(`${phone}:${code.trim()}`)) {
+    if (!safeEqual(row.code_hash, sha256Hex(`${phone}:${code.trim()}`))) {
       await tx`update otp_codes set attempts = attempts + 1 where id = ${row.id}`;
       return { ok: false, error: 'invalid_code' };
     }
@@ -198,7 +220,9 @@ export async function verifyOtp(phone: string, code: string, fullName?: string):
 // ---------------------------------------------------------------------------
 export async function staffLogin(email: string, password: string): Promise<{ ok: true; userId: string; totpEnabled: boolean } | { ok: false; error: 'invalid' | 'rate_limited' }> {
   const e = email.trim().toLowerCase();
-  if (!(await rateLimit(`login:${e}`, 10, 15 * 60))) return { ok: false, error: 'rate_limited' };
+  // Per account (stops guessing one password) and per address (stops spraying one password across many accounts).
+  const ip = (await clientIp()) ?? 'local';
+  if (!(await rateLimit(`login:${e}`, 10, 15 * 60)) || !(await rateLimit(`login:ip:${ip}`, 30, 15 * 60))) return { ok: false, error: 'rate_limited' };
   const [u] = await servicePool()`select id, password_hash, totp_enabled, disabled from users where email = ${e}`;
   if (!u || u.disabled || !(await verifyPassword(password, u.password_hash))) return { ok: false, error: 'invalid' };
   return { ok: true, userId: u.id, totpEnabled: u.totp_enabled };

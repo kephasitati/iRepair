@@ -5,7 +5,11 @@ import { withUser } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+/** Quoted, and a leading formula character is neutralised: spreadsheets evaluate `=`, `+`, `-`, `@` cells even inside quotes. */
+const cell = (v: unknown) => {
+  const s = String(v ?? '');
+  return `"${(/^[=+\-@\t\r]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
+};
 
 /** Customer list as CSV (shop admins only; the export is audited — it is personal data leaving the system). */
 export async function GET(req: Request) {

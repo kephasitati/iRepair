@@ -1,5 +1,5 @@
 import 'server-only';
-import { randomToken } from '@/lib/core/crypto';
+import { randomToken, safeEqual } from '@/lib/core/crypto';
 import { centsToKes, isWholeShilling } from '@/lib/core/money';
 import { servicePool, withService, withUser, type RequestCtx, type Tx } from '@/lib/db';
 import { env } from '@/lib/env';
@@ -39,7 +39,7 @@ export async function amountDue(tx: Tx, job: JobRow, purpose: PaymentPurpose, qu
 
 export type InitiateResult =
   | { ok: true; paymentId: string; checkoutRequestId: string; simulated: boolean; customerMessage: string }
-  | { ok: false; error: string };
+  | { ok: false; error: 'rate_limited' | 'rejected' };
 
 /**
  * Create the payments row and send the STK push. Runs the DB part as the user (RLS proves they may pay this job)
@@ -86,8 +86,11 @@ export async function initiateStkPayment(ctx: RequestCtx, tenant: Tenant, jobId:
     });
     return { ok: true, paymentId: payment.id, checkoutRequestId: res.checkoutRequestId, simulated, customerMessage: res.customerMessage };
   } catch (e) {
-    await servicePool()`update payments set status = 'failed', result_desc = ${(e as Error).message.slice(0, 300)} where id = ${payment.id}`;
-    return { ok: false, error: (e as Error).message };
+    // The gateway's own wording stays with the payment row for staff; the customer gets fixed copy.
+    const detail = (e as Error).message.slice(0, 300);
+    console.warn(`[mpesa] stk push failed for payment ${payment.id}: ${detail}`);
+    await servicePool()`update payments set status = 'failed', result_desc = ${detail} where id = ${payment.id}`;
+    return { ok: false, error: 'rejected' };
   }
 }
 
@@ -113,7 +116,7 @@ export async function handleMpesaCallback(token: string, rawBody: string, header
   try {
     await withService(async (tx) => {
       const [p] = await tx`select id, callback_token from payments where checkout_request_id = ${parsed.checkoutRequestId}`;
-      if (!p || p.callback_token !== token) throw new Error('unknown payment or bad token');
+      if (!p || !safeEqual(p.callback_token, token)) throw new Error('unknown payment or bad token');
       await tx`update webhook_events set tenant_id = (select tenant_id from payments where id = ${p.id}), signature_valid = true where id = ${evt.id}`;
       await tx`select confirm_payment(${parsed.checkoutRequestId}, ${parsed.resultCode}, ${parsed.resultDesc}, ${parsed.receipt ?? null},
         ${parsed.amountKes != null ? Math.round(parsed.amountKes * 100) : null}, ${tx.json(JSON.parse(rawBody))})`;

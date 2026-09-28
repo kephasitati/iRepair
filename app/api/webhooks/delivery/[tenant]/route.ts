@@ -6,18 +6,24 @@ import { loadTenantById } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
+const MAX_BODY_BYTES = 64 * 1024;
+
 /**
  * Courier status webhooks, one URL per shop: /api/webhooks/delivery/<tenant slug>.
- * Logged raw first, signature-verified by the provider adapter, deduplicated by the provider's event id.
+ * Logged raw first (for a known shop only, and size-capped), signature-verified by the provider adapter, deduplicated
+ * by the provider's event id.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: slug } = await params;
+  if (!/^[a-z0-9-]{1,40}$/.test(slug)) return new Response('unknown tenant', { status: 404 });
+  if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) return new Response('too large', { status: 413 });
   const raw = await req.text();
+  if (raw.length > MAX_BODY_BYTES) return new Response('too large', { status: 413 });
   const headers = Object.fromEntries([...req.headers.entries()].map(([k, v]) => [k.toLowerCase(), v]));
   const sql = servicePool();
   const [t] = await sql`select id from tenants where slug = ${slug}`;
-  const [evt] = await sql`insert into webhook_events (source, tenant_id, headers, raw_body) values ('tumaboda', ${t?.id ?? null}, ${sql.json(headers)}, ${raw}) returning id`;
   if (!t) return new Response('unknown tenant', { status: 404 });
+  const [evt] = await sql`insert into webhook_events (source, tenant_id, headers, raw_body) values ('tumaboda', ${t.id}, ${sql.json(headers)}, ${raw}) returning id`;
 
   const tenant = await loadTenantById(t.id);
   if (!tenant) return new Response('unknown tenant', { status: 404 });
