@@ -68,7 +68,7 @@ export async function generateInvoicePdf(invoiceId: string) {
     from invoices i join jobs j on j.id = i.job_id where i.id = ${invoiceId}`;
   if (!inv) return;
   const payments =
-    await sql`select mpesa_receipt as receipt, amount_cents, purpose, confirmed_at from payments where job_id = ${inv.job_id} and status = 'success' order by confirmed_at`;
+    await sql`select mpesa_receipt as receipt, method, amount_cents, purpose, confirmed_at from payments where job_id = ${inv.job_id} and status = 'success' order by confirmed_at`;
   // Loaded lazily: @react-pdf/renderer pulls in an ESM-only hyphenation package that fails to resolve through
   // tsx's CommonJS require() path at process startup. A dynamic import always uses the ESM resolver, so it only
   // needs to succeed once a PDF is actually being generated (Next's own bundler doesn't hit this at all).
@@ -92,7 +92,13 @@ export async function generateInvoicePdf(invoiceId: string) {
     total_cents: Number(inv.total_cents),
     paid_cents: Number(inv.paid_cents),
     balance_cents: Number(inv.balance_cents),
-    payments: payments.map((p) => ({ receipt: p.receipt, purpose: p.purpose, confirmed_at: p.confirmed_at, amount_cents: Number(p.amount_cents) })),
+    payments: payments.map((p) => ({
+      receipt: p.receipt,
+      method: p.method,
+      purpose: p.purpose,
+      confirmed_at: p.confirmed_at,
+      amount_cents: Number(p.amount_cents),
+    })),
   });
   const key = invoiceKey(inv.tenant_id, inv.id);
   await putObject(key, pdf, "application/pdf");

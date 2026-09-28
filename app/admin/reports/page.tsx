@@ -29,7 +29,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       await tx`select to_char(date_trunc('month', confirmed_at at time zone 'Africa/Nairobi'), 'Mon YYYY') as month, purpose, sum(amount_cents)::bigint as cents
       from payments where tenant_id = ${tenant.id} and status = 'success' and confirmed_at >= ${since} group by 1, 2, date_trunc('month', confirmed_at at time zone 'Africa/Nairobi') order by date_trunc('month', confirmed_at at time zone 'Africa/Nairobi')`;
     const [totals] =
-      await tx`select coalesce(sum(amount_cents), 0)::bigint as collected, count(distinct job_id)::int as jobs_paid from payments where tenant_id = ${tenant.id} and status = 'success' and confirmed_at >= ${since}`;
+      await tx`select coalesce(sum(amount_cents), 0)::bigint as collected, coalesce(sum(amount_cents) filter (where method = 'cash'), 0)::bigint as cash, count(distinct job_id)::int as jobs_paid from payments where tenant_id = ${tenant.id} and status = 'success' and confirmed_at >= ${since}`;
     const [refunds] =
       await tx`select coalesce(sum(amount_cents), 0)::bigint as refunded from refunds where tenant_id = ${tenant.id} and created_at >= ${since}`;
     const [turnaround] = await tx`
@@ -74,7 +74,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <Stat
           label="Collected (M-Pesa)"
           value={formatKes(Number(r.totals.collected))}
-          sub={`${r.totals.jobs_paid} jobs · refunds ${formatKes(Number(r.refunds.refunded))}`}
+          sub={`${r.totals.jobs_paid} jobs · cash ${formatKes(Number(r.totals.cash))} · refunds ${formatKes(Number(r.refunds.refunded))}`}
         />
         <Stat
           label={t("admin.turnaround")}

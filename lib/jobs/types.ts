@@ -29,6 +29,10 @@ export type JobRow = {
   passcode_locked: boolean;
   passcode_shared: boolean;
   identity_method: "device" | "id";
+  /** "walk_in": opened by staff at the counter (D-42); its pickup_fee is the consultation fee alone. */
+  origin: "online" | "walk_in";
+  terms_version: string | null;
+  terms_accepted_at: string | null;
   declared_value_cents: number;
   pickup_address: Address | null;
   pickup_window_start: string | null;

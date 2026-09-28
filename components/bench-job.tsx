@@ -31,6 +31,9 @@ import {
   shopMessageAction,
   waiveReturnFeeAction,
   requestDispatchAction,
+  recordCashPaymentAction,
+  resendWalkInLinkAction,
+  sendPaymentPromptAction,
 } from "@/app/bench/actions";
 
 type Res = { ok: boolean; error?: string };
@@ -686,6 +689,90 @@ export function AdminCancel({ jobId }: { jobId: string }) {
           Back
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Taking a payment at the counter (D-42): any staff member can send the customer an M-Pesa prompt; a shop admin can
+ * record cash, after confirming the amount. The server works out the amount due; the one shown here is for reading.
+ */
+export function CounterPayment({
+  jobId,
+  purpose,
+  label,
+  amountCents,
+  isAdmin,
+}: {
+  jobId: string;
+  purpose: string;
+  label: string;
+  amountCents: number;
+  isAdmin: boolean;
+}) {
+  const { pending, error, act } = useAct();
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div className="space-y-2 rounded-xl border bg-muted/30 p-3" data-testid={`counter-payment-${purpose}`}>
+      <p className="text-sm">
+        <span className="font-medium">{label}</span> · {formatKes(amountCents)} due
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          disabled={pending}
+          onClick={() => act(() => sendPaymentPromptAction(jobId, purpose), "M-Pesa prompt sent to the customer's phone")}
+          data-testid="send-mpesa-prompt"
+        >
+          Send M-Pesa prompt
+        </Button>
+        {!isAdmin ? null : confirming ? (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                act(
+                  () => recordCashPaymentAction(jobId, purpose),
+                  "Cash payment recorded",
+                  () => setConfirming(false),
+                )
+              }
+              data-testid="confirm-cash"
+            >
+              {pending ? "Recording…" : `Confirm ${formatKes(amountCents)} received in cash`}
+            </Button>
+            <Button size="sm" variant="ghost" disabled={pending} onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setConfirming(true)} data-testid="record-cash">
+            Record cash
+          </Button>
+        )}
+      </div>
+      {!isAdmin ? <p className="text-xs text-muted-foreground">Paying cash? A shop admin records it.</p> : null}
+      <ErrorText>{error}</ErrorText>
+    </div>
+  );
+}
+
+export function ResendWalkInLink({ jobId }: { jobId: string }) {
+  const { pending, error, act } = useAct();
+  return (
+    <div className="space-y-1">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={pending}
+        onClick={() => act(() => resendWalkInLinkAction(jobId), "Link sent again")}
+        data-testid="resend-walk-in-link"
+      >
+        {pending ? "Sending…" : "Send the SMS again"}
+      </Button>
+      <ErrorText>{error}</ErrorText>
     </div>
   );
 }

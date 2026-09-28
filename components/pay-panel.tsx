@@ -21,6 +21,7 @@ export function PayPanel({
   defaultPhone,
   quoteId,
   simulator,
+  label,
 }: {
   jobId: string;
   purpose: PaymentPurpose;
@@ -28,8 +29,11 @@ export function PayPanel({
   defaultPhone: string;
   quoteId?: string | null;
   simulator: boolean;
+  /** Overrides the purpose's name, e.g. a walk-in's pickup_fee is its consultation fee. */
+  label?: string;
 }) {
   const t = useTranslations("pay");
+  const purposeLabel = label ?? t(`purpose.${purpose}`);
   const router = useRouter();
   const [phone, setPhone] = useState(defaultPhone);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +80,7 @@ export function PayPanel({
         </span>
         <p className="mt-2 text-[24px] font-semibold tracking-tight">{t("success")}</p>
         <p className="text-[15px] text-ink-3">
-          {t(`purpose.${purpose}`)} · {formatKes(amountCents)}
+          {purposeLabel} · {formatKes(amountCents)}
         </p>
         <p className="text-[15px]">
           {t("receipt")} <span className="font-mono font-semibold">{payment.mpesa_receipt}</span>
@@ -91,7 +95,7 @@ export function PayPanel({
   return (
     <div className="space-y-4" data-testid="pay-panel">
       <div className="flex items-baseline justify-between">
-        <span className="text-sm text-muted-foreground">{t(`purpose.${purpose}`)}</span>
+        <span className="text-sm text-muted-foreground">{purposeLabel}</span>
         <span className="text-[32px] font-semibold tracking-tight tabular-nums">{formatKes(amountCents)}</span>
       </div>
 

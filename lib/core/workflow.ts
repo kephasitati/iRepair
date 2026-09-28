@@ -1,4 +1,5 @@
 import type { JobStatus } from "./state-machine";
+import type { WalkInGate } from "./walk-in";
 
 /** The repair workflow as staff see it: one stage per step of the job, in order. */
 export const STAFF_STAGES: { key: string; label: string; statuses: JobStatus[] }[] = [
@@ -29,7 +30,12 @@ export function stageIndex(status: JobStatus): number {
 export type NextStep = { who: "shop" | "admin" | "customer" | "courier" | "none"; text: string };
 
 /** What has to happen next for a job, and whose move it is — shown at the top of every bench job. */
-export function nextStep(status: JobStatus): NextStep {
+export function nextStep(status: JobStatus, walkIn?: WalkInGate | null): NextStep {
+  if (status === "received_at_shop" && walkIn && !walkIn.ready) {
+    return walkIn.termsAccepted
+      ? { who: "shop", text: "Walk-in: collect the consultation fee. Send an M-Pesa prompt, or a shop admin records cash." }
+      : { who: "customer", text: "Walk-in: the customer accepts the repair terms from the SMS link, or by scanning the QR code below." };
+  }
   switch (status) {
     case "draft":
       return { who: "customer", text: "Customer is still filling in the booking." };

@@ -7,7 +7,7 @@ import { run, type ActionResult } from "@/lib/actions";
 import { normalizeKenyanPhone } from "@/lib/core/phone";
 import { withUser } from "@/lib/db";
 import { autoAdvanceAfterHandover, recordHandover, type HandoverPoint } from "@/lib/jobs/logistics";
-import { initiateStkPayment } from "@/lib/jobs/payments";
+import { initiateStkPayment, STK_FAILURE_COPY } from "@/lib/jobs/payments";
 import { addQuoteMessage, customerAccept, customerCounter, customerDecline } from "@/lib/jobs/quotes";
 import {
   acknowledgeDiscrepancies,
@@ -84,11 +84,6 @@ export async function submitDraftAction(jobId: string): Promise<ActionResult<nul
 // ---------------------------------------------------------------------------
 // Payments
 // ---------------------------------------------------------------------------
-const STK_FAILURE_COPY = {
-  rate_limited: "Too many payment prompts. Please wait a minute.",
-  rejected: "M-Pesa could not send the prompt. Check the number is registered for M-Pesa, then try again.",
-} as const;
-
 export async function startPaymentAction(
   jobId: string,
   purpose: PaymentPurpose,
@@ -262,6 +257,17 @@ export async function confirmDeliveredAction(
         userId,
       ),
     );
+    return null;
+  });
+  done(jobId);
+  return r;
+}
+
+/** A walk-in customer accepts the repair terms from the SMS link (D-42). The database function checks it is their job. */
+export async function acceptWalkInTermsAction(jobId: string): Promise<ActionResult<null>> {
+  const r = await run(async () => {
+    const { ctx } = await customer();
+    await withUser(ctx, (tx) => tx`select accept_walk_in_terms(${jobId}, ${TERMS_VERSION})`);
     return null;
   });
   done(jobId);

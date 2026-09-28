@@ -7,6 +7,8 @@ import { isSimulatedMpesa, mpesaFor } from "@/lib/providers";
 import { parseStkCallback } from "@/lib/providers/mpesa";
 import type { Tenant } from "@/lib/tenant";
 import { rateLimit } from "@/lib/auth";
+import { audit } from "@/lib/audit";
+import type { CashPurpose } from "@/lib/core/walk-in";
 import type { JobRow, PaymentPurpose } from "./types";
 import { UserError } from "./types";
 
@@ -14,9 +16,18 @@ import { UserError } from "./types";
 
 export async function amountDue(tx: Tx, job: JobRow, purpose: PaymentPurpose, quoteId?: string | null): Promise<number> {
   switch (purpose) {
-    case "pickup_fee":
+    case "pickup_fee": {
+      // A walk-in's pickup_fee is the consultation fee alone, paid at the shop before diagnosis (D-42).
+      if (job.origin === "walk_in") {
+        if (job.status !== "received_at_shop") throw new UserError("The consultation fee is not due right now.");
+        // Consent before charge: nobody pays for a repair they have not agreed to.
+        if (!job.terms_accepted_at) throw new UserError("The customer accepts the repair terms first.");
+        const [{ paid }] = await tx`select paid_cents(${job.id}, 'pickup_fee') as paid`;
+        return Math.max(Number(job.pickup_fee_cents) - Number(paid), 0);
+      }
       if (job.status !== "pickup_fee_pending") throw new UserError("The pickup fee is not due right now.");
       return job.pickup_fee_cents;
+    }
     case "deposit": {
       if (job.status !== "deposit_pending") throw new UserError("The deposit is not due right now.");
       const [v] =
@@ -38,6 +49,12 @@ export async function amountDue(tx: Tx, job: JobRow, purpose: PaymentPurpose, qu
     }
   }
 }
+
+/** What the person asking for a prompt is told when M-Pesa refuses it; the gateway's own wording stays on the row. */
+export const STK_FAILURE_COPY = {
+  rate_limited: "Too many payment prompts. Please wait a minute.",
+  rejected: "M-Pesa could not send the prompt. Check the number is registered for M-Pesa, then try again.",
+} as const;
 
 export type InitiateResult =
   { ok: true; paymentId: string; checkoutRequestId: string; simulated: boolean; customerMessage: string } | { ok: false; error: "rate_limited" | "rejected" };
@@ -101,6 +118,42 @@ export async function initiateStkPayment(
     await servicePool()`update payments set status = 'failed', result_desc = ${detail} where id = ${payment.id}`;
     return { ok: false, error: "rejected" };
   }
+}
+
+/**
+ * Cash taken at the counter by a shop admin (D-42). The amount is what is due, never typed in. The row goes through
+ * confirm_payment like an M-Pesa callback, so the job moves on exactly as it would for M-Pesa, and the job row is
+ * locked first, so two clicks cannot record the same money twice. The caller must already be a shop admin.
+ */
+export async function recordCashPayment(
+  tenant: Tenant,
+  input: { jobId: string; purpose: CashPurpose; recordedBy: string; impersonatedBy: string | null },
+): Promise<{ paymentId: string; amountCents: number }> {
+  return withService(async (tx) => {
+    const [job] = (await tx`select * from jobs where id = ${input.jobId} and tenant_id = ${tenant.id} for update`) as JobRow[];
+    if (!job) throw new UserError("Job not found.");
+    const amount = await amountDue(tx, job, input.purpose);
+    if (amount <= 0) throw new UserError("Nothing to pay.");
+    if (!isWholeShilling(amount)) throw new Error(`Amount ${amount} is not a whole shilling`);
+    const [customer] = await tx`select phone_e164 from users where id = ${job.customer_user_id}`;
+    const reference = `cash:${randomToken(16)}`;
+    const [payment] = await tx`insert into payments (tenant_id, job_id, purpose, amount_cents, phone_e164, idempotency_key, callback_token,
+        checkout_request_id, status, method, recorded_by, created_by)
+      values (${tenant.id}, ${job.id}, ${input.purpose}, ${amount}, ${customer?.phone_e164 ?? ""}, ${reference}, ${randomToken(24)},
+        ${reference}, 'pending', 'cash', ${input.recordedBy}, ${input.recordedBy})
+      returning id`;
+    await tx`select confirm_payment(${reference}, 0, 'Cash received at the counter', null, ${amount}, null)`;
+    await audit(tx, {
+      tenantId: tenant.id,
+      actorUserId: input.recordedBy,
+      impersonatedBy: input.impersonatedBy,
+      action: "payment.cash",
+      entity: "payment",
+      entityId: payment.id,
+      diff: { job_id: job.id, purpose: input.purpose, amount_cents: amount },
+    });
+    return { paymentId: payment.id as string, amountCents: amount };
+  });
 }
 
 /** Daraja callback: look up by callback token, then let confirm_payment() do the rest inside one transaction. */

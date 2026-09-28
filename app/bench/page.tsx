@@ -19,7 +19,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
   const jobs = await withUser(
     ctx,
     (tx) => tx`
-    select j.id, j.ref, j.status, j.device_brand, j.device_model, j.assigned_tech_id, j.pickup_window_start, j.updated_at, j.intake_discrepancy,
+    select j.id, j.ref, j.status, j.origin, j.device_brand, j.device_model, j.assigned_tech_id, j.pickup_window_start, j.updated_at, j.intake_discrepancy,
            split_part(u.full_name, ' ', 1) as customer, split_part(tu.full_name, ' ', 1) as tech,
            (select count(*) from disputes d where d.job_id = j.id and d.status = 'open')::int as open_disputes
     from jobs j join users u on u.id = j.customer_user_id left join users tu on tu.id = j.assigned_tech_id
@@ -54,8 +54,15 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
           </ul>
         </section>
       ) : null}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold">{t("bench.board")}</h1>
+        <Link
+          href="/bench/walk-in"
+          className="ml-auto rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          data-testid="new-walk-in"
+        >
+          + Walk-in
+        </Link>
         <div className="flex gap-1 rounded-lg border bg-background p-0.5 text-sm">
           <Link href="/bench" className={cn("rounded-md px-3 py-1", !mine && "bg-primary text-primary-foreground")}>
             All
@@ -79,6 +86,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
                     <Link href={`/bench/jobs/${j.id}`} className="block rounded-xl border bg-card p-3 shadow-xs hover:border-primary/50">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm leading-tight font-medium">{`${j.device_brand} ${j.device_model}`.trim()}</p>
+                        {j.origin === "walk_in" ? <span className="rounded bg-sky-100 px-1.5 text-[10px] text-sky-800">walk-in</span> : null}
                         {j.open_disputes ? <span className="rounded bg-red-100 px-1.5 text-[10px] text-red-800">dispute</span> : null}
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">

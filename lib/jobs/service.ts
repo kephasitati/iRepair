@@ -279,6 +279,8 @@ export async function chooseDropoff(tx: Tx, tenant: Tenant, job: JobRow, input: 
   if (!["repair_complete", "final_payment_pending", "return_fee_pending", "return_failed"].includes(job.status))
     throw new UserError("Drop-off cannot be changed right now.");
   if (input.choice === "other_address" && !input.address?.formatted) throw new UserError("Enter the delivery address.");
+  // A walk-in has no pickup address to send it back to.
+  if (input.choice === "pickup_address" && !job.pickup_address) throw new UserError("Enter the delivery address, or choose to collect at the shop.");
   await tx`update jobs set dropoff_choice = ${input.choice}, dropoff_address = ${input.choice === "other_address" ? tx.json(input.address as never) : input.choice === "pickup_address" ? tx.json(job.pickup_address as never) : null},
     dropoff_window_start = ${input.window_start ?? null}, dropoff_window_end = ${input.window_end ?? null} where id = ${job.id}`;
   let fresh = await loadJob(tx, job.id);

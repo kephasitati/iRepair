@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 /** Server-rendered building blocks shared by the customer and technician job screens. */
 
 /** Segmented progress bar (Apple-style) with step labels. */
-export async function StepBar({ status }: { status: JobStatus }) {
+export async function StepBar({ status, walkIn = false }: { status: JobStatus; walkIn?: boolean }) {
   const t = await getTranslations("steps");
   const idx = CUSTOMER_STEPS.findIndex((s) => s.statuses.includes(status));
   const steps = CUSTOMER_STEPS.slice(0, -1);
@@ -27,7 +27,7 @@ export async function StepBar({ status }: { status: JobStatus }) {
       <div className="mt-2 flex">
         {steps.map((s, i) => (
           <span key={s.key} className={cn("flex-1 text-center text-[11px]", i === idx ? "font-semibold text-ink" : "text-ink-3")}>
-            {t(s.key)}
+            {walkIn && s.key === "pickup" ? t("dropoff") : t(s.key)}
           </span>
         ))}
       </div>
@@ -60,14 +60,16 @@ export function PhotoGrid({ photos, empty }: { photos: Pick<PhotoRow, "id" | "ki
 /** Tracking timeline: completed steps in M-Pesa green, the current one pulsing (mnofu tracking). */
 export async function Timeline({ events }: { events: EventView[] }) {
   const t = await getTranslations("status");
-  const items = events.filter((e) => e.event_kind === "transition" || e.event_kind === "progress.update").reverse();
+  const items = events.filter((e) => ["transition", "progress.update", "terms.accepted"].includes(e.event_kind)).reverse();
   return (
     <ol className="rd-timeline">
       {items.map((e, i) => (
         <li key={e.id} className={i === 0 ? "now" : "done"}>
           <span className="dot" />
           <div>
-            <p className="text-[15px] font-medium">{e.event_kind === "transition" && e.to_status ? t(e.to_status) : e.payload?.body}</p>
+            <p className="text-[15px] font-medium">
+              {e.event_kind === "transition" && e.to_status ? t(e.to_status) : e.event_kind === "terms.accepted" ? t("termsAccepted") : e.payload?.body}
+            </p>
             <p className="text-[13px] text-ink-3">{formatDateTime(e.created_at)}</p>
           </div>
         </li>

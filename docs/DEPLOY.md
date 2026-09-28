@@ -135,3 +135,9 @@ nobody has to sign in again. Two things to check in the Environment tab afterwar
 - **SMS delivery reports need a token.** Set `SMS_DLR_TOKEN` (24+ random characters, e.g. `openssl rand -hex 24`)
   and give Africa's Talking the callback URL `https://<platform host>/api/webhooks/sms/dlr?token=<SMS_DLR_TOKEN>`.
   Without it the route answers 404 and reports are ignored (sending still works).
+
+## After deploying 0024 (walk-ins, D-42)
+
+Run `scripts/migrate.ts`. It adds the walk-in edge, the consent and cash rules, and the default SMS templates; no
+settings are needed. Walk-ins use each shop's per-device consultation fee. Customer consent arrives by SMS, so the SMS
+provider from the 0023 notes above must be configured before the first walk-in.

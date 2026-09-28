@@ -23,6 +23,7 @@ database itself rejects any transition not listed here (`transition_job()`, a `S
 stateDiagram-v2
     [*] --> draft
     draft --> pickup_fee_pending: C
+    draft --> received_at_shop: T (walk-in, D-42)
     draft --> cancelled: C/A
 
     pickup_fee_pending --> pickup_requested: S (pickup fee paid)
