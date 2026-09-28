@@ -221,4 +221,14 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   device's IMEI/serial; with no declared identifier there is simply nothing to mismatch against. Verified in the
   browser as a customer (OTP sign-in, step 2 gating, invalid-number message, ID photo upload, account page,
   signed-URL redirect) and in the database (encrypted number, `identity_method = 'id'`, fee on the job).
+- **D-31 Categorised public price list; social profiles and an About page with Instagram posts.** The published
+  price list (landing page and per-device pages) now groups items by the shop category the catalogue already
+  carries (device → category → items; uncategorised items last under "Other"). Socials: per-shop links (Instagram,
+  Facebook, TikTok, X, YouTube, website) set in Settings → Branding, shown in the footer and on `/about`, and given
+  to search engines as `sameAs` and to AI assistants in llms.txt. The user asked for "an Instagram feed on an About
+  tab": an automatic feed needs a Meta developer app and a per-shop token that expires every 60 days, so the first
+  version is token-free — the shop pastes up to 12 post/reel links, rendered with Instagram's official embed.
+  Privacy: embed.js sets Instagram cookies, so it is never loaded on page view; visitors click "Show Instagram
+  posts" first. The token-based auto-feed is the follow-up if a shop wants it. `/about` also carries the address,
+  hours, contact channels and device line-up, and is in the header, footer and sitemap.
 

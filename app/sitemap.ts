@@ -10,6 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = tenant.settings.shop_page ? await getListedProducts(tenant.id) : [];
   const pages: MetadataRoute.Sitemap = [
     { url: tenant.baseUrl, lastModified: now, changeFrequency: 'weekly', priority: 1 },
+    { url: `${tenant.baseUrl}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     ...enabledDevices(tenant).map((d) => ({ url: `${tenant.baseUrl}/repairs/${d}`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.9 })),
     ...(tenant.settings.shop_page ? [{ url: `${tenant.baseUrl}/shop`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.8 }] : []),
     ...products.map((p) => ({ url: `${tenant.baseUrl}/shop/${p.id}`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.5 })),

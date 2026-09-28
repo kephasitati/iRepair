@@ -117,6 +117,8 @@
   "nav": {
     "home": "Home",
     "shop": "Shop",
+    "about": "About",
+    "customers": "Customers",
     "jobs": "Repairs",
     "devices": "Devices",
     "addresses": "Addresses",

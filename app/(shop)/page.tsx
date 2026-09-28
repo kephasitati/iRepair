@@ -7,7 +7,7 @@ import { DeviceIcon } from '@/components/device-icon';
 import { FaqList, JsonLd } from '@/components/seo-bits';
 import { DEFAULT_DEVICE_TYPES } from '@/lib/core/device-id';
 import { generalFaqs } from '@/lib/faq';
-import { getPublishedCatalogue, getRatingSummary, getTenantFaqs } from '@/lib/public-data';
+import { getPublishedCatalogue, getRatingSummary, getTenantFaqs, groupByCategory } from '@/lib/public-data';
 import { faqJsonLd, localBusinessJsonLd, pageMetadata } from '@/lib/seo';
 import { requireTenant } from '@/lib/tenant';
 import { formatKenyanPhone } from '@/lib/core/phone';
@@ -165,16 +165,19 @@ export default async function Landing() {
               {families.map((f) => (
                 <div key={f} className="tile mb-4 break-inside-avoid p-6">
                   <p className="eyebrow">{f === 'iphone' ? 'iPhone' : f === 'macbook' ? 'MacBook' : f === 'ipad' ? 'iPad' : f === 'imac' ? 'iMac' : f === 'apple_watch' ? 'Apple Watch' : f === 'other' ? 'Services' : f.replace('_', ' ')}</p>
-                  <ul className="incl mt-3 text-[15px]">
-                    {parts
-                      .filter((p) => ((p.device_family as string | null) ?? 'other') === f)
-                      .map((p) => (
-                        <li key={p.name}>
-                          <span>{p.name}</span>
-                          <span className="shrink-0 font-medium tabular-nums">{formatKes(Number(p.default_price_cents))}</span>
-                        </li>
-                      ))}
-                  </ul>
+                  {groupByCategory(parts.filter((p) => ((p.device_family as string | null) ?? 'other') === f)).map((g, i, all) => (
+                    <div key={g.category} className={i ? 'mt-4' : ''}>
+                      {all.length > 1 || g.category !== 'Other' ? <p className="mt-3 text-[13px] font-semibold tracking-wide text-ink-3 uppercase">{g.category}</p> : null}
+                      <ul className="incl mt-2 text-[15px]">
+                        {g.items.map((p) => (
+                          <li key={p.name}>
+                            <span>{p.name}</span>
+                            <span className="shrink-0 font-medium tabular-nums">{formatKes(Number(p.default_price_cents))}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

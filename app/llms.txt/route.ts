@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { formatKes } from '@/lib/core/money';
 import { generalFaqs } from '@/lib/faq';
-import { cityOf, DEVICE_LABEL, enabledDevices, getPublishedCatalogue, getTenantFaqs, whatsappNumber } from '@/lib/public-data';
+import { cityOf, DEVICE_LABEL, enabledDevices, getPublishedCatalogue, getTenantFaqs, socialLinks, whatsappNumber } from '@/lib/public-data';
 import { requireTenant } from '@/lib/tenant';
 
 /**
@@ -45,6 +45,8 @@ export async function GET() {
     `WhatsApp: https://wa.me/${whatsappNumber(tenant)}`,
     `Address: ${tenant.settings.address_formatted}`,
     `Website: ${tenant.baseUrl}`,
+    `About: ${tenant.baseUrl}/about`,
+    ...socialLinks(tenant).map((l) => `${l.label}: ${l.url}`),
     '',
     `${name} is an independent repair service and is not affiliated with or endorsed by Apple Inc., Samsung, Microsoft or any other device manufacturer named above.`,
   );

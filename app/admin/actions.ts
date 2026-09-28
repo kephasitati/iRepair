@@ -55,6 +55,18 @@ export async function saveSettingsAction(_prev: unknown, fd: FormData): Promise<
           sms_sender_id: str(fd, 'sms_sender_id') || null,
           email_from_name: str(fd, 'email_from_name') || null,
         };
+        const socials: Record<string, string> = {};
+        for (const k of ['instagram', 'facebook', 'tiktok', 'x', 'youtube', 'website']) {
+          const v = str(fd, `social_${k}`);
+          if (!v) continue;
+          if (!/^https:\/\/[^\s]+$/.test(v)) throw new UserError(`The ${k === 'x' ? 'X' : k} link must start with https://`);
+          socials[k] = v;
+        }
+        patch.social_links = tx.json(socials);
+        const posts = str(fd, 'instagram_posts').split(/\r?\n|,/).map((u) => u.trim()).filter(Boolean);
+        if (posts.length > 12) throw new UserError('Choose up to 12 Instagram posts.');
+        for (const u of posts) if (!/^https:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/[\w-]+\/?/.test(u)) throw new UserError(`Not an Instagram post link: ${u}`);
+        patch.instagram_posts = posts.map((u) => u.replace(/\?.*$/, '').replace(/\/?$/, '/'));
         for (const [field, name] of [['logo', 'logo_path'], ['icon', 'icon_path']] as const) {
           const file = fd.get(field);
           if (file instanceof File && file.size > 0) {

@@ -3,13 +3,14 @@ import { getTranslations } from 'next-intl/server';
 import { CookieSettingsLink } from '@/components/cookie-banner';
 import { WhatsAppLink } from '@/components/whatsapp';
 import { formatKenyanPhone } from '@/lib/core/phone';
-import { DEVICE_LABEL, enabledDevices, whatsappLink } from '@/lib/public-data';
+import { DEVICE_LABEL, enabledDevices, socialLinks, whatsappLink } from '@/lib/public-data';
 import type { Tenant } from '@/lib/tenant';
 
 /** apple.com-style footer: small grey type, link columns, legal line. Present on every customer page. */
 export async function ShopFooter({ tenant }: { tenant: Tenant }) {
   const t = await getTranslations();
   const devices = enabledDevices(tenant);
+  const socials = socialLinks(tenant);
   const apple = devices.some((d) => ['iphone', 'macbook', 'ipad', 'imac'].includes(d));
   return (
     <footer className="mt-10 border-t border-line bg-canvas">
@@ -63,6 +64,22 @@ export async function ShopFooter({ tenant }: { tenant: Tenant }) {
             <p className="font-semibold text-ink">{tenant.branding.display_name}</p>
             <p className="mt-2">{tenant.settings.address_formatted}</p>
             {tenant.settings.address_landmark ? <p>{tenant.settings.address_landmark}</p> : null}
+            <p className="mt-2">
+              <Link href="/about" className="hover:text-ink hover:underline">
+                {t('nav.about')}
+              </Link>
+            </p>
+            {socials.length ? (
+              <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                {socials.map((s) => (
+                  <li key={s.key}>
+                    <a href={s.url} target="_blank" rel="noopener me" className="hover:text-ink hover:underline">
+                      {s.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         </div>
         <p className="mt-8 border-t border-line pt-4">

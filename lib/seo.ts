@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { DeviceType } from './core/device-id';
 import type { Faq } from './faq';
-import { cityOf, DEVICE_LABEL, whatsappNumber, type PublicPart } from './public-data';
+import { cityOf, DEVICE_LABEL, socialLinks, whatsappNumber, type PublicPart } from './public-data';
 import type { Tenant } from './tenant';
 
 /** Metadata and schema.org JSON-LD for the public pages of a shop (SEO / AEO / GEO). */
@@ -48,6 +48,7 @@ export function localBusinessJsonLd(tenant: Tenant, parts: PublicPart[], rating:
     image: absoluteUrl(tenant, '/opengraph-image'),
     telephone: s.contact_phone,
     email: s.contact_email ?? undefined,
+    sameAs: socialLinks(tenant).length ? socialLinks(tenant).map((l) => l.url) : undefined,
     priceRange: prices.length ? `KES ${Math.min(...prices).toLocaleString('en-KE')} – ${Math.max(...prices).toLocaleString('en-KE')}` : undefined,
     currenciesAccepted: 'KES',
     paymentAccepted: 'M-Pesa',

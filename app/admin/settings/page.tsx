@@ -9,7 +9,7 @@ import { env } from '@/lib/env';
 import { saveCredentialsAction, saveFaqsAction, saveSettingsAction } from '@/app/admin/actions';
 import { DEFAULT_DEVICE_TYPES, DEVICE_TYPES } from '@/lib/core/device-id';
 import { formatFaqText } from '@/lib/core/faq-text';
-import { getTenantFaqs } from '@/lib/public-data';
+import { getTenantFaqs, SOCIAL_LABEL } from '@/lib/public-data';
 
 export const metadata = { title: 'Settings' };
 export const dynamic = 'force-dynamic';
@@ -73,8 +73,22 @@ export default async function SettingsPage() {
               <Input id="email_from_name" name="email_from_name" defaultValue={b.email_from_name ?? ''} />
             </Field>
           </div>
+          <div>
+            <p className="mb-1 text-sm font-medium">Social profiles</p>
+            <p className="mb-2 text-xs text-muted-foreground">Shown in the footer and on the About page, and given to search engines and AI assistants as your official profiles.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(['instagram', 'facebook', 'tiktok', 'x', 'youtube', 'website'] as const).map((k) => (
+                <Field key={k} label={SOCIAL_LABEL[k]} htmlFor={`social_${k}`}>
+                  <Input id={`social_${k}`} name={`social_${k}`} type="url" placeholder="https://" defaultValue={b.social_links?.[k] ?? ''} />
+                </Field>
+              ))}
+            </div>
+          </div>
+          <Field label="Instagram posts to show on the About page" htmlFor="instagram_posts" hint="One post or reel link per line (up to 12). Visitors see them after choosing to load Instagram content.">
+            <Textarea id="instagram_posts" name="instagram_posts" rows={4} defaultValue={(b.instagram_posts ?? []).join('\n')} placeholder="https://www.instagram.com/p/…" />
+          </Field>
           <p className="text-xs text-muted-foreground">
-            Customer site: <a className="underline" href={tenant.baseUrl}>{tenant.hostname}</a>
+            Customer site: <a className="underline" href={tenant.baseUrl}>{tenant.hostname}</a> · <a className="underline" href={`${tenant.baseUrl}/about`}>About page</a>
           </p>
         </ActionForm>
       </Section>

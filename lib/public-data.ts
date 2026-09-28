@@ -6,14 +6,33 @@ import type { Tenant } from './tenant';
 
 /** Public, cacheable facts about a shop for landing pages, structured data and llms.txt. Never includes customer data. */
 
-export type PublicPart = { name: string; device_family: string | null; default_price_cents: number };
+export type PublicPart = { name: string; device_family: string | null; category: string | null; default_price_cents: number };
 
 export const getPublishedCatalogue = cache(async (tenantId: string): Promise<PublicPart[]> => {
-  const rows = await servicePool()`select name, device_family, default_price_cents from parts_catalogue
+  const rows = await servicePool()`select name, device_family, category, default_price_cents from parts_catalogue
     where tenant_id = ${tenantId} and published and active
-    order by array_position(array['iphone','macbook','ipad','imac','apple_watch','android','windows_laptop','other']::text[], device_family), default_price_cents`;
-  return rows.map((r) => ({ name: r.name, device_family: r.device_family, default_price_cents: Number(r.default_price_cents) }));
+    order by array_position(array['iphone','macbook','ipad','imac','apple_watch','android','windows_laptop','other']::text[], device_family), category nulls last, default_price_cents`;
+  return rows.map((r) => ({ name: r.name, device_family: r.device_family, category: r.category, default_price_cents: Number(r.default_price_cents) }));
 });
+
+/** Published parts of one device family, grouped by shop category (uncategorised items last, under "Other"). */
+export function groupByCategory(parts: PublicPart[]): { category: string; items: PublicPart[] }[] {
+  const map = new Map<string, PublicPart[]>();
+  for (const p of parts) {
+    const key = p.category ?? '';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  return [...map.entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b))).map(([category, items]) => ({ category: category || 'Other', items }));
+}
+
+export const SOCIAL_LABEL: Record<string, string> = { instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', x: 'X', youtube: 'YouTube', website: 'Website' };
+
+export function socialLinks(tenant: Tenant): { key: string; label: string; url: string }[] {
+  return Object.entries(tenant.branding.social_links ?? {})
+    .filter(([k, v]) => k in SOCIAL_LABEL && typeof v === 'string' && /^https?:\/\//.test(v))
+    .map(([key, url]) => ({ key, label: SOCIAL_LABEL[key], url: url as string }));
+}
 
 export const getRatingSummary = cache(async (tenantId: string): Promise<{ average: number; count: number; recent: { score: number; comment: string | null; created_at: string }[] }> => {
   const [agg] = await servicePool()`select coalesce(avg(score), 0)::float as average, count(*)::int as count from ratings where tenant_id = ${tenantId}`;
