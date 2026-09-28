@@ -240,4 +240,14 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   admin-only and audited (personal data leaving the system). Due follow-ups surface on the board and as a filter on
   the list; completing one records who and when. Verified in the browser on the demo shop: list, search, tag,
   note, schedule → board panel → done, CSV.
+- **D-33 Admin QA pass, all pages.** After D-28/D-29 (Staff, Settings) the remaining staff pages were driven the
+  same way on the demo shop: Board (all/mine, follow-up panel), job page (loads, assign control present), Scanner
+  (renders), Customers (D-32), Reports (7/30/90 days), Products (add with photo/category/listed → search → edit
+  price → retire → inactive filter), Refunds (unknown job, over-refund, zero, non-numeric, valid → history + audit),
+  Unclaimed (rows link to jobs), Messages (bad variable rejected, save → "customised", reset → default), Audit
+  (shows refund/note/template/export actions), Settings (new per-type fees incl. an explicit 0, https-only social
+  links, Instagram post validation and normalisation). Nothing needed fixing this time; two false alarms were my
+  own test scripts (a navigation mid-script, a stale error read). Not checkable without a camera or a real
+  handover: the QR scanner's camera path and the job page's state transitions — those are covered by the
+  Playwright happy path, which drives them through the same server actions.
 

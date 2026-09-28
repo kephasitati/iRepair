@@ -122,6 +122,14 @@ for the price list) and `scripts/set-faqs.ts` (its 14 FAQs, kept in `scripts/dat
 onboarding record). `DECISIONS.md` D-25/D-26 cover the Apple Watch device type and the shop/FAQ features that
 came out of it.
 
+## Added after the first handover (2026-09-28)
+
+Booking by ID document with a required ID photo (D-30), consultation fees per device type (D-30), the public price
+list grouped by category, social profiles + an About page with opt-in Instagram embeds (D-31), and a light CRM
+under `/bench/customers` with notes, tags, follow-up reminders and an audited CSV export (D-32). Migration
+`0019_identity_fees_crm_socials.sql`. Every staff page has now been exercised element by element in the browser
+(D-28, D-29, D-33).
+
 ## Access, for whoever picks this up
 
 - Demo tenant: `npx tsx scripts/migrate.ts --reset && npx tsx scripts/seed.ts` prints fresh demo credentials every
