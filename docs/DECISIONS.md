@@ -231,4 +231,13 @@ it is a **tenant setting or a single constant** so it can be changed without a m
   Privacy: embed.js sets Instagram cookies, so it is never loaded on page view; visitors click "Show Instagram
   posts" first. The token-based auto-feed is the follow-up if a shop wants it. `/about` also carries the address,
   hours, contact channels and device line-up, and is in the header, footer and sitemap.
+- **D-32 A light CRM: customers, notes, tags, follow-ups.** Scope chosen by the user: customer list + history +
+  notes, plus follow-up reminders; explicitly *not* bulk SMS/WhatsApp campaigns (consent tracking and paid SMS —
+  ask before building). A "customer" is anyone with a job at this shop, so there is no separate contacts table to
+  drift from the real data: the list is derived from `jobs`, `payments` (successful, in KES) and the three small
+  CRM tables (`customer_notes`, `customer_tags`, `customer_followups`, all tenant-scoped with staff-only RLS).
+  Lives under `/bench/customers` rather than `/admin` so technicians can read and add notes too; CSV export is
+  admin-only and audited (personal data leaving the system). Due follow-ups surface on the board and as a filter on
+  the list; completing one records who and when. Verified in the browser on the demo shop: list, search, tag,
+  note, schedule → board panel → done, CSV.
 

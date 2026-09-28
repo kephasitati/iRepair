@@ -326,6 +326,93 @@ export async function saveFaqsAction(_prev: unknown, fd: FormData): Promise<Acti
 }
 
 // ---------------------------------------------------------------------------
+// Customers (CRM): notes, tags, follow-ups — any active staff member of the shop
+// ---------------------------------------------------------------------------
+async function staff() {
+  const { session, tenant } = await requireStaff();
+  const ctx = await requestCtx();
+  const impersonatedBy = session.user.is_platform_admin && session.impersonatingTenantId === tenant.id ? session.user.id : null;
+  return { session, tenant, ctx, userId: session.user.id, impersonatedBy };
+}
+
+async function assertCustomer(tx: Parameters<typeof audit>[0], tenantId: string, userId: string) {
+  const [j] = await tx`select 1 from jobs where tenant_id = ${tenantId} and customer_user_id = ${userId} limit 1`;
+  if (!j) throw new UserError('That person is not a customer of this shop.');
+}
+
+export async function addCustomerNoteAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
+  const r = await run(async () => {
+    const { tenant, ctx, userId, impersonatedBy } = await staff();
+    const customerId = str(fd, 'user_id');
+    const body = str(fd, 'body').trim().slice(0, 2000);
+    if (!body) throw new UserError('Write the note first.');
+    await withUser(ctx, async (tx) => {
+      await assertCustomer(tx, tenant.id, customerId);
+      await tx`insert into customer_notes (tenant_id, user_id, author_id, body) values (${tenant.id}, ${customerId}, ${userId}, ${body})`;
+      await audit(tx, { tenantId: tenant.id, actorUserId: userId, impersonatedBy, action: 'customer.note', entity: 'user', entityId: customerId });
+    });
+    return null;
+  });
+  revalidatePath('/bench/customers');
+  return r;
+}
+
+export async function deleteCustomerNoteAction(noteId: string, customerId: string) {
+  const { tenant, ctx } = await staff();
+  await withUser(ctx, (tx) => tx`delete from customer_notes where id = ${noteId} and tenant_id = ${tenant.id}`);
+  revalidatePath(`/bench/customers/${customerId}`);
+}
+
+export async function addCustomerTagAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
+  const r = await run(async () => {
+    const { tenant, ctx, userId } = await staff();
+    const customerId = str(fd, 'user_id');
+    const tag = str(fd, 'tag').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 30);
+    if (!tag) throw new UserError('Enter a tag.');
+    await withUser(ctx, async (tx) => {
+      await assertCustomer(tx, tenant.id, customerId);
+      await tx`insert into customer_tags (tenant_id, user_id, tag, created_by) values (${tenant.id}, ${customerId}, ${tag}, ${userId}) on conflict do nothing`;
+    });
+    return null;
+  });
+  revalidatePath('/bench/customers');
+  return r;
+}
+
+export async function removeCustomerTagAction(customerId: string, tag: string) {
+  const { tenant, ctx } = await staff();
+  await withUser(ctx, (tx) => tx`delete from customer_tags where tenant_id = ${tenant.id} and user_id = ${customerId} and tag = ${tag}`);
+  revalidatePath(`/bench/customers/${customerId}`);
+}
+
+export async function addFollowupAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {
+  const r = await run(async () => {
+    const { tenant, ctx, userId } = await staff();
+    const customerId = str(fd, 'user_id');
+    const due = str(fd, 'due_on');
+    const reason = str(fd, 'reason').trim().slice(0, 200);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || Number.isNaN(Date.parse(due))) throw new UserError('Pick a date.');
+    if (due < new Date().toISOString().slice(0, 10)) throw new UserError('The follow-up date is in the past.');
+    if (!reason) throw new UserError('Say what the follow-up is for.');
+    await withUser(ctx, async (tx) => {
+      await assertCustomer(tx, tenant.id, customerId);
+      await tx`insert into customer_followups (tenant_id, user_id, due_on, reason, created_by) values (${tenant.id}, ${customerId}, ${due}, ${reason}, ${userId})`;
+    });
+    return null;
+  });
+  revalidatePath('/bench/customers');
+  revalidatePath('/bench');
+  return r;
+}
+
+export async function completeFollowupAction(followupId: string, customerId: string) {
+  const { tenant, ctx, userId } = await staff();
+  await withUser(ctx, (tx) => tx`update customer_followups set done_at = now(), done_by = ${userId} where id = ${followupId} and tenant_id = ${tenant.id} and done_at is null`);
+  revalidatePath(`/bench/customers/${customerId}`);
+  revalidatePath('/bench');
+}
+
+// ---------------------------------------------------------------------------
 // Refunds (recorded after paying the customer back by hand; B2C is out of scope)
 // ---------------------------------------------------------------------------
 export async function recordRefundAction(_prev: unknown, fd: FormData): Promise<ActionResult<null>> {

@@ -4,7 +4,8 @@ import { StatusBadge } from '@/components/status-badge';
 import { LiveRefresh } from '@/components/live-refresh';
 import { requestCtx, requireStaff } from '@/lib/auth';
 import { BOARD_COLUMNS, type JobStatus } from '@/lib/core/state-machine';
-import { formatDateTime, formatTime } from '@/lib/core/time';
+import { formatDate, formatDateTime, formatTime } from '@/lib/core/time';
+import { dueFollowups } from '@/lib/crm';
 import { withUser } from '@/lib/db';
 import { cn } from '@/lib/utils';
 
@@ -23,10 +24,33 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
     where j.tenant_id = ${tenant.id} and j.status = any(${statuses}::job_status[])
       ${mine ? tx`and j.assigned_tech_id = ${session.user.id}` : tx``}
     order by j.updated_at desc`);
+  const followups = await withUser(ctx, (tx) => dueFollowups(tx, tenant.id));
 
   return (
     <div className="space-y-3">
       <LiveRefresh />
+      {followups.length ? (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm" data-testid="followups-due">
+          <p className="mb-1 font-semibold text-amber-900">
+            Follow-ups due ({followups.length}) ·{' '}
+            <Link href="/bench/customers?due=1" className="underline">
+              see all
+            </Link>
+          </p>
+          <ul className="space-y-1">
+            {followups.slice(0, 5).map((f) => (
+              <li key={f.id} className="flex flex-wrap items-center gap-x-2 text-amber-950">
+                <Link href={`/bench/customers/${f.user_id}`} className="font-medium hover:underline">
+                  {f.full_name || f.phone_e164}
+                </Link>
+                <span className="text-xs text-amber-900/80">
+                  {formatDate(f.due_on)} · {f.reason}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">{t('bench.board')}</h1>
         <div className="flex gap-1 rounded-lg border bg-background p-0.5 text-sm">

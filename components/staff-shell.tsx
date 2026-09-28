@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { BarChart3, ClipboardList, Cog, LayoutGrid, Package, QrCode, Users, Wallet, Archive, MessageSquare, ScrollText } from 'lucide-react';
+import { BarChart3, ClipboardList, Cog, Contact, LayoutGrid, Package, QrCode, Users, Wallet, Archive, MessageSquare, ScrollText } from 'lucide-react';
 import type { Tenant } from '@/lib/tenant';
 import type { Session } from '@/lib/auth';
 import { signOutAction } from '@/app/(auth)/actions';
@@ -13,6 +13,7 @@ export async function StaffShell({ tenant, session, role, children }: { tenant: 
   const main = [
     { href: '/bench', label: t('board'), icon: LayoutGrid },
     { href: '/bench/scan', label: t('scanner'), icon: QrCode },
+    { href: '/bench/customers', label: t('customers'), icon: Contact },
   ];
   const admin =
     role === 'shop_admin'
